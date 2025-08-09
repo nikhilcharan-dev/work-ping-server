@@ -8,14 +8,13 @@ const router = new Router();
  */
 
 router.get('/webhook', (req, res) => {
-    console.log('webhook event:', req.query);
+    console.log('webhook GET event:', req.query);
     res.sendStatus(200);
 })
 
 router.post('/webhook', (req, res) => {
-    console.log('webhook event:', req.body);
+    console.log('webhook POST event:', req.body);
     res.sendStatus(200);
 });
-
 
 export default router;
