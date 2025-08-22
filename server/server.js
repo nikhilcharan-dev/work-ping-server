@@ -23,7 +23,7 @@ server.get('/ping', (req, res) => {
 server.use('/secure/config/whatsapp', whatsappConfig);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, async() => { // no use even if we use async, jst for getting no ide errors
+server.listen(PORT, async () => { // no use even if we use async, jst for getting no ide errors
     console.log(`Server listening on port ${PORT}`);
     // await mongooseConfig();
 });
