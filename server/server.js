@@ -4,12 +4,16 @@ import { config } from 'dotenv';
 
 import whatsappConfig from './config/whatsappConfig.js'
 import mongooseConfig from './config/mongooseDB.js'
+import {HttpStatusCode} from "axios";
 
 // loading the environment variables
 config();
 
 // creating server
 const server = express();
+
+// 'trust proxy' will resolve the origin ip instead of the proxy ip
+server.set('trust proxy', true);
 
 // initializing middleware
 server.use(cors());

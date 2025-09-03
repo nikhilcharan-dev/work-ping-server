@@ -15,4 +15,13 @@ router.get('/webhook', async (req, res) => {
     }
 })
 
+router.post('/webhook', async (req, res) => {
+    try {
+        console.log(req.query);
+        console.log(req.body);
+    } catch(err) {
+        console.log(err);
+    }
+})
+
 export default router;
