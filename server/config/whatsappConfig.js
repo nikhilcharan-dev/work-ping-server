@@ -19,6 +19,9 @@ router.post('/webhook', async (req, res) => {
     try {
         console.log(req.query);
         console.log(req.body);
+
+        console.log(req.body.entry.id);
+        console.log(req.body.entry.changes);
     } catch(err) {
         console.log(err);
     }
