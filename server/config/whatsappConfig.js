@@ -21,7 +21,7 @@ router.post('/webhook', async (req, res) => {
 
         const entry = req.body.entry[0];
         const changes = entry.changes[0];
-        const contacts = changes[0].contacts;
+        const contacts = changes[0].contacts[0];
         const messages = changes[0].messages;
 
         const username = contacts.profile.name;
