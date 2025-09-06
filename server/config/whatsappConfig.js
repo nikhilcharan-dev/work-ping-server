@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 const router = Router();
 
+/* The /webhook with API Type GET is used initially once to verify if the redirect server is verified server */
 router.get('/webhook', async (req, res) => {
     try {
         console.log(req.query);
@@ -15,12 +16,15 @@ router.get('/webhook', async (req, res) => {
     }
 })
 
+/* The /webhook with API Type POST is handled by the WhatsApp to redirect messages from the client to our server
+*  1. Many Requests from the same user can be batched
+*  2. Or previous failed requests are re-send
+*  3. We even will get requests when the user view/send messages */
 router.post('/webhook', async (req, res) => {
     try {
-        console.log(JSON.stringify(req.body));
 
+        // Extracting Main Parts from the Payload
         const entry = req.body.entry[0];
-        // entry[0].changes[0].value.contacts[0]
         const changes = entry.changes[0];
         const contacts = changes.value.contacts[0];
         const messages = changes.value.messages;
@@ -28,18 +32,32 @@ router.post('/webhook', async (req, res) => {
         const username = contacts.profile.name;
         const phone_number = contacts.wa_id;
 
-        const message = messages[messages.length - 1];
+        const isOutBound = changes.statuses[0] !== undefined;
+        if(isOutBound){
+            return res.status(200).json({
+                status: 'success'
+            });
+        }
 
-        console.log("From: ", username, " With number: ", phone_number)
-        console.log("Got Message: ", message)
+        const latest_message = messages[messages.length - 1];
+        const message_text = latest_message.text.body;
+
+        return res.status(200);
+
     } catch(err) {
         console.log(err);
+        return res.status(500).json({
+            error: 'Internal Server Error'
+        });
     }
 })
 
 export default router;
 
+
+
 /*
+    Example POST /webhook body
 {
   "object": "whatsapp_business_account",
   "entry": [
@@ -73,11 +91,20 @@ export default router;
               }
             ]
           },
+          <!-- only included with sent status, and one of either delivered or read status -->
+                "pricing": {
+                  "billable": <IS_BILLABLE?>,
+                  "pricing_model": "<PRICING_MODEL>",
+                  "type": "<PRICING_TYPE>",
+                  "category": "<PRICING_CATEGORY>"
+                },
           "field": "messages"
         }
       ]
     }
   ]
 }
+
+
 
  */
