@@ -33,7 +33,7 @@ server.use(express.urlencoded({ extended: true }));
 
 // Inbound-IP Testing
 server.use((req, res, next) => {
-    console.log(JSON.stringify(req));
+    console.log(req.ip);
     next();
 })
 
