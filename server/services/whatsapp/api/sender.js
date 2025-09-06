@@ -22,7 +22,7 @@ const router = Router();
 router.post('/test', async (req, res) => {
     try {
         const { to, body } = req.body;
-        const res = await metaAxios.post('/messages', {
+        const response = await metaAxios.post('/messages', {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
             "to": `91${to}`,
@@ -31,6 +31,9 @@ router.post('/test', async (req, res) => {
                 "body": body
             }
         })
+        return res.status(200).json({
+            status: "success",
+        });
     } catch(err) {
         console.log(err);
         return res.status(500).json({
