@@ -4,7 +4,8 @@ import { config } from 'dotenv';
 
 import whatsappConfig from './config/whatsappConfig.js'
 import mongooseConfig from './config/mongooseDB.js'
-import {HttpStatusCode} from "axios";
+
+import whatsAppWebhook from './services/whatsapp/api/messages.js';
 
 // loading the environment variables
 config();
@@ -25,6 +26,7 @@ server.get('/ping', (req, res) => {
 })
 
 server.use('/secure/config/whatsapp', whatsappConfig);
+server.use('/secure/config/whatsapp', whatsAppWebhook);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => { // no use even if we use async, jst for getting no ide errors
