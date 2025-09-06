@@ -10,7 +10,7 @@ router.post('/webhook', async (req, res) => {
     try {
 
         // Extracting Main Parts from the Payload
-        console.log(req.body);
+        console.log(JSON.stringify(req.body));
         const entry = req.body.entry[0];
         const changes = entry.changes[0];
         const contacts = changes.value.contacts[0];
