@@ -1,5 +1,7 @@
 import { Router } from "express";
 import axios from "axios";
+import { config } from "dotenv";
+config();
 
 const API_KEY = process.env.WHATSAPP_API_KEY;
 const META_BASE_URI = process.env.WHATSAPP_META_BASE_URI;
@@ -20,7 +22,7 @@ const router = Router();
 router.post('/test', async (req, res) => {
     try {
         const { to, body } = req.body;
-        const res = metaAxios.post('/messages', {
+        const res = await metaAxios.post('/messages', {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
             "to": `91${to}`,
@@ -28,7 +30,7 @@ router.post('/test', async (req, res) => {
             "text": {
                 "body": body
             }
-        })````
+        })
     } catch(err) {
         console.log(err);
         return res.status(500).json({
