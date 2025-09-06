@@ -42,8 +42,8 @@ server.get('/ping', (req, res) => {
 })
 
 server.use('/secure/whatsapp', whatsappConfig);
-server.use('/secure/whatsapp/', whatsAppWebhook);
-server.use('/secure/whatsapp/', whatsAppRoutes);
+server.use('/secure/whatsapp', whatsAppWebhook);
+server.use('/secure/whatsapp', whatsAppRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => { // no use even if we use async, jst for getting no ide errors
