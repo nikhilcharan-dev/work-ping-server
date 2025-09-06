@@ -3,33 +3,53 @@ import { Router } from 'express';
 const router = Router();
 
 /* The /webhook with API Type POST is handled by the WhatsApp to redirect messages from the client to our server
+*  0. There are InBound & OutBound messages/notifications
 *  1. Many Requests from the same user can be batched
 *  2. Or previous failed requests are re-send
-*  3. We even will get requests when the user view/send messages */
+*  3. We even will get requests when the user view/read/send/delete messages */
 router.post('/webhook', async (req, res) => {
     try {
 
         // Extracting Main Parts from the Payload
-        console.log(JSON.stringify(req.body));
         const entry = req.body.entry[0];
         const changes = entry.changes[0];
+        const value = changes.value;
+
+        // Handling OutBound Messages
+        const statuses = value?.statuses || [];
+        if(statuses.length !== 0){
+            const status = statuses[0].status;
+
+            if(status === 'failed') {
+                const ID = statuses[0].id;
+                const errorMessage = statuses[0]?.errors[0]?.error_data || statuses[0].errors[0].title;
+                console.log(`Message Failed for Conversion ID: ${ID}.\n With Error: ${JSON.stringify(errorMessage)}`);
+
+                return res.status(500).json({
+                    status: 'error',
+                })
+            }
+
+            console.log(`Message Status: ${status}`);
+            return res.status(200).json({
+                status: 'success'
+            });
+        }
+
         const contacts = changes.value.contacts[0];
         const messages = changes.value.messages;
 
         const username = contacts.profile.name;
         const phone_number = contacts.wa_id;
 
-        const isOutBound = changes?.statuses || [];
-        if(isOutBound.length === 0){
-            return res.status(200).json({
-                status: 'success'
-            });
-        }
-
         const latest_message = messages[messages.length - 1];
         const message_text = latest_message.text.body;
 
-        return res.status(200);
+        console.log(message_text);
+
+        return res.status(200).json({
+            message: 'Message sent!',
+        });
 
     } catch(err) {
         console.log(err);
