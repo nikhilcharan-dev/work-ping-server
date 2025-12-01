@@ -33,12 +33,15 @@ server.use(express.urlencoded({ extended: true }));
 
 // Inbound-IP Testing
 server.use((req, res, next) => {
-    console.log(req.ip);
+    console.log("Origin IP Address: ", req.ip);
     next();
 })
 
 server.get('/ping', (req, res) => {
-    return res.send('pong');
+    return res.status(200).json({
+        status: "pong",
+        ip: req.ip,
+    })
 })
 
 server.use('/secure/whatsapp', whatsappConfig);
