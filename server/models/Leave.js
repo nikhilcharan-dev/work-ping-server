@@ -2,8 +2,8 @@ import mongoose from "mongoose"
 const leaveSchema = new mongoose.Schema({
   dates: { type: Date },
   status: { type: String },
-  appliedBy: { type: Number },
-  approvedBy: {  type : Number },
+  appliedBy: { type: Schema.Types.ObjectId , ref : 'User' },
+  approvedBy: {  type : Schema.Types.ObjectId , ref : 'User' },
   reason: { type: String }
 });
 export default mongoose.model("Leave", leaveSchema);

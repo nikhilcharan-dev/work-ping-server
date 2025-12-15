@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema({
   gender: { type: String, },
   dateOfJoining: { type: Date },
   role: { type: String }, 
-  teamId: { type: Number },
+  teamId: { type : Schema.Types.ObjectId, ref : 'Team' },
 });
 
-export default mongoose.model("Users" , UserSchema)
+export default mongoose.model("User" , UserSchema)
