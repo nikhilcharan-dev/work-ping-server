@@ -1,14 +1,6 @@
 import mongoose from "mongoose";
 
-<<<<<<< Updated upstream
-const attendanceSchema = new mongoose.Schema({
-  date: { type: Date, required: true },
-  status: { type: String, required: true },
-  userId: { type : Schema.Types.ObjectId, ref: "User" }
-});
 
-export default mongoose.model("Attendance", attendanceSchema);
-=======
 const AttendanceSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now, required: true },
     status: {
@@ -26,4 +18,3 @@ const AttendanceSchema = new mongoose.Schema({
 AttendanceSchema.index({ employee_id: 1, date: 1 }, { unique: true });
 const Attendance = mongoose.model("Attendance", AttendanceSchema);
 export default Attendance;
->>>>>>> Stashed changes
