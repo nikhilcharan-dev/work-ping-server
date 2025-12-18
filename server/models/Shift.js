@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import mongoose from "mongoose";
 
 const shiftSchema = new mongoose.Schema({
@@ -12,6 +13,8 @@ const shiftSchema = new mongoose.Schema({
 
 export default mongoose.model("Shift", shiftSchema);
 =======
+=======
+>>>>>>> Stashed changes
 import mongoose from 'mongoose';
 
 const ShiftSchema = new mongoose.Schema({
@@ -22,5 +25,9 @@ const ShiftSchema = new mongoose.Schema({
 })
 
 const Shift = mongoose.model('Shift', ShiftSchema);
+<<<<<<< Updated upstream
+export default Shift;
+>>>>>>> Stashed changes
+=======
 export default Shift;
 >>>>>>> Stashed changes

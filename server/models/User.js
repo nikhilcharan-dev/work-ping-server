@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import mongoose from "mongoose"
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -14,6 +15,8 @@ const UserSchema = new mongoose.Schema({
 
 export default mongoose.model("User" , UserSchema)
 =======
+=======
+>>>>>>> Stashed changes
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
@@ -34,5 +37,9 @@ const UserSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', UserSchema);
+<<<<<<< Updated upstream
+export default User;
+>>>>>>> Stashed changes
+=======
 export default User;
 >>>>>>> Stashed changes
