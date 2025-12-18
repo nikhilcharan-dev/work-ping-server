@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import { HttpStatusCode } from "axios";
 import { config } from "dotenv";
+import morgan from "morgan";
 
 import errorHandler from "./middleware/errorHandler.js";
 import attendanceRoutes from "./routes/attendanceRoutes/router.js";
@@ -28,8 +29,9 @@ server.set("trust proxy", true);
    CORS (REQUIRED for cookies)
 ---------------------------------- */
 const allowedOrigins = [
-    "http://localhost:5173/",
-    "https://work-ping.vercel.app/",
+    "http://localhost:5173",
+    "https://work-ping.vercel.app",
+    "https://agentic-ai-03je.onrender.com"
 ];
 
 server.use(
@@ -49,6 +51,7 @@ server.use(
 /* ---------------------------------
    BODY PARSERS
 ---------------------------------- */
+server.use(morgan("dev"));
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
 
@@ -114,6 +117,6 @@ server.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, async () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🚀 Server running. http://localhost:${PORT}`);
     await mongooseConfig();
 });

@@ -39,10 +39,14 @@ router.post(
                 contentType: req.file.mimetype
             });
 
+            console.log("Form DATA: ", formData);
+
             return res.status(200).json({
                 status: "ok",
                 roll: "23A91A1219"
             });
+
+            // after nag broo setup flask add flask endpoint in env and update it in render.com
 
             const flaskRes = await axios.post(
                 `https://${FLASK_API}/detect`, // 👈 Flask detect API
