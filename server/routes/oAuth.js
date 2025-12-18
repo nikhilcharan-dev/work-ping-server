@@ -4,6 +4,7 @@ const router = Router();
 
 router.post('/register', async (req, res) => {
     try {
+        const { name, email, password } = req.body;
 
     } catch(err) {
         console.log(err);

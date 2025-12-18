@@ -112,6 +112,12 @@ export default router;
   ]
 }
 
+RESTs API
+sender receiver
+req    res
+
+onEvent (web services)    receiver
+
 
 
  */

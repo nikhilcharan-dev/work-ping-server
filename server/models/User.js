@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import mongoose from "mongoose"
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -12,3 +13,26 @@ const UserSchema = new mongoose.Schema({
 });
 
 export default mongoose.model("User" , UserSchema)
+=======
+import mongoose from 'mongoose';
+
+const UserSchema = new mongoose.Schema({
+    username: String,
+    password: String,
+    verified: Boolean,
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    dob: Date,
+    phone: String,
+    gender: String,
+    date_of_join: Date,
+    status: String,
+    salary: String,
+});
+
+const User = mongoose.model('User', UserSchema);
+export default User;
+>>>>>>> Stashed changes

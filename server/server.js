@@ -43,7 +43,7 @@ server.get('/ping', (req, res) => {
         ip: req.ip,
     })
 })
-
+// https://agentic-ai-rn7s.onrender.com/admin/registrations -- > XL, JSON
 server.use('/secure/whatsapp', whatsappConfig);
 server.use('/secure/whatsapp', whatsAppWebhook);
 server.use('/secure/whatsapp', whatsAppRoutes);
