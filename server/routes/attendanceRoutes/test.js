@@ -2,6 +2,12 @@ import express from "express";
 import axios from "axios";
 import FormData from "form-data";
 import multer from "multer";
+import https from "https";
+
+
+const agent = new https.Agent({
+    rejectUnauthorized: false // allow self-signed
+});
 
 const router = express.Router();
 
@@ -41,20 +47,16 @@ router.post(
 
             console.log("Form DATA: ", formData);
 
-            return res.status(200).json({
-                status: "ok",
-                roll: "23A91A1219"
-            });
-
             // after nag broo setup flask add flask endpoint in env and update it in render.com
 
             const flaskRes = await axios.post(
-                `https://${FLASK_API}/detect`, // 👈 Flask detect API
+                `${FLASK_API}/recognise`, // 👈 Flask detect API
                 formData,
                 {
                     headers: formData.getHeaders(),
                     timeout: 10000
-                }
+                },
+                { httpsAgent: agent }
             );
 
             console.log(flaskRes.data);
