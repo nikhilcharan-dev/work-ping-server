@@ -114,7 +114,7 @@ server.use(errorHandler);
 /* ---------------------------------
    SERVER START
 ---------------------------------- */
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 server.listen(PORT, async () => {
     console.log(`🚀 Server running. http://localhost:${PORT}`);

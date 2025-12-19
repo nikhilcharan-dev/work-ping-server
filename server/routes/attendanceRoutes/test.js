@@ -69,7 +69,7 @@ router.post(
             });
 
         } catch (err) {
-            console.error("Test detect error:", err.message);
+            console.error("Test detect error:", err);
 
             return res.status(500).json({
                 status: "error",
