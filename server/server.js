@@ -1,55 +1,122 @@
-import express from 'express';
-import cors from 'cors';
+import express from "express";
+import cors from "cors";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
 import { HttpStatusCode } from "axios";
+import { config } from "dotenv";
+import morgan from "morgan";
 
-import { config } from 'dotenv';
-config(); // loading the environment variables
+import errorHandler from "./middleware/errorHandler.js";
+import attendanceRoutes from "./routes/attendanceRoutes/router.js";
+import testRoutes from "./routes/attendanceRoutes/test.js";
 
-import whatsappConfig from './config/whatsappConfig.js'
-import mongooseConfig from './config/mongooseDB.js'
+import whatsappConfig from "./config/whatsappConfig.js";
+import mongooseConfig from "./config/mongooseDB.js";
 
-import whatsAppWebhook from './services/whatsapp/api/receiver.js';
-import whatsAppRoutes from './services/whatsapp/api/sender.js';
+import whatsAppWebhook from "./services/whatsapp/api/receiver.js";
+import whatsAppRoutes from "./services/whatsapp/api/sender.js";
 
-// creating server
+config(); // load env
+
 const server = express();
 
-// Rate Limiter
-const Limiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: 10,
-    message: "Rate Limit Threshold Reached!",
-    statusCode: HttpStatusCode.Forbidden,
-})
+/* ---------------------------------
+   TRUST PROXY (important on Render)
+---------------------------------- */
+server.set("trust proxy", true);
 
-// 'trust proxy' will resolve the origin ip instead of the proxy ip
-server.set('trust proxy', true);
+/* ---------------------------------
+   CORS (REQUIRED for cookies)
+---------------------------------- */
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://work-ping.vercel.app",
+    "https://agentic-ai-03je.onrender.com"
+];
 
-// initializing middleware
-server.use(cors());
+server.use(
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
+        credentials: true
+    })
+);
+
+
+/* ---------------------------------
+   BODY PARSERS
+---------------------------------- */
+server.use(morgan("dev"));
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
 
-// Inbound-IP Testing
+/* ---------------------------------
+   COOKIE PARSER
+---------------------------------- */
+server.use(cookieParser());
+
+/* ---------------------------------
+   IP LOGGER (optional)
+---------------------------------- */
 server.use((req, res, next) => {
-    console.log("Origin IP Address: ", req.ip);
+    console.log("Origin IP:", req.ip);
     next();
-})
+});
 
-server.get('/ping', (req, res) => {
-    return res.status(200).json({
+/* ---------------------------------
+   RATE LIMITER
+---------------------------------- */
+const Limiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        status: "blocked",
+        message: "Rate limit exceeded"
+    },
+    statusCode: HttpStatusCode.Forbidden
+});
+
+/* ---------------------------------
+   HEALTH CHECK
+---------------------------------- */
+server.get("/ping", (req, res) => {
+    res.status(200).json({
         status: "pong",
-        ip: req.ip,
-    })
-})
+        ip: req.ip
+    });
+});
 
-server.use('/secure/whatsapp', whatsappConfig);
-server.use('/secure/whatsapp', whatsAppWebhook);
-server.use('/secure/whatsapp', whatsAppRoutes);
+/* ---------------------------------
+   ROUTES
+---------------------------------- */
 
+// WhatsApp (protected / limited) use Limiter
+server.use("/secure/whatsapp", whatsappConfig);
+server.use("/secure/whatsapp", whatsAppWebhook);
+server.use("/secure/whatsapp", whatsAppRoutes);
+
+// Attendance APIs
+server.use("/api", attendanceRoutes);
+server.use('/api/test', testRoutes);
+
+/* ---------------------------------
+   ERROR HANDLER (LAST)
+---------------------------------- */
+server.use(errorHandler);
+
+/* ---------------------------------
+   SERVER START
+---------------------------------- */
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, async () => { // no use even if we use async, jst for getting no ide errors
-    console.log(`Server listening on port ${PORT}`);
-    // await mongooseConfig();
+
+server.listen(PORT, async () => {
+    console.log(`🚀 Server running. http://localhost:${PORT}`);
+    await mongooseConfig();
 });
