@@ -4,6 +4,8 @@ import FormData from "form-data";
 import multer from "multer";
 import https from "https";
 
+import 'dotenv/config';
+
 
 const agent = new https.Agent({
     rejectUnauthorized: false // allow self-signed
@@ -45,16 +47,15 @@ router.post(
                 contentType: req.file.mimetype
             });
 
-            console.log("Form DATA: ", formData);
 
             // after nag broo setup flask add flask endpoint in env and update it in render.com
-
+        console.log(`${FLASK_API}/recognize`);
             const flaskRes = await axios.post(
-                `${FLASK_API}/recognise`, // 👈 Flask detect API
+                `${FLASK_API}/recognize`, // 👈 Flask detect API
                 formData,
                 {
                     headers: formData.getHeaders(),
-                    timeout: 10000
+                    timeout: 100000
                 },
                 { httpsAgent: agent }
             );
