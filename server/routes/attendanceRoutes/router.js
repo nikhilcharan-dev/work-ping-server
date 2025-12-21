@@ -2,11 +2,11 @@ import express from "express";
 import axios from "axios";
 import FormData from "form-data";
 import { upload } from "./multer.js";
-import bearerCheck from "../../middleware/jwtBearer.js";
+import validateJWT from "../../middleware/jwtBearer.js";
 
 const router = express.Router();
 
-router.post("/verify-mark-attendance", bearerCheck,  upload.array("frames", 5), // 👈 matches frontend
+router.post("/verify-mark-attendance", validateJWT,  upload.array("frames", 5), // 👈 matches frontend
     async (req, res) => {
         try {
             const userId = req.user.id;

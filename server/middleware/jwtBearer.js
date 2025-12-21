@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-const bearerCheck = (req, res, next) => {
+const validateJWT = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
@@ -31,7 +31,7 @@ const bearerCheck = (req, res, next) => {
                 });
             }
 
-            // decoded should contain { id, email, role, ... }
+            // decoded should contain { userId, a role }
             req.user = decoded;
             next();
         });
@@ -44,4 +44,4 @@ const bearerCheck = (req, res, next) => {
     }
 };
 
-export default bearerCheck;
+export default validateJWT;
