@@ -2,10 +2,10 @@ import mongoose from "mongoose"
 
 const teamSchema = new mongoose.Schema({
     teamName : { type : String , required : true } ,
-    organizationId : { type : Schema.Types.ObjectId, ref: "Organization" } ,
-    teamManagerId : { type : Schema.Types.ObjectId, ref: "User" } ,
+    organizationId : { type : mongoose.Schema.Types.ObjectId, ref: "Organization" } ,
+    teamManagerId : { type : mongoose.Schema.Types.ObjectId, ref: "User" } ,
     description : { type : String },
-    teamLeaderId : { type : Schema.Types.ObjectId, ref: "User" },
+    teamLeaderId : { type : mongoose.Schema.Types.ObjectId, ref: "User" },
     
 }); 
 
