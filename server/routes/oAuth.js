@@ -2,7 +2,7 @@ import { Router } from 'express';
 import User from '../models/User'
 import bcrypt from 'bcrypt'
 const router = Router();
-
+import jwt from 'jwt'
 router.post('/register', async (req, res) => {
     try {
         const { name ,userEmail , password } = req.body;
@@ -17,11 +17,17 @@ router.post('/register', async (req, res) => {
             email : userEmail,
             password : await bcrypt.hash(password,10),
         }
-        await User.create(newUser)
-        
+        const userDoc = await User.create(newUser)
+        const token = jwt.sign(
+            { userId : userDoc._id, },
+            process.env.SECRET_KEY,
+            { expiresIn : "1h" }
+        )
+
         return res.status(201).json({
             message : "Register Successful",
-            user_details: newUser.select('-password')
+            user_details: newUser.select('-password'),
+            token : token
         })
 
     } catch(err) {
@@ -44,9 +50,15 @@ router.post('/login', async (req, res) => {
                 message : "Incorrect Password"
             })
         }
+        const token = jwt.sign(
+            { userId : existingUser._id, },
+            process.env.SECRET_KEY,
+            { expiresIn : "1h" }
+        )
         return res.status(200).json({
             message : "Login Successful",
-            user_details: existingUser.select('-password')
+            user_details: existingUser.select('-password'),
+            token : token 
         })
     } catch(err) {
         console.log(err);

@@ -23,7 +23,7 @@ const bearerCheck = (req, res, next) => {
 
         const token = parts[1];
 
-        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
             if (err) {
                 return res.status(401).json({
                     status: "unauthorized",
