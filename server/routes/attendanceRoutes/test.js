@@ -65,11 +65,12 @@ router.post(
             // 🔁 Return Flask response directly
             return res.status(200).json({
                 status: "ok",
-                roll: flaskRes.data
+                ...flaskRes.data
+
             });
 
         } catch (err) {
-            console.error("Test detect error:", err);
+            console.error("Test detect error:", err.message);
 
             return res.status(500).json({
                 status: "error",
