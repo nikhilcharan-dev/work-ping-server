@@ -1,22 +1,30 @@
+// package imports
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import { HttpStatusCode } from "axios";
-import { config } from "dotenv";
 import morgan from "morgan";
 
-import errorHandler from "./middleware/errorHandler.js";
-import attendanceRoutes from "./routes/attendanceRoutes/router.js";
-import testRoutes from "./routes/attendanceRoutes/test.js";
-
+// config files
+import 'dotenv/config';
 import whatsappConfig from "./config/whatsappConfig.js";
 import mongooseConfig from "./config/mongooseDB.js";
 
+// middlewares
+import errorHandler from "./middleware/errorHandler.js";
+
+
+// routes
+import attendanceRoutes from "./routes/attendanceRoutes/router.js";
+import authRoutes from "./routes/oAuth.js";
+
+// test routes
+import testRoutes from "./routes/attendanceRoutes/test.js";
+
+// whatsapp routes
 import whatsAppWebhook from "./services/whatsapp/api/receiver.js";
 import whatsAppRoutes from "./services/whatsapp/api/sender.js";
-
-config(); // load env
 
 const server = express();
 
@@ -87,7 +95,7 @@ const Limiter = rateLimit({
    HEALTH CHECK
 ---------------------------------- */
 server.get("/ping", (req, res) => {
-    res.status(200).json({
+    res.status(HttpStatusCode.Ok).json({
         status: "pong",
         ip: req.ip
     });
@@ -101,6 +109,9 @@ server.get("/ping", (req, res) => {
 server.use("/secure/whatsapp", whatsappConfig);
 server.use("/secure/whatsapp", whatsAppWebhook);
 server.use("/secure/whatsapp", whatsAppRoutes);
+
+// OAuth routes
+server.use('/api/auth', authRoutes);
 
 // Attendance APIs
 server.use("/api", attendanceRoutes);
