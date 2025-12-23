@@ -33,6 +33,8 @@ router.post(
 
             const faceResponse = await recognize(req);
 
+            console.log(faceResponse);
+
             return res.status(200).json({
                 status: "ok",
                 ...faceResponse

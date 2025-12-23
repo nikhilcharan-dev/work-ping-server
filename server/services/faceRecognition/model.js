@@ -26,7 +26,7 @@ const recognize = async (req) => {
         },
         { httpsAgent: agent }
     );
-
+    console.log(response.data);
     return response.data;
 }
 
