@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import 'dotenv/config';
 
-import recognize from "../../services/faceRecognition/model.js";
+import recognize from "../../../services/face_recognition/model.js";
 
 const router = express.Router();
 

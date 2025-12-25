@@ -16,11 +16,11 @@ import errorHandler from "./middleware/errorHandler.js";
 
 
 // routes
-import attendanceRoutes from "./routes/attendanceRoutes/router.js";
-import authRoutes from "./routes/auth/router.js";
+import attendanceRoutes from "./routes/userRoutes/attendanceRoutes/router.js";
+import authRoutes from "./routes/userRoutes/auth/router.js";
 
 // test routes
-import testRoutes from "./routes/attendanceRoutes/test.js";
+import testRoutes from "./routes/userRoutes/attendanceRoutes/test.js";
 
 // whatsapp routes
 import whatsAppWebhook from "./services/whatsapp/api/receiver.js";

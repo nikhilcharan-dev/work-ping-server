@@ -2,7 +2,7 @@ import express from "express";
 import axios from "axios";
 import FormData from "form-data";
 import { upload } from "./multer.js";
-import validateJWT from "../../middleware/jwtBearer.js";
+import validateJWT from "../../../middleware/jwtBearer.js";
 
 const router = express.Router();
 

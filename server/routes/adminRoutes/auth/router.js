@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import User from '../../models/User.js'
-import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
+import User from '../../../models/User.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -9,6 +9,7 @@ router.post('/register', async (req, res) => {
     try {
         const { name ,userEmail , password } = req.body;
         const existingUser = await User.findOne({email : userEmail});
+
         if(existingUser){
             return res.status(409).json({
                 message : "User Already Exists"
