@@ -9,6 +9,6 @@ const server = http.createServer(app);
 (async () => {
     await mongooseConfig();
     server.listen(PORT, () => {
-        console.log(`Server running on ${PORT}`);
+        console.log(`[Server] Running ${PORT}`);
     });
 })();
