@@ -1,4 +1,5 @@
 import authRoutes from "../routes/user/auth/router.js";
+import otpRoutes from "../routes/admin/otp/router.js";
 import googleServicesRoutes from "../services/google/google.signin.js"
 import microservicesRoutes from "../services/microsoft/microsoft.signin.js"
 
@@ -13,6 +14,9 @@ export default function routes(app) {
     });
 
     app.use("/api/auth", authRoutes);
+
+    // OTP
+    app.use("/api/otp", otpRoutes);
 
     // Google SignIn
     app.use("/auth/google", googleServicesRoutes);
