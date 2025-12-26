@@ -87,3 +87,11 @@ router.get('/callback', async (req, res) => {
 });
 
 export default router;
+
+/*
+{
+  email: '23A91A1219@aec.edu.in',
+  displayName: '23A91A1219',
+  expiresAt: 1766769768540
+}
+*/

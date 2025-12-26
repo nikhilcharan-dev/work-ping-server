@@ -1,9 +1,9 @@
-import authRoutes from "../routes/userRoutes/auth/router.js";
+import authRoutes from "../routes/user/auth/router.js";
 import googleServicesRoutes from "../services/google/google.signin.js"
 import microservicesRoutes from "../services/microsoft/microsoft.signin.js"
 
-import attendanceRoutes from "../routes/userRoutes/attendanceRoutes/router.js";
-import testRoutes from "../routes/userRoutes/attendanceRoutes/test.js";
+import attendanceRoutes from "../routes/user/attendance/router.js";
+import testRoutes from "../routes/user/attendance/test.js";
 
 import validateJWT from "../middleware/jwtBearer.js";
 
