@@ -4,7 +4,6 @@ import routes from "./routes.js";
 import 'dotenv/config';
 
 import transporter from "../services/google/mailer.js";
-
 import errorHandler from "../middleware/errorHandler.js";
 
 const app = express();
