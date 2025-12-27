@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import User from '../../../models/User.js';
+import Admin from "../../../models/Admin.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
@@ -8,23 +8,23 @@ const router = Router();
 router.post('/register', async (req, res) => {
     try {
         const { name ,userEmail , password } = req.body;
-        const existingUser = await User.findOne({email : userEmail});
+        const existingUser = await Admin.findOne({email : userEmail});
 
         if(existingUser){
             return res.status(409).json({
-                message : "User Already Exists"
+                message : "Admin Already Exists"
             })
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await User.create({
+        const user = await Admin.create({
             name,
             email: userEmail.trim(),
             password: hashedPassword,
         });
 
-        const token = jwt.sign({ userId : userDoc._id, },
+        const token = jwt.sign({ userId : user._id, },
             process.env.SECRET_KEY,
             { expiresIn : "1h" }
         )
@@ -53,9 +53,9 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({ message: "Email and password required" });
         }
 
-        const user = await User.findOne({ email: userEmail.trim() });
+        const user = await Admin.findOne({ email: userEmail.trim() });
         if (!user) {
-            return res.status(401).json({ message: "Invalid credentials" });
+            return res.status(401).json({ message: "Admin does not exist" });
         }
 
         const isMatch = await bcrypt.compare(
