@@ -3,13 +3,13 @@ import mongoose from "mongoose";
 
 
 const organisationSchema = new mongoose.Schema({
-  organisationName: { type: String , required : true },
-  geoFencing: { type: String },
-  CLDays: { type: String },
+  organisation_name: { type: String , required : true },
+  geo_fencing: { type: String },
+  cl_days: { type: String },
   type: { type: String },
   description: { type: String },
-  ipAddress: { type: String },
-  foundedAt: { type: Date }
+  ip_address: { type: String },
+  founded_at: { type: Date }
 });
 
 export default mongoose.model("Organisation", organisationSchema);

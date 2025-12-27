@@ -15,12 +15,12 @@ const SalarySchema = new mongoose.Schema({
     lop_days: { type: Number, required: true },
     overtime_hours: { type: Number, required: true },
 
-    baseSalary: { type: Number, required: true },
+    base_salary: { type: Number, required: true },
     bonuses: { type: Number, default: 0 },
     deductions: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
 
-    netSalary: { type: Number, required: true },
+    net_salary: { type: Number, required: true },
 
     status: { type: String, enum: ["pending", "paid"], default: "pending" },
     generated_date: { type: Date, default: Date.now },
