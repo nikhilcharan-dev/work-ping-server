@@ -7,7 +7,7 @@ const router = Router();
 
 router.post('/register', async (req, res) => {
     try {
-        const { name ,userEmail , password } = req.body;
+        const { name, userEmail, password } = req.body;
         const existingUser = await Admin.findOne({email : userEmail});
 
         if(existingUser){

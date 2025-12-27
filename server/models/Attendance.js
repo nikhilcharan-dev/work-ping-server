@@ -10,8 +10,8 @@ const AttendanceSchema = new mongoose.Schema({
     },
     reason: { type: String, },
 
-    user_id: { type: mongoose.Schema.Types.ObjectId },
-    manager_id: { type: mongoose.Schema.Types.ObjectId },
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref : 'User' },
+    manager_id: { type: mongoose.Schema.Types.ObjectId, ref : 'User' },
 
 }, { timestamps: true });
 
