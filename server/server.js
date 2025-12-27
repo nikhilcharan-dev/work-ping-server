@@ -32,5 +32,3 @@ io.on("connection", socket => {
         console.log(`[Server] Running ${PORT}`);
     });
 })();
-
-website --> server
