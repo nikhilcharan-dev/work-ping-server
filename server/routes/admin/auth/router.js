@@ -1,7 +1,4 @@
 import { Router } from 'express';
-import Admin from "../../../models/Admin.js";
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import {AppError} from "../../../utils/app.error.js";
 import {register, login} from "../../../controllers/admin/auth/controller.js";
 
