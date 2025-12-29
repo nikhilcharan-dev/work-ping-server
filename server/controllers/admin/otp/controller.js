@@ -4,7 +4,7 @@ import Phone from "../../../models/otp/Phone.js";
 import { generatorOtp } from "../../../utils/generator.otp.js";
 import { sendOTP } from "../../../services/google/google.mails.js";
 
-export const send_otp = asyncHandler(async(req, res) => {
+export const send_email_otp = asyncHandler(async(req, res) => {
     const { email } = req.body;
     const user = await Mail.findOne({ email });
     if (user) {
