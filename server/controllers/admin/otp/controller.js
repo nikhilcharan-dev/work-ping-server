@@ -15,10 +15,10 @@ export const send_email_otp = asyncHandler(async(req, res) => {
     const otp = generatorOtp(6);
     console.log(otp);
     await sendOTP(email, otp);
-    const newUser = await Mail.create({
-        email,
-        otp
-    });
+    // const newUser = await Mail.create({
+    //     email,
+    //     otp
+    // });
     return res.status(201).json({
         message: "Email sent successfully",
     });
