@@ -1,10 +1,28 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const ShiftSchema = new mongoose.Schema({
-    org_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    name: { type: String, required: true },
-    start_time: Date,
-    end_time: Date,
-})
+const shiftSchema = new mongoose.Schema(
+    {
+        name: { type: String, required: true },
 
-const Shift = mongoose.model('Shift', ShiftSchema);
+        startTime: { type: String, required: true },
+
+        endTime: { type: String, required: true },
+
+        breakMinutes: { type: Number, default: 60 },
+
+        slotStart: String,
+        slotEnd: String,
+
+        date: Date,
+
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organization",
+            required: true,
+            index: true
+        }
+    },
+    { timestamps: true }
+);
+
+export default mongoose.model("Shift", shiftSchema);

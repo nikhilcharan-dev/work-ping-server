@@ -1,8 +1,16 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
-const PhoneSchema = new mongoose.Schema({
-    phone: { type: String, unique: true, required: true },
-    otp: { type: String, unique: true, required: true },
-})
+const otpPhoneSchema = new mongoose.Schema(
+    {
+        phone: { type: String, required: true, unique: true },
+        otp: { type: String, required: true }
+    },
+    { timestamps: true }
+);
 
-export default mongoose.model('Phone', PhoneSchema);
+otpPhoneSchema.index(
+    { createdAt: 1 },
+    { expireAfterSeconds: 3000 }
+);
+
+export default mongoose.model("OtpPhone", otpPhoneSchema);

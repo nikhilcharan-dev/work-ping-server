@@ -6,7 +6,6 @@ const teamSchema = new mongoose.Schema({
     teamManagerId : { type : mongoose.Schema.Types.ObjectId, ref: "User" } ,
     description : { type : String },
     teamLeaderId : { type : mongoose.Schema.Types.ObjectId, ref: "User" },
-    
 }); 
 
 export default mongoose.model("Team", teamSchema);

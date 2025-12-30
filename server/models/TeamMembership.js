@@ -1,17 +1,17 @@
 import mongoose from "mongoose";
 
-const projectMemberSchema = new mongoose.Schema(
+const teamMembershipSchema = new mongoose.Schema(
     {
-        projectId: {
+        userId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Project",
+            ref: "User",
             required: true,
             index: true
         },
 
-        userId: {
+        teamId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Team",
             required: true,
             index: true
         },
@@ -23,23 +23,25 @@ const projectMemberSchema = new mongoose.Schema(
             index: true
         },
 
-        role: {
+        roleInTeam: {
             type: String,
-            enum: ["manager", "developer", "tester"],
-            default: "developer",
+            enum: ["manager", "teamLead", "member"],
+            default: "member",
             index: true
         },
 
-        assignedDate: { type: Date, default: Date.now },
+        joinedAt: { type: Date, default: Date.now },
 
-        isActive: { type: Boolean, default: true }
+        leftAt: Date,
+
+        isActive: { type: Boolean, default: true, index: true }
     },
     { timestamps: true }
 );
 
-projectMemberSchema.index(
-    { projectId: 1, userId: 1 },
+teamMembershipSchema.index(
+    { userId: 1, teamId: 1 },
     { unique: true }
 );
 
-export default mongoose.model("ProjectMember", projectMemberSchema);
+export default mongoose.model("TeamMembership", teamMembershipSchema);

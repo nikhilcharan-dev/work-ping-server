@@ -1,9 +1,25 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const OrgAdmin = new mongoose.Schema({
-    org_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
-    primary_admin: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
-    secondary_admin: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
-});
+const orgAdminSchema = new mongoose.Schema(
+    {
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organization",
+            required: true
+        },
 
-export default mongoose.model('OrgAdmin', OrgAdmin);
+        primaryAdmin: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Admin",
+            required: true
+        },
+
+        secondaryAdmin: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Admin"
+        }
+    },
+    { timestamps: true }
+);
+
+export default mongoose.model("OrgAdmin", orgAdminSchema);

@@ -2,3 +2,5 @@
 /node_modules
 .env
 startup-pack
+
+relations.sql

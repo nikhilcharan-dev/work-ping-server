@@ -1,8 +1,16 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
-const MailSchema = new mongoose.Schema({
-    email: { type: String, unique: true, required: true },
-    otp: { type: String, unique: true, required: true },
-})
+const otpMailSchema = new mongoose.Schema(
+    {
+        email: { type: String, required: true, unique: true },
+        otp: { type: String, required: true }
+    },
+    { timestamps: true }
+);
 
-export default mongoose.model('Mail', MailSchema);
+otpMailSchema.index(
+    { createdAt: 1 },
+    { expireAfterSeconds: 3000 }
+);
+
+export default mongoose.model("OtpMail", otpMailSchema);

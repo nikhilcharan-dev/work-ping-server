@@ -1,16 +1,29 @@
-
 import mongoose from "mongoose";
 
+const organizationSchema = new mongoose.Schema(
+    {
+        name: { type: String, required: true, index: true },
 
-const organisationSchema = new mongoose.Schema({
-  organisation_name: { type: String , required : true },
-  geo_fencing: { type: String },
-  cl_days: { type: String },
-  type: { type: String },
-  description: { type: String },
-  ip_address: { type: String },
-  founded_at: { type: Date }
-});
+        type: { type: String },
 
-export default mongoose.model("Organisation", organisationSchema);
+        clDays: { type: Number, default: 12 },
 
+        description: { type: String },
+
+        ipWhitelist: [{ type: String, index: true }],
+
+        foundedAt: { type: Date },
+
+        geoFencing: {
+            enabled: { type: Boolean, default: false },
+            coordinates: {
+                lat: Number,
+                lng: Number,
+                radiusMeters: Number
+            }
+        }
+    },
+    { timestamps: true }
+);
+
+export default mongoose.model("Organization", organizationSchema);

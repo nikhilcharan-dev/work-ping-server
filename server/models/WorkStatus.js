@@ -1,12 +1,43 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const WorkStatusSchema = mongoose.Schema({
-    user_id: mongoose.Schema.Types.ObjectId,
-    project_id: mongoose.Schema.Types.ObjectId,
-    is_remote: Boolean,
-    date: Date,
-    status: String,
-})
+const workStatusSchema = new mongoose.Schema(
+    {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true
+        },
 
-const WorkStatus = mongoose.model('WorkStatus', WorkStatusSchema);
-export default WorkStatus;
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organization",
+            required: true,
+            index: true
+        },
+
+        date: { type: Date, required: true, index: true },
+
+        type: {
+            type: String,
+            enum: ["WD", "CL", "OD"],
+            required: true,
+            index: true
+        },
+
+        shiftId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Shift"
+        },
+
+        status: String,
+    },
+    { timestamps: true }
+);
+
+workStatusSchema.index(
+    { userId: 1, date: 1 },
+    { unique: true }
+);
+
+export default mongoose.model("WorkStatus", workStatusSchema);

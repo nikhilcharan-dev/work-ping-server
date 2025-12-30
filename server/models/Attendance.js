@@ -1,20 +1,41 @@
 import mongoose from "mongoose";
 
+const attendanceSchema = new mongoose.Schema(
+    {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true
+        },
 
-const AttendanceSchema = new mongoose.Schema({
-    date: { type: Date, default: Date.now, required: true },
-    status: {
-        type: String,
-        enum: ['P', 'A', 'L', 'H'],
-        required: true,
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organization",
+            required: true,
+            index: true
+        },
+
+        date: { type: Date, required: true, index: true },
+
+        status: {
+            type: String,
+            enum: ["present", "absent", "late", "halfDay"],
+            required: true,
+            index: true
+        },
+
+        checkIn: Date,
+        checkOut: Date,
+
+        remarks: String
     },
-    reason: { type: String, },
+    { timestamps: true }
+);
 
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref : 'User' },
-    manager_id: { type: mongoose.Schema.Types.ObjectId, ref : 'User' },
+attendanceSchema.index(
+    { userId: 1, date: 1 },
+    { unique: true }
+);
 
-}, { timestamps: true });
-
-AttendanceSchema.index({ employee_id: 1, date: 1 }, { unique: true });
-const Attendance = mongoose.model("Attendance", AttendanceSchema);
-export default Attendance;
+export default mongoose.model("Attendance", attendanceSchema);
