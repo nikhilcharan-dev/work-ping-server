@@ -8,9 +8,9 @@ const UserSchema = new mongoose.Schema({
   dob: { type: Date },
   address: { type: String },
   gender: { type: String, },
-  dateOfJoining: { type: Date },
+  date_of_joining: { type: Date },
   role: { type: String }, 
-  teamId: { type : mongoose.Schema.Types.ObjectId, ref : 'Team' },
+  team_id: { type : mongoose.Schema.Types.ObjectId, ref : 'Team' },
 });
 
 export default mongoose.model("User" , UserSchema)
