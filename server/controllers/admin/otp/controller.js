@@ -1,24 +1,18 @@
-import Mail from "../../../models/otp/Mail.js";
-import Phone from "../../../models/otp/Phone.js";
-
-import { generatorOtp } from "../../../utils/generator.otp.js";
-import { sendOTP } from "../../../services/google/google.mails.js";
+import Admin from "../../../models/Admin.js";
+import mailClient from "../../../utils/axios.mail.js";
 
 export const send_email_otp = asyncHandler(async(req, res) => {
     const { email } = req.body;
-    const user = await Mail.findOne({ email });
+    const user = await Admin.findOne({ email: email });
     if (user) {
         return res.status(400).send({
             message: "Email already exists",
         })
     }
-    const otp = generatorOtp(6);
-    console.log(otp);
-    await sendOTP(email, otp);
-    // const newUser = await Mail.create({
-    //     email,
-    //     otp
-    // });
+    console.log("sending");
+    await mailClient.post("/send-email-otp", {
+        email: email,
+    })
     return res.status(201).json({
         message: "Email sent successfully",
     });
@@ -30,18 +24,15 @@ export const send_phone_otp =  asyncHandler(async(req, res) => {
 
 export const verify_email_otp =  asyncHandler(async(req, res) => {
     const { email, otp } = req.body;
-    const user = await Mail.findOne({ email });
-    if (!user) {
-        return res.status(401).json({
-            error: "Forbidden",
+    if(!email || !otp) {
+        return res.status(400).send({
+            message: "Email or password is required",
         })
     }
-    if(user.otp !== otp) {
-        return res.status(400).json({
-            error: "Invalid OTP"
-        })
-    }
-    await Mail.deleteOne({ email });
+    await mailClient.post("/verify-email-otp", {
+        email: email,
+        otp: otp,
+    })
     return res.status(200).json({
         message: "Email verified",
     })

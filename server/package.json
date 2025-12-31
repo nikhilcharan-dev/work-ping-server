@@ -5,7 +5,6 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "push": "node ./git.js",
     "start": "node server.js",
     "test": "npx nodemon"
   },
