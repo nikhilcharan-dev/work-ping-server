@@ -11,18 +11,20 @@ const allowedOrigins = [
     "https://whatsapp.workping.live",
 ];
 
+const corsOptions = {
+    origin: (origin, cb) =>
+        !origin || allowedOrigins.includes(origin)
+            ? cb(null, true)
+            : cb(new Error("CORS blocked")),
+    credentials: true,
+};
+
 export default function middlewares(app) {
-    app.set("trust proxy", true);
+    app.set("trust proxy", 1);
 
-    app.use(cors({
-        origin: (origin, cb) =>
-            !origin || allowedOrigins.includes(origin)
-                ? cb(null, true)
-                : cb(new Error("CORS blocked")),
-        credentials: true
-    }));
+    app.use(cors(corsOptions));
 
-    app.options("*", cors());
+    app.options(/.*/, cors(corsOptions));
 
     app.use(morgan("dev"));
     app.use(express.json());

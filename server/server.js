@@ -4,7 +4,7 @@ import http from "http";
 import { Server } from "socket.io";
 
 import app from "./app/app.js";
-import mongooseConfig from "./config/mongooseDB.js";
+import mongooseConfig from "./config/mongoose.js";
 
 const PORT = process.env.PORT || 5001;
 const server = http.createServer(app);

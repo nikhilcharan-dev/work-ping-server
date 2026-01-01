@@ -2,7 +2,6 @@ import { Router } from 'express';
 import axios from 'axios';
 import 'dotenv/config';
 
-
 const router = Router();
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -24,7 +23,6 @@ router.get('/start', (req, res) => {
 
 router.get('/callback', async (req, res) => {
     const { code, state } = req.query;
-    console.log("Callback Triggered", code, state);
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', null, {
             params: {

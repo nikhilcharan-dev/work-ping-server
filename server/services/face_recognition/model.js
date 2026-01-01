@@ -8,7 +8,7 @@ const agent = new https.Agent({
     rejectUnauthorized: false // allow self-signed
 });
 
-const FLASK_API = process.env.FLASK_API;
+const IMAGE_IDENTIFICATION_URI = process.env.IMAGE_CLASSIFICATION_URI;
 
 const recognize = async (req) => {
     const formData = new FormData();
@@ -18,7 +18,7 @@ const recognize = async (req) => {
     });
 
     const response = await axios.post(
-        `${FLASK_API}/recognize`, // 👈 Flask detect API
+        `${IMAGE_IDENTIFICATION_URI}/recognize`, // 👈 Flask detect API
         formData,
         {
             headers: formData.getHeaders(),
