@@ -45,30 +45,33 @@ export const login = asyncHandler(
             return res.status(400).json({ message: "Email and password required" });
         }
 
-        const user = await Admin.findOne({ email: userEmail.trim() });
-        if (!user) {
+        const admin = await Admin.findOne({ email: userEmail.trim() });
+        if (!admin) {
             return res.status(401).json({ message: "Admin does not exist" });
         }
 
         const isMatch = await bcrypt.compare(
             password,
-            user.password
+            admin.password
         );
 
         if (!isMatch) {
             return res.status(401).json({ message: "Invalid credentials" });
         }
 
-        const token = await jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {
+        const token = await jwt.sign({ userId: admin._id }, process.env.SECRET_KEY, {
             expiresIn: process.env.JWT_EXPIRES_IN,
         })
+
+        const isLive = process.env.MODE === "production";
+
+        res.cookie("accessToken", token, {
+            httpOnly: true,
+            secure: isLive,
+            sameSite: isLive ? "none" : "lax",
+        })
+
         return res.status(200).json({
             message: "Login Successful",
-            token: token,
-            userDetails: {
-                id: user._id,
-                name: user.name,
-                teamId: user.teamId || "NA",
-            }
         });
 }, "LOGIN_ADMIN_ERROR");

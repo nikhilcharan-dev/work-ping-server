@@ -5,8 +5,10 @@ import morgan from "morgan";
 
 const allowedOrigins = [
     "http://localhost:5173",
-    "https://work-ping.vercel.app",
-    "https://agentic-ai-03je.onrender.com"
+    "https://workping.live",
+    "https://www.workping.live",
+    "https://phonepe.workping.live",
+    "https://whatsapp.workping.live",
 ];
 
 export default function middlewares(app) {
@@ -19,6 +21,8 @@ export default function middlewares(app) {
                 : cb(new Error("CORS blocked")),
         credentials: true
     }));
+
+    app.options("*", cors());
 
     app.use(morgan("dev"));
     app.use(express.json());

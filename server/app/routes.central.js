@@ -5,7 +5,7 @@ import microservicesRoutes from "../services/microsoft/microsoft.signin.js"
 
 import attendanceRoutes from "../routes/user/attendance/router.js";
 
-import validateJWT from "../middleware/jwtBearer.js";
+import validateCookie from "../middleware/jwtBearer.js";
 
 export default function centralRoutes(app) {
     // Default
@@ -13,6 +13,7 @@ export default function centralRoutes(app) {
         res.json({ status: "OK", ip: req.ip });
     });
 
+    // Verification
     app.use("/api/otp", otpRoutes);
 
     // Google SignIn
@@ -21,5 +22,6 @@ export default function centralRoutes(app) {
     // Microsoft SignIn
     app.use("/auth/microsoft", microservicesRoutes);
 
-    app.use("/api/attendance", validateJWT, attendanceRoutes);
+    // Attendance
+    app.use("/api/attendance", validateCookie, attendanceRoutes);
 }

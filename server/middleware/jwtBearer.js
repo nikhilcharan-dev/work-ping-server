@@ -1,47 +1,28 @@
 import jwt from "jsonwebtoken";
 
-const validateJWT = (req, res, next) => {
+const validateCookie = (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
-
-        if (!authHeader) {
-            return res.status(401).json({
-                status: "unauthorized",
-                message: "Authorization header missing"
-            });
+        const cookie = req.cookie?.accessToken;
+        if(!cookie) {
+            return res.status(403).json({
+                error: "Unauthorized",
+            })
         }
 
-        // Expect: Bearer <token>
-        const parts = authHeader.split(" ");
-
-        if (parts.length !== 2 || parts[0] !== "Bearer") {
-            return res.status(401).json({
-                status: "unauthorized",
-                message: "Invalid authorization format"
-            });
-        }
-
-        const token = parts[1];
-
-        jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-            if (err) {
-                return res.status(401).json({
-                    status: "unauthorized",
-                    message: "Invalid or expired token"
-                });
+        jwt.verify(cookie, process.env.SECRET_KEY, (err, decoded) => {
+            if(err) {
+                return res.status(403).json({
+                    error: "Unauthorized",
+                })
             }
-
-            // decoded should contain { userId, a role }
             req.user = decoded;
             next();
-        });
-
-    } catch (err) {
-        return res.status(500).json({
-            status: "error",
-            message: "Authentication middleware failed"
-        });
+        })
+    } catch(err) {
+        res.status(500).send({
+            error: "Internal Server Error",
+        })
     }
-};
+}
 
-export default validateJWT;
+export default validateCookie;
