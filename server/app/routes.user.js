@@ -1,4 +1,4 @@
-import authRoutes from "../routes/user/auth/router.js";
+import authRoutes from "../routes/web/user/auth/router.js";
 
 import validateCookie from "../middleware/jwtBearer.js";
 

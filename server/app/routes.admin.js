@@ -1,5 +1,5 @@
-import authRoutes from "../routes/admin/auth/router.js";
-import otpRoutes from "../routes/admin/otp/router.js";
+import authRoutes from "../routes/web/admin/auth/router.js";
+import otpRoutes from "../routes/web/admin/otp/router.js";
 
 import validateCookie from "../middleware/jwtBearer.js";
 

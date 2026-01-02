@@ -1,5 +1,5 @@
-import Admin from "../../../../models/Admin.js";
-import mailClient from "../../../../utils/axios.mail.js";
+import Admin from "#models/Admin.js";
+import mailClient from "#utils/axios.mail.js";
 
 export const send_email_otp = asyncHandler(async(req, res) => {
     const { email } = req.body;

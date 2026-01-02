@@ -1,7 +1,7 @@
 import express from "express";
 import { upload } from "./multer.js";
-import validateJWT from "../../../../middleware/jwtBearer.js";
-import { verify_mark_attendance } from "../../../../controllers/app/user/attendance/controller.js";
+import validateJWT from "#middleware/jwtBearer.js";
+import { verify_mark_attendance } from "#appcontroller/user/attendance/controller.js";
 
 const router = express.Router();
 
