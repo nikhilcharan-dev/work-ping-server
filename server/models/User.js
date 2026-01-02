@@ -34,9 +34,34 @@ const userSchema = new mongoose.Schema(
             ref: "Organization",
             required: true,
             index: true
-        }
+        },
+
+        teamId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Team",
+            required: true,
+            index: true
+        },
+
+        roleInTeam: {
+            type: String,
+            enum: ["manager", "teamLead", "member"],
+            default: "member",
+            index: true
+        },
+
+        joinedAt: { type: Date, default: Date.now },
+
+        isActive: { type: Boolean, default: true, index: true }
+
+        
     },
     { timestamps: true }
+);
+
+userSchema.index(
+    {_id: 1, teamId: 1},
+    {unique: true}
 );
 
 export default mongoose.model("User", userSchema);
