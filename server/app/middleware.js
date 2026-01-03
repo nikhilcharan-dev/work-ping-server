@@ -23,13 +23,15 @@ export default function middlewares(app) {
     app.set("trust proxy", 1);
 
     app.use(cors(corsOptions));
-
     app.options(/.*/, cors(corsOptions));
 
     app.use(morgan("dev"));
+
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
+
     app.use(cookieParser());
+
     app.use((req, res, next) => {
         console.log("Origin IP:", req.ip);
         next();
