@@ -1,9 +1,9 @@
-import otpRoutes from "../routes/admin/otp/router.js";
+import otpRoutes from "../routes/web/admin/otp/router.js";
 
 import googleServicesRoutes from "../services/google/google.signin.js"
 import microservicesRoutes from "../services/microsoft/microsoft.signin.js"
 
-import attendanceRoutes from "../routes/user/attendance/router.js";
+import attendanceRoutes from "../routes/web/user/attendance/router.js";
 
 import validateCookie from "../middleware/jwtBearer.js";
 

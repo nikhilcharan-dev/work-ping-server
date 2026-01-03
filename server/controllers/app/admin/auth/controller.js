@@ -1,7 +1,6 @@
-import Admin from "../../../../models/Admin.js";
+import Admin from "#models/Admin.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-
 
 export const register = asyncHandler(
     async (res, req) => {
