@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 
+const MODE = process.env.MODE;
+
 const allowedOrigins = [
     "http://localhost:5173",
     "https://workping.live",
@@ -25,6 +27,7 @@ export default function middlewares(app) {
     app.use(cors(corsOptions));
     app.options(/.*/, cors(corsOptions));
 
+
     app.use(morgan("dev"));
 
     app.use(express.json());
@@ -34,6 +37,11 @@ export default function middlewares(app) {
 
     app.use((req, res, next) => {
         console.log("Origin IP:", req.ip);
+        if (req.headers['user-agent']?.includes('PostmanRuntime') && MODE === "production") {
+            return res.status(403).json({
+                message: "Axios/Postman is fast, but not fast enough to be a browser."
+            });
+        }
         next();
     });
 }
