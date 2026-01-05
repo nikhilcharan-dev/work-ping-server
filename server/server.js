@@ -19,15 +19,29 @@ const io = new Server(server, {
 
 globalThis.io = io;
 
+// io.on("connection", socket => {
+//     console.log("[Socket] Connected");
+//     socket.on("disconnect", () => {
+//         console.log("[Socket] Disconnected");
+//     })
+// });
+
+
 io.on("connection", socket => {
-    console.log("[Socket] Connected");
-    socket.on("disconnect", () => {
-        console.log("[Socket] Disconnected");
+    console.log("Gateway Socket listening");
+    socket.on("payment:join", async ({userId}) => {
+        socket.join(`payment:${userId}`);
+
+        const data = await redis.get(`payment:${userId}`);
+        
+        socket.emit("payment:status", !data ? "Expired" : data);
     })
 });
 
+
 (async () => {
     await mongooseConfig();
+    await redis.connect();
     server.listen(PORT, () => {
         console.log(`[Server] Running ${PORT}`);
     });

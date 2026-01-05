@@ -30,4 +30,6 @@ export default function centralRoutes(app) {
 
     // Attendance
     app.use("/api/attendance", validateCookie, attendanceRoutes);
+
+    // app.use("/api/profile", validateCookie, profileRoutes);
 }

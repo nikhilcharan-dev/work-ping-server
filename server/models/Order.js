@@ -2,8 +2,6 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
     {
-        orderId : {type: String, required: true, unique: true},
-
         userId : {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User", 
@@ -23,13 +21,18 @@ const orderSchema = new mongoose.Schema(
         paymentMethod: {
             type: String, 
             enum: ["Credit Card", "Debit Card", "UPI", "Net Banking"],
-            required: true
+            default: "UPI"
         },
 
         orderStatus: {
             type: String, 
             enum: ["Success", "Failed", "Pending"],
-            required: true
+            default: "Pending"
+        },
+
+        phonepeOrderId:{
+            type: String,
+            default: ""
         }
         
     },
