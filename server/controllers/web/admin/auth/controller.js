@@ -4,12 +4,15 @@ import jwt from 'jsonwebtoken';
 
 export const register = asyncHandler(
     async (res, req) => {
-    const { name, userEmail, password } = req.body;
+            const { name, userEmail, password } = req.body;
+            if(!name || !userEmail || !password) {
+                return res.status(400).json({message: "Missing fields"})
+            }
             const existingUser = await Admin.findOne({email : userEmail});
     
             if(existingUser){
                 return res.status(409).json({
-                    message : "Admin Already Exists"
+                    message : "Admin already exists"
                 })
             }
     
@@ -21,10 +24,17 @@ export const register = asyncHandler(
                 password: hashedPassword,
             });
     
-            const token = jwt.sign({ userId : user._id, },
+            const token = jwt.sign(
+                { userId : user._id },
                 process.env.SECRET_KEY,
-                { expiresIn : "1h" }
+                { expiresIn : process.env.JWT_EXPIRES_IN }
             )
+
+            res.cookie("accessToken", token, {
+                httpOnly: true,
+                secure: isLive,
+                sameSite: isLive ? "none" : "lax",
+            })
     
             return res.status(201).json({
                 message: "Register Successful",
@@ -73,5 +83,7 @@ export const login = asyncHandler(
 
         return res.status(200).json({
             message: "Login Successful",
+            token: token
         });
+
 }, "LOGIN_ADMIN_ERROR");
