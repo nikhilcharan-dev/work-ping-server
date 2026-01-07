@@ -8,28 +8,14 @@ const userSchema = new mongoose.Schema(
 
         password: { type: String, required: true },
 
-        phone: { type: String, unique: true, sparse: true },
+        phone: { type: String, unique: true, required: true, sparse: true },
 
-        employeeId : { type: String , unique: true , requird: ture },
-
-        dob: Date,
-
-        address: String,
+        employeeId: { type: String , unique: true , required: ture },
 
         gender: {
             type: String,
             enum: ["male", "female", "other"],
             default: "other"
-        },
-
-        dateOfJoining: { type: Date, index: true },
-
-        role: {
-            type: String,
-            enum: ["orgAdmin", "orgManager", "orgEmployee"],
-            default: "orgEmployee",
-            index: true ,
-            required: true,
         },
 
         organizationId: {
@@ -38,6 +24,25 @@ const userSchema = new mongoose.Schema(
             required: true,
             index: true
         },
+        
+        role: {
+            type: String,
+            enum: ["orgAdmin", "orgManager", "orgEmployee"],
+            default: "orgEmployee",
+            index: true ,
+            required: true,
+        },
+
+        profileImage: {
+            type: String,
+            default: null,
+        },
+
+        dob: Date,
+
+        address: String,
+
+        dateOfJoining: { type: Date, index: true },
 
         teamId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -51,8 +56,6 @@ const userSchema = new mongoose.Schema(
             default: "member",
             index: true
         },
-
-        joinedAt: { type: Date, default: Date.now },
 
         isActive: { type: Boolean, default: true, index: true }
         
