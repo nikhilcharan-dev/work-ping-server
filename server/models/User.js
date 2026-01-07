@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
 
         phone: { type: String, unique: true, sparse: true },
 
+        employeeId : { type: String , unique: true , requird: ture },
+
         dob: Date,
 
         address: String,
@@ -26,7 +28,8 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ["orgAdmin", "orgManager", "orgEmployee"],
             default: "orgEmployee",
-            index: true
+            index: true ,
+            required: true,
         },
 
         organizationId: {
@@ -39,7 +42,6 @@ const userSchema = new mongoose.Schema(
         teamId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Team",
-            required: true,
             index: true
         },
 
@@ -53,7 +55,6 @@ const userSchema = new mongoose.Schema(
         joinedAt: { type: Date, default: Date.now },
 
         isActive: { type: Boolean, default: true, index: true }
-
         
     },
     { timestamps: true }
