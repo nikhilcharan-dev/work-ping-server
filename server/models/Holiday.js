@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const dayInfoSchema = new mongoose.Schema(
+const holidayInfoSchema = new mongoose.Schema(
     {
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -9,23 +9,20 @@ const dayInfoSchema = new mongoose.Schema(
             index: true
         },
 
+        type: {type: String, enum:["public", "organization"], required: true},
+
         date: { type: Date, required: true, index: true },
 
-        type: {
-            type: String,
-            enum: ["workingDay", "holiday", "weekend"],
-            required: true,
-            index: true
-        },
+        isWorkingDay: {type: Boolean, default: false},
 
         description: String
     },
     { timestamps: true }
 );
 
-dayInfoSchema.index(
+holidayInfoSchema.index(
     { organizationId: 1, date: 1 },
     { unique: true }
 );
 
-export default mongoose.model("DayInfo", dayInfoSchema);
+export default mongoose.model("DayInfo", holidayInfoSchema);
