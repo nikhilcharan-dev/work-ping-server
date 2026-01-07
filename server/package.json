@@ -37,6 +37,7 @@
     "#webController/*": "./controllers/web/*",
     "#models/*": "./models/*",
     "#utils/*": "./utils/*",
-    "#middleware/*": "./middleware/*"
+    "#middleware/*": "./middleware/*",
+    "#adminHelper": "./helpers/admin/*"
   }
 }
