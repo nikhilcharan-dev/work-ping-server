@@ -38,6 +38,7 @@
     "#models/*": "./models/*",
     "#utils/*": "./utils/*",
     "#middleware/*": "./middleware/*",
-    "#adminHelper": "./helpers/admin/*"
+    "#adminHelper/*": "./helpers/admin/*",
+    "#config/*" : "./config/*"
   }
 }
