@@ -1,18 +1,18 @@
 
-import insertEmployees from "#adminHelper/employee/helper.js"
-const fs = require("fs");
-const xlsx = require("xlsx");
-const uploadExcel = require("#middlewares/uploadExcel.js");
-
-app.post(
+import {insertEmployees} from "#adminHelper/employee/helper.js"
+import fs from "fs";
+import xlsx from "xlsx";
+import express from "express";
+import uploadExcel from "#middleware/uploadExcel.js";
+const router = express.Router(); 
+router.post(
   "/upload-excel",
   uploadExcel.single("file"), // must match input field name
   asyncHandler(
-        async ()=>{
-            if (!req.file) {
-                return res.status(400).json({ message: "No file uploaded" });
+      async (req,res)=>{
+          if (!req.file) {
+              return res.status(400).json({ message: "No file uploaded" });
             }
-
             // Get file path from Multer
             const filePath = req.file.path;
             // Read the Excel file
@@ -28,11 +28,13 @@ app.post(
 
             //add employees to database
             await insertEmployees(jsonData)
-
+            
             res.json({
                 message: "employees added successfully"
             }); 
 
         }
-    , "Error processing Excel file" )
+    , "ERROR_PROCESSING_EXCEL_FILE" )
 );
+
+export default router ;

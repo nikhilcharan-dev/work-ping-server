@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
 
         phone: { type: String, unique: true, required: true, sparse: true },
 
-        employeeId: { type: String , unique: true , required: ture },
+        employeeId: { type: String , unique: true , required: true },
 
         gender: {
             type: String,
@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
             ref: "Team",
             index: true
         },
-
+        // skills links experience
         roleInTeam: {
             type: String,
             enum: ["manager", "teamLead", "member"],

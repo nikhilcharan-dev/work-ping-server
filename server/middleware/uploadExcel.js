@@ -1,4 +1,5 @@
-import { storage,fileFilter } from "#config";
+import { storage,fileFilter } from "#config/multer/bulkUpload.js";
+import multer from "multer";
 // Multer instance
 const uploadExcel = multer({
   storage,
@@ -8,5 +9,4 @@ const uploadExcel = multer({
   }
 });
 
-
-module.exports = uploadExcel;
+export default uploadExcel;
