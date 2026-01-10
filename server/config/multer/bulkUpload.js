@@ -1,9 +1,9 @@
-const multer = require("multer");
+import multer from "multer";
 
 // Storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/tmp/spreadsheets"); // temp folder
+    cb(null, "uploads/spreadsheets"); // temp folder
   },
   filename: (req, file, cb) => {
     const uniqueName =
@@ -26,4 +26,4 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-module.exports = { storage , fileFilter }
+export { storage , fileFilter }
