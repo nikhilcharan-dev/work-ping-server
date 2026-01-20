@@ -8,6 +8,7 @@ export const register = asyncHandler(
             if(!name || !userEmail || !password) {
                 return res.status(400).json({message: "Missing fields"})
             }
+
             const existingUser = await Admin.findOne({email : userEmail});
     
             if(existingUser){
@@ -48,7 +49,7 @@ export const register = asyncHandler(
 }, "REGISTER_ADMIN_CONTROLLER_ERROR");
 
 export const login = asyncHandler(
-    async(req,res) => {
+    async(req, res) => {
     const { userEmail, password } = req.body;
 
         if (!userEmail || !password) {

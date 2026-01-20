@@ -19,7 +19,9 @@ export const send_email_otp = asyncHandler(async(req, res) => {
 }, "AUTH_EMAIL_OTP_ERROR");
 
 export const send_phone_otp =  asyncHandler(async(req, res) => {
-
+    return res.status(200).json({
+        status: "success",
+    })
 }, "AUTH_PHONE_OTP_ERROR");
 
 export const verify_email_otp =  asyncHandler(async(req, res) => {
@@ -39,5 +41,7 @@ export const verify_email_otp =  asyncHandler(async(req, res) => {
 }, "AUTH_VERIFY_EMAIL_OTP_ERROR");
 
 export const verify_phone_otp =  asyncHandler(async(req, res) => {
-
+    return res.status(200).json({
+        status: "success",
+    })
 }, "AUTH_VERIFY_PHONE_OTP_ERROR");

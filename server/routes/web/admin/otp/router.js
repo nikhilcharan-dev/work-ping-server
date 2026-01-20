@@ -7,7 +7,6 @@ router.post("/send-email-otp", send_email_otp);
 
 router.post("/send-phone-otp", send_phone_otp);
 
-
 router.post("/verify-email-otp", verify_email_otp);
 
 router.post("/verify-phone-otp", verify_phone_otp);
