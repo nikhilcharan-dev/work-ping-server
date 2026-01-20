@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 export const register = asyncHandler(
-    async (res, req) => {
+    async (req, res) => {
     const { name, userEmail, password } = req.body;
             const existingUser = await Admin.findOne({email : userEmail});
     
