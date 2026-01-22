@@ -1,4 +1,4 @@
-import Team from "#models/Teams.js";
+import Team from "#models/Team.js";
 import mongoose from "mongoose";
 
 export const createTeam = asyncHandler(
