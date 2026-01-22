@@ -2,6 +2,7 @@ import './globals.js';
 import "dotenv/config";
 import http from "http";
 import socket from "./app/socket.io.js";
+import init from './cleanup/cleanDB.js';
 
 import app from "./app/app.js";
 import mongooseConfig from "./config/mongoose.js";
@@ -17,4 +18,5 @@ socket(server);
     server.listen(PORT, () => {
         console.log(`[Server] Running ${PORT}`);
     });
+    // init();
 })();
