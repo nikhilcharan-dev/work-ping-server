@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const teamSchema = new mongoose.Schema(
     {
-        name: { type: String, required: true },
+        teamName: { type: String, required: true },
 
         description: String,
 
@@ -11,7 +11,20 @@ const teamSchema = new mongoose.Schema(
             ref: "Organization",
             required: true,
             index: true
-        }
+        },
+
+        managerId : {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true
+        },
+
+        leaderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
+        },
     },
     { timestamps: true }
 );

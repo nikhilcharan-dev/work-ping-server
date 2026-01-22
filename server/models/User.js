@@ -24,14 +24,6 @@ const userSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        
-        role: {
-            type: String,
-            enum: ["orgAdmin", "orgManager", "orgEmployee"],
-            default: "orgEmployee",
-            index: true ,
-            required: true,
-        },
 
         profileImage: {
             type: String,
@@ -42,7 +34,7 @@ const userSchema = new mongoose.Schema(
 
         address: String,
 
-        dateOfJoining: { type: Date, index: true },
+        dateOfJoining: { type: Date, required: true, index: true },
 
         teamId: {
             type: mongoose.Schema.Types.ObjectId,
