@@ -1,4 +1,4 @@
-import { insertEmployees } from "#adminHelper/employee/helper";
+import { insertEmployees } from "#adminHelper/employee/helper.js";
 
 export const insertByFrom = asyncHandler(
     async(req, res) => {
