@@ -10,7 +10,7 @@ const organizationSchema = new mongoose.Schema(
 
         description: { type: String },
 
-        ipWhitelist: [{ type: String, required: true,index: true }],
+        IPWhitelist: [{ type: String, required: true,index: true }],
 
         foundedAt: { type: Date },
 
@@ -18,22 +18,12 @@ const organizationSchema = new mongoose.Schema(
 
         geoFencing: {
             enabled: { type: Boolean, default: false },
-            firstPoint: {
-                longitude: { type : String },
-                latitude: { type : String },
-            },  
-            secondPoint: {
-                longitude: { type : String },
-                latitude: { type : String },
-            },
-            thirdPoint: {
-                longitude: { type : String },
-                latitude: { type : String },
-            },
-            fourthPoint: {
-                longitude: { type : String },
-                latitude: { type : String }
-            }
+            corners: [
+                {
+                    lat: String,
+                    long: String
+                }
+            ]
         }
     },
     { timestamps: true }

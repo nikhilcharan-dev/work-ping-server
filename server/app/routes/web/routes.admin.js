@@ -5,7 +5,7 @@ import validateCookie from "#middleware/jwtBearer.js";
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
-    app.use("/api/admin/orginization",organizationRouter);
+    app.use("/api/admin/organization", validateCookie ,organizationRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);
 }
