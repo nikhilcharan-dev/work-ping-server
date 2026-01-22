@@ -1,5 +1,5 @@
 import organizationController from "#webControllers/admin/organization/controller.js";
-
+import express from "express"
 const Router = express.Router()
 
 Router.get('/get-organization-by-id',organizationController.getOrganizationById);
