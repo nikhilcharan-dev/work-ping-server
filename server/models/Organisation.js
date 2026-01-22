@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const organizationSchema = new mongoose.Schema(
-    {
+    {   
         name: { type: String, required: true, index: true },
 
         type: { type: String },
@@ -14,12 +14,25 @@ const organizationSchema = new mongoose.Schema(
 
         foundedAt: { type: Date },
 
+        passKey : { type: Number , required: true },
+
         geoFencing: {
             enabled: { type: Boolean, default: false },
-            coordinates: {
-                lat: Number,
-                lng: Number,
-                radiusMeters: Number
+            firstPoint: {
+                longitude: { type : String },
+                latitude: { type : String },
+            },  
+            secondPoint: {
+                longitude: { type : String },
+                latitude: { type : String },
+            },
+            thirdPoint: {
+                longitude: { type : String },
+                latitude: { type : String },
+            },
+            fourthPoint: {
+                longitude: { type : String },
+                latitude: { type : String }
             }
         }
     },

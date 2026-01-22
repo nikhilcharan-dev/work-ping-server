@@ -1,7 +1,8 @@
-
 import Organisation from '#models/Organisation.js';
 import OrgAdmin from '#models/Admin.Org.js';
 import Admin from '#models/Admin.js'
+
+
 const existingOrganizationOfAdminWithSameName = async (adminId , organizationName)=>{
     return await OrgAdmin.findById({
         adminId
@@ -10,10 +11,11 @@ const existingOrganizationOfAdminWithSameName = async (adminId , organizationNam
         match : { name : organizationName }
     }).lean()
 }
+
+const addOrganization = asycHandler( async (req,res)=>{
     const { name , type , clDays , description , ipWhitelist , foundedAt , geoFencing} = req.body;
     const {adminId} =  req.user;
-    const addOrganization = asycHandler( async (req,res)=>{
-        
+    
     if(existingOrganizationOfAdminWithSameName) {
         return res.status(409).json({ "error" : "Organization already exits" });
     }
@@ -36,11 +38,11 @@ const existingOrganizationOfAdminWithSameName = async (adminId , organizationNam
     return res.status(201).json(newOrganization);
 });
 
-const getOrganization = asycHandler(async (req , res)=>{
+const getOrganizationById = asycHandler(async (req , res)=>{
     const adminId = req.user;
     const existingAdmin = await Admin.findOneById(adminId)
     if(!existingAdmin) {
-        return res.status().json({
+        return res.status(404).json({
             error : "Admin Doesn't Exists"
         })
     }
@@ -54,8 +56,8 @@ const getOrganization = asycHandler(async (req , res)=>{
 
 const updateOrganizaton = asyncHandler(async (req,res)=>{
     let updateOrganizatonTo = req.body;
-    let existingOrganization = await Organisation.findOneByid(id);
-    if(!existingOrganization(updateOrganizatonTo._id)) {
+    let existingOrganization = await Organisation.findOneById(updateOrganizatonTo._id);
+    if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
     return res.status(200).json( await User.findByIdAndUpdate(
@@ -66,11 +68,22 @@ const updateOrganizaton = asyncHandler(async (req,res)=>{
 });
 
 const deleteOrganizaton = asyncHandler(async (req,res)=>{
-    let { organizationId } = req.body;
-    if(!existingOrganization(organizationId)) {
-        return res.status(404).json({error: "Organization Doesn't Exists"});
+    let { organizationId , passKey } = req.body;
+    let existingOrganization = await Organisation.findOneById(organizationId);
+    if(!existingOrganization) {
+        return res.status(404).json({error: "Organizaton Doesn't Exists"});
+    }
+    if(passKey != existingOrganization.passKey) {
+        return res.status(401).json({error : "Incorrect Passkey"});
     }
     return res.status(200).json(await User.findByIdAndDelete(
         organizationId
     ).lean());
 });
+
+export default {
+    addOrganization,
+    updateOrganizaton,
+    getOrganizationById,
+    deleteOrganizaton
+}
