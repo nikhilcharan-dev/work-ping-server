@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const organizationSchema = new mongoose.Schema(
-    {
+    {   
         name: { type: String, required: true, index: true },
 
         type: { type: String },
@@ -10,17 +10,20 @@ const organizationSchema = new mongoose.Schema(
 
         description: { type: String },
 
-        ipWhitelist: [{ type: String, index: true }],
+        IPWhitelist: [{ type: String, required: true,index: true }],
 
         foundedAt: { type: Date },
 
+        passKey : { type: Number , required: true },
+
         geoFencing: {
             enabled: { type: Boolean, default: false },
-            coordinates: {
-                lat: Number,
-                lng: Number,
-                radiusMeters: Number
-            }
+            corners: [
+                {
+                    lat: String,
+                    long: String
+                }
+            ]
         }
     },
     { timestamps: true }
