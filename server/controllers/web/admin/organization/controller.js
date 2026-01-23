@@ -83,6 +83,7 @@ const deleteOrganization = asyncHandler(async (req,res)=>{
     if(passKey != existingOrganization.passKey) {
         return res.status(401).json({error : "Incorrect Passkey"});
     }
+    await OrgAdmin.findOneAndDelete({organizationId: organizationId});
     return res.status(200).json(await Organisation.findByIdAndDelete(
         organizationId
     ).lean());
