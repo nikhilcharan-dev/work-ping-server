@@ -3,6 +3,7 @@ import otpRoutes from "#webRoutes/admin/otp/router.js";
 import organizationRouter from "#webRoutes/admin/organization/router.js"
 import teamRoutes from "#webRoutes/admin/team/routes.js";
 import validateCookie from "#middleware/jwtBearer.js";
+import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
@@ -10,6 +11,9 @@ export default function adminRoutes(app) {
     // OTP
     app.use("/api/admin/otp", otpRoutes);
 
-    //create-team
+    //team
     app.use("/api/admin/team", teamRoutes);
+
+    //team-members
+    app.use("/api/admin/team-members", validateCookie,  teamMemberRoutes);
 }
