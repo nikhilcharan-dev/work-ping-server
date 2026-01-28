@@ -1,6 +1,6 @@
 import { insertEmployees } from "#adminHelper/employee/helper.js";
 
-export const insertByFrom = asyncHandler(
+const insertByFrom = asyncHandler(
     async(req, res) => {
         const mandatory_form_data = {name, email, password, phone, employeeId, gender, organizationId, role} = req.body; // mandatory fields
         const optional_form_data = {profileImage , dob, address, dateOfJoining, teamId, roleInTeam, isActive} = req.body; // optional fields
@@ -23,3 +23,4 @@ export const insertByFrom = asyncHandler(
 
     } , "INSERT_BY_FORM_ERROR"
 );
+export default insertByFrom

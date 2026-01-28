@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Excel Upload Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    
+  </style>
+</head>
+<body>
+
+  <h2>Upload Excel File</h2>
+
+  <input type="file" id="fileInput" accept=".xlsx,.xls" />
+  <br /><br />
+  <button onclick="uploadExcel()">Upload</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    async function uploadExcel() {
+      const fileInput = document.getElementById("fileInput");
+      const result = document.getElementById("result");
+
+      if (!fileInput.files.length) {
+        alert("Please select a file");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]); // MUST match multer field name
+    }  
+  </script>
+
+</body>
+</html>
