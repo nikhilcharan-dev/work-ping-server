@@ -28,7 +28,8 @@
     "nodemailer": "^7.0.12",
     "nodemon": "^3.1.11",
     "redis": "^5.10.0",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "xlsx": "^0.18.5"
   },
   "imports": {
     "#webRoutes/*": "./routes/web/*",
@@ -39,6 +40,6 @@
     "#utils/*": "./utils/*",
     "#middleware/*": "./middleware/*",
     "#adminHelper/*": "./helpers/admin/*",
-    "#config/*" : "./config/*"
+    "#config/*": "./config/*"
   }
 }

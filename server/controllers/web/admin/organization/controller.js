@@ -16,6 +16,7 @@ const existingOrganizationOfAdminWithSameName = async (userId , organizationName
 }
 
 const addOrganization = asyncHandler( async (req,res)=>{
+    console.log("entered")
     let { name } = req.body;
     let { userId } =  req.user;
     userId = new mongoose.Types.ObjectId(userId);

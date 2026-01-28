@@ -6,17 +6,40 @@ import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js
 import attendanceRoutes from "#webRoutes/user/attendance/router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
+import jwt from "jsonwebtoken";
 
 export default function centralRoutes(app) {
-    // Default
-    app.get("/", (req, res) => {
-        const isLive = process.env.MODE === "production";
-        res.cookie("accessToken", "IAmACookie", {
-            httpOnly: true,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-        })
-        res.json({ status: "OK", ip: req.ip });
+    // cookie verify
+    app.get("/verify-cookie", (req, res) => {
+
+        try {
+            const cookie = req.cookies?.accessToken;
+            console.log(cookie);
+            if (!cookie) {
+                return res.status(403).json({
+                    error: "Unauthorized",
+                })
+            }
+
+            jwt.verify(cookie, process.env.SECRET_KEY, (err, decoded) => {
+                if (err) {
+                    return res.status(403).json({
+                        error: "Unauthorized",
+                    })
+                }else{
+                     return res.status(200).json({
+                        error: "authorized",
+                    })
+                }
+
+
+            })
+
+        } catch (err) {
+            return res.status(500).send({
+                error: "Internal Server Error",
+            })
+        }
     });
 
     // Verification

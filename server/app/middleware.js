@@ -7,6 +7,7 @@ const MODE = process.env.MODE;
 
 const allowedOrigins = [
     "http://localhost:5173",
+    "http://127.0.0.1:5501",
     "https://workping.live",
     "https://www.workping.live",
     "https://phonepe.workping.live",
@@ -33,7 +34,7 @@ export default function middlewares(app) {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
-    app.use(cookieParser());
+    // app.use(cookieParser());
 
     app.use((req, res, next) => {
         console.log("Origin IP:", req.ip);
