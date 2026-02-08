@@ -7,12 +7,14 @@ const insertByExcel =
       async (req,res)=>{
           if (!req.file) {
               return res.status(400).json({ message: "No file uploaded" });
-            }
+          }
+
             const filePath = req.file.path;
             const workbook = xlsx.readFile(filePath);
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
             const jsonData = xlsx.utils.sheet_to_json(sheet);
+
             // Delete file after processing
             fs.unlinkSync(filePath);
 
@@ -31,7 +33,7 @@ const insertByExcel =
 
             for (let i = 0; i < jsonData.length; i++) {
                 const row = jsonData[i];
-                row["password"] = "static";
+                row["password"] = process.env.USER_DEFAULT_PASSWORD;
                 let invalid = false;
 
                 // Required field check

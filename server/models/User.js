@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
 
         phone: { type: String, unique: true, required: true, sparse: true },
 
-        employeeId: { type: String , unique: true , required: true },
+        employeeId: { type: String, unique: true, required: true },
 
         gender: {
             type: String,
@@ -29,6 +29,8 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+
+        salary: { type: Number, default: 0 },
 
         dob: Date,
 
@@ -50,14 +52,14 @@ const userSchema = new mongoose.Schema(
         },
 
         isActive: { type: Boolean, default: true, index: true }
-        
+
     },
     { timestamps: true }
 );
 
 userSchema.index(
-    {_id: 1, teamId: 1},
-    {unique: true}
+    { _id: 1, teamId: 1 },
+    { unique: true }
 );
 
 export default mongoose.model("User", userSchema);

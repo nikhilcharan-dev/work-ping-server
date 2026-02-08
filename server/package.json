@@ -21,6 +21,7 @@
     "express-rate-limit": "^8.1.0",
     "form-data": "^4.0.5",
     "jsonwebtoken": "^9.0.3",
+    "lodash": "^4.17.23",
     "module-alias": "^2.2.3",
     "mongoose": "^8.17.0",
     "morgan": "^1.10.1",
@@ -40,6 +41,7 @@
     "#utils/*": "./utils/*",
     "#middleware/*": "./middleware/*",
     "#adminHelper/*": "./helpers/admin/*",
-    "#config/*": "./config/*"
+    "#config/*": "./config/*",
+    "#helpers/*": "./helpers/*"
   }
 }
