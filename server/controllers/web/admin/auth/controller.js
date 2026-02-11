@@ -78,7 +78,7 @@ export const login = asyncHandler(
         const isLive = process.env.MODE === "production";
 
         res.cookie("accessToken", token, {
-            httpOnly: true,
+            httpOnly: false,
             secure: isLive,
             sameSite: isLive ? "none" : "lax",
         })
