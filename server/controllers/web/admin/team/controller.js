@@ -5,13 +5,13 @@ export const createTeam = asyncHandler(
     async(req, res) => {
         const {teamName, teamManagerId: managerId, description, teamLeaderId: leaderId, organizationId} = req.body;
         
-        if(!teamName || !managerId || !leaderId || !organizationId){
+        if(!teamName || !managerId || !organizationId){
             return res.status(400).json({
                 error : "Missing required fields"
             });
         }
 
-        const teamExists = await Team.findOne({teamName}) !== null ? true : false;
+        const teamExists = await Team.findOne({teamName, organizationId}) !== null ? true : false;
 
         if(teamExists) return res.status(400).json({
             error: "teamName already in use",
@@ -20,10 +20,11 @@ export const createTeam = asyncHandler(
         
         const detailObject = {teamName, managerId, leaderId, organizationId}
 
-        if(description !== null) detailObject.description = description;
+        if(description !== undefined && description !== null) detailObject.description = description;
 
-        const addTeam = await Team.insertOne(detailObject);
-        detailObject.teamId = addTeam.insertedId;
+        const addTeam = await Team.create(detailObject);
+
+        detailObject.teamId = addTeam._id;
 
         return res.status(200).json({
             success: "Team added successfully",
@@ -63,9 +64,12 @@ export const getAllTeams =  asyncHandler(
 
 export const updateTeam = asyncHandler(
     async(req, res) => {
-        const updatableDetails = req.body;
+        const {teamId, ...updatableDetails} = req.body;
+        if(!teamId || !mongoose.Types.ObjectId.isValid(teamId)) {
+            return res.status(400).json({error: "Invalid teamId"});
+        }
 
-        const updater = await Team.findByIdAndUpdate(updatableDetails.teamId ,updatableDetails, { new: true, runValidators: true });
+        const updater = await Team.findByIdAndUpdate(teamId ,updatableDetails, { new: true, runValidators: true });
 
         return res.status(200).json({success: "Team Details updated.", updatedDetails: updater})
                 

@@ -5,6 +5,7 @@ import teamRoutes from "#webRoutes/admin/team/routes.js";
 import validateCookie from "#middleware/jwtBearer.js";
 import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
 
+import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
@@ -14,4 +15,7 @@ export default function adminRoutes(app) {
     //create-team
     app.use("/api/admin/team", teamRoutes);
     app.use("/api/admin/add-employees", addEmployeesRouter );
+
+    //team-members
+    app.use("/api/admin/team-members", validateCookie,  teamMemberRoutes);
 }
