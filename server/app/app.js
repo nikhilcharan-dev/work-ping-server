@@ -3,6 +3,7 @@ import 'dotenv/config';
 
 import middlewares from "./middleware.js";
 
+import twoFactorRoutes from "./2fa.js";
 import centralWebRoutes from "./routes/web/routes.central.js";
 import adminWebRoutes from "./routes/web/routes.admin.js";
 import userWebRoutes from "./routes/web/routes.user.js";
@@ -13,6 +14,7 @@ const app = express();
 
 middlewares(app);
 
+twoFactorRoutes(app);
 centralWebRoutes(app);
 adminWebRoutes(app);
 userWebRoutes(app);
