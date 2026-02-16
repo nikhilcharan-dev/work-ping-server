@@ -79,7 +79,7 @@ export const login = asyncHandler(
             httpOnly: true,
             secure: isLive,
             sameSite: isLive ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 24 // 1 Day
+            maxAge: 1000 * 60 * 60 * 24
         })
 
         const userMetaDetails = await User.findOne({

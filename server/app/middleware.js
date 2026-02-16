@@ -47,7 +47,7 @@ export default function middlewares(app) {
         console.log("Cookies:", req.cookies);
         console.log("User-Agent:", req.headers['user-agent']);
         console.log("------------------------------------------------");
-
+        console.log("Origin IP:", req.ip);
         if (req.headers['user-agent']?.includes('PostmanRuntime') && MODE === "production") {
             return res.status(403).json({
                 message: "Axios/Postman is fast, but not fast enough to be a browser."
