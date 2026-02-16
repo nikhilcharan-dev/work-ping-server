@@ -6,6 +6,7 @@ import morgan from "morgan";
 const MODE = process.env.MODE;
 
 const allowedOrigins = [
+    "http://10.144.15.154:5173",
     "http://localhost:5173",
     "http://127.0.0.1:5501",
     "https://workping.live",
