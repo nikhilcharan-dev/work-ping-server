@@ -26,7 +26,7 @@ export const register = asyncHandler(
             await Account.create({
                 role,
                 email: userEmail.trim(),
-                password: hashedPa401sword,
+                password: hashedPassword,
             })
     
             const token = jwt.sign({ userId : user._id, },
