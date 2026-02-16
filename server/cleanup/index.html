@@ -1,37 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Excel Upload Test</title>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <style>
-    
-  </style>
+  <title>Upload Excel File</title>
 </head>
 <body>
 
-  <h2>Upload Excel File</h2>
+<h2>Upload Excel File</h2>
 
-  <input type="file" id="fileInput" accept=".xlsx,.xls" />
-  <br /><br />
-  <button onclick="uploadExcel()">Upload</button>
+<form id="excelForm">
+  <input
+          type="file"
+          id="excelFile"
+          name="file"
+          accept=".xls,.xlsx"
+          required
+  />
+  <br><br>
+  <button type="submit">Upload</button>
+</form>
 
-  <pre id="result"></pre>
+<p id="message"></p>
 
-  <script>
-    async function uploadExcel() {
-      const fileInput = document.getElementById("fileInput");
-      const result = document.getElementById("result");
+<script>
+  const form = document.getElementById("excelForm");
 
-      if (!fileInput.files.length) {
-        alert("Please select a file");
-        return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const fileInput = document.getElementById("excelFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert("Please select a file");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file); // must match multer field name
+
+    try {
+      const response = await fetch("http://localhost:5000/api/admin/add-employees/by-excel", {
+        method: "POST",
+        body: formData
+        // ❌ DO NOT set Content-Type manually
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        document.getElementById("message").innerText = "Upload successful!";
+        console.log(data);
+      } else {
+        document.getElementById("message").innerText = "Upload failed!";
+        console.error(data);
       }
 
-      const formData = new FormData();
-      formData.append("file", fileInput.files[0]); // MUST match multer field name
-    }  
-  </script>
+    } catch (error) {
+      document.getElementById("message").innerText = "Error connecting to server!";
+      console.error(error);
+    }
+  });
+</script>
 
 </body>
 </html>

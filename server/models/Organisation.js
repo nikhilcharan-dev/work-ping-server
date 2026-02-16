@@ -14,17 +14,6 @@ const organizationSchema = new mongoose.Schema(
 
         foundedAt: { type: Date },
 
-        passKey : { type: Number , required: true },
-
-        geoFencing: {
-            enabled: { type: Boolean, default: false },
-            corners: [
-                {
-                    lat: String,
-                    long: String
-                }
-            ]
-        }
     },
     { timestamps: true }
 );
