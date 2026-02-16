@@ -1,4 +1,4 @@
-import Project, { requiredProje`    ctFields, optionalProjectFields  } from "#models/Project.js";
+import Project, { requiredProjectFields, optionalProjectFields  } from "#models/Project.js";
 import { pick } from "#helpers/data.reducer.js";
 
 export const createProject = asyncHandler(
