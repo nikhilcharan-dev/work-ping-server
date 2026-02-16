@@ -3,10 +3,10 @@ import bcrypt from "bcrypt";
 
 const insertByFrom = asyncHandler(
     async(req, res) => {
-        const {userName: name, email, phone, userId: employeeId, gender, organizationId, role} = req.body; // mandatory fields
-        const {dob, address, doj: dateOfJoining, teamId, roleInTeam, isActive} = req.body; // optional fields
+        const {userName : name, email, phone, userId: employeeId, gender, organizationId, role} = req.body; // mandatory fields
+        const {dob, address, doj: dateOfJoining, teamId, roleInTeam, isActive, aadhaar: aadhaarId, pan: panId} = req.body; // optional fields
         const user_form_data = {name, email, phone, employeeId, gender, organizationId, role};
-        const optional_form_data = {dob, address, dateOfJoining, teamId, roleInTeam, isActive};
+        const optional_form_data = {dob, address, dateOfJoining, teamId, roleInTeam, isActive, aadharId, panId};
 
         const password = process.env.USER_DEFAULT_PASSWORD;
         const mandatory_form_data = {
