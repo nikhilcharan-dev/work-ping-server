@@ -3,6 +3,7 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import Account from "#models/Account.js";
 import crypto from "crypto";
+import Admin from "#models/Admin.js";
 
 const router = Router();
 
@@ -10,7 +11,13 @@ const MS_CLIENT_ID = process.env.MS_CLIENT_ID;
 const MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET;
 const MS_REDIRECT_URI = process.env.MS_REDIRECT_URI;
 
-const SCOPE = ["openid", "profile", "email"].join(" ");
+const SCOPE = [
+    "openid",
+    "profile",
+    "email",
+    "https://graph.microsoft.com/User.Read"
+].join(" ");
+
 
 router.get("/start", (req, res) => {
     const state = crypto.randomBytes(16).toString("hex");
@@ -44,11 +51,11 @@ router.get("/callback", async (req, res) => {
                 client_secret: MS_CLIENT_SECRET,
                 code,
                 redirect_uri: MS_REDIRECT_URI,
-                grant_type: "authorization_code",
-                scope: SCOPE
+                grant_type: "authorization_code"
             }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
+
 
         const accessToken = tokenRes.data.access_token;
 
@@ -67,8 +74,11 @@ router.get("/callback", async (req, res) => {
         const {
             mail,
             userPrincipalName,
+            displayName,
             id
         } = profileRes.data;
+
+        console.log(profileRes.data);
 
         const email = mail || userPrincipalName;
         const microsoftId = id;
@@ -93,6 +103,11 @@ router.get("/callback", async (req, res) => {
                     }
                 }
             });
+
+             await Admin.create({
+                 name: displayName,
+                 email,
+            })
         } else {
             // SIGN IN + LINK IF NOT LINKED
             if (!account.providers?.microsoft?.linked) {
@@ -110,7 +125,7 @@ router.get("/callback", async (req, res) => {
                 accountId: account._id,
                 role: account.role
             },
-            process.env.JWT_SECRET,
+            process.env.SECRET_KEY,
             { expiresIn: "7d" }
         );
 

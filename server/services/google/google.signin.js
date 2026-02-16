@@ -2,12 +2,13 @@ import axios from "axios";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import Account from "#models/Account.js";
+import Admin from "#models/Admin.js";
 
 const router = Router();
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = "http://localhost:5000/auth/google/callback" // process.env.GOOGLE_REDIRECT_URI;
+const REDIRECT_URI =  process.env.GOOGLE_REDIRECT_URI;
 
 const SCOPE = [
     "https://www.googleapis.com/auth/userinfo.profile",
@@ -70,7 +71,7 @@ router.get("/callback", async (req, res) => {
             account = await Account.create({
                 email,
                 emailVerified: true,
-                role: "admin", // or decide dynamically
+                role: "admin",
                 providers: {
                     google: {
                         id: googleId,
@@ -78,6 +79,13 @@ router.get("/callback", async (req, res) => {
                     }
                 }
             });
+
+            await Admin.create({
+                name,
+                email,
+                profileImageUrl: picture
+            })
+
         } else {
             // SIGN IN
             if (!account.providers.google?.linked) {
@@ -95,21 +103,21 @@ router.get("/callback", async (req, res) => {
                 accountId: account._id,
                 role: account.role
             },
-            process.env.JWT_SECRET,
+            process.env.SECRET_KEY,
             { expiresIn: "7d" }
         );
 
+
         // Send back to frontend
-        // res.status(200).send(`
-        //     <script>
-        //         window.opener.postMessage({
-        //             token: "${token}",
-        //             message: "oauth_success"
-        //         }, '*');
-        //         window.close();
-        //     </script>
-        // `);
-        console.log(token);
+        res.status(200).send(`
+            <script>
+                window.opener.postMessage({
+                    token: "${token}",
+                    message: "oauth_success"
+                }, '*');
+                window.close();
+            </script>
+        `);
     } catch (error) {
         console.error(
             "Google OAuth error:",

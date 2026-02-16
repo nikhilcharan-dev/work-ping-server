@@ -1,11 +1,12 @@
 import User from "#models/User.js";
+import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 export const register = asyncHandler(
     async (res, req) => {
-    const { name, userEmail, password ,organizationId , role } = req.body;
-            const existingUser = await User.findOne({email : userEmail});
+    const { name, userEmail, password, organizationId , role } = req.body;
+            const existingUser = await Account.findOne({email : userEmail.trim()});
     
             if(existingUser){
                 return res.status(409).json({
@@ -18,10 +19,15 @@ export const register = asyncHandler(
             const user = await User.create({
                 name,
                 email: userEmail.trim(),
-                password: hashedPassword,
                 organizationId: organizationId ,
                 role : role 
             });
+
+            await Account.create({
+                role,
+                email: userEmail.trim(),
+                password: hashedPassword,
+            })
     
             const token = jwt.sign({ userId : user._id, },
                 process.env.SECRET_KEY,
@@ -49,7 +55,7 @@ export const login = asyncHandler(
             return res.status(400).json({ message: "Email and password required" });
         }
 
-        const user = await User.findOne({ email: userEmail.trim() });
+        const user = await Account.findOne({ email: userEmail.trim() });
         if (!user) {
             return res.status(401).json({ message: "User does not exist" });
         }
@@ -75,7 +81,12 @@ export const login = asyncHandler(
             sameSite: isLive ? "none" : "lax",
         })
 
+        const userMetaDetails = await User.findOne({
+            email: userEmail.trim()
+        })
+
         return res.status(200).json({
             message: "Login Successful",
+            userDetails: userMetaDetails,
         });
 }, "USER_AUTH_LOGIN_ERROR");
