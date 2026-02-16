@@ -34,7 +34,7 @@ export default function middlewares(app) {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
-    // app.use(cookieParser());
+    app.use(cookieParser());
 
     app.use((req, res, next) => {
         console.log("Origin IP:", req.ip);

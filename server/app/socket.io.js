@@ -1,4 +1,4 @@
-import {Server} from "socket.io";
+import { Server } from "socket.io";
 
 export default function socket(server) {
     globalThis.io = new Server(server, {
@@ -10,7 +10,7 @@ export default function socket(server) {
 
     io.on("connection", socket => {
         console.log("Gateway Socket listening");
-        socket.on("payment:join", async ({userId}) => {
+        socket.on("payment:join", async ({ userId }) => {
             socket.join(`payment:${userId}`);
 
             const data = await redis.get(`payment:${userId}`);
@@ -21,7 +21,7 @@ export default function socket(server) {
 
     io.on("", socket => {
         console.log("Gateway Socket listening");
-        socket.on("payment:join", async ({userId}) => {
+        socket.on("payment:join", async ({ userId }) => {
             socket.join(`payment:${userId}`);
 
             const data = await redis.get(`payment:${userId}`);

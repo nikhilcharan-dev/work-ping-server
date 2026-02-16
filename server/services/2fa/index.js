@@ -1,6 +1,6 @@
-import express from 'express';
 import { createController } from './controller.js';
 import { createRoutes } from './routes.js';
+import validateCookie from "#middleware/jwtBearer.js";
 
 /**
  * Setup 2FA service for an Express app.
@@ -18,8 +18,7 @@ export function setup2FA(app, config) {
     const controller = createController(config);
     const router = createRoutes(controller);
 
-    // Mount routes
-    app.use('/2fa', router);
-
+    // app.use('/2fa', validateCookie,  router);
+    app.use('/api/auth/2fa',  router);
     return { controller, router };
 }

@@ -4,54 +4,54 @@ import jwt from 'jsonwebtoken';
 
 export const register = asyncHandler(
     async (res, req) => {
-            const { name, userEmail, password } = req.body;
-            if(!name || !userEmail || !password) {
-                return res.status(400).json({message: "Missing fields"})
-            }
+        const { name, userEmail, password } = req.body;
+        if (!name || !userEmail || !password) {
+            return res.status(400).json({ message: "Missing fields" })
+        }
 
-            const existingUser = await Admin.findOne({email : userEmail});
-    
-            if(existingUser){
-                return res.status(409).json({
-                    message : "Admin already exists"
-                })
-            }
-    
-            const hashedPassword = await bcrypt.hash(password, 10);
-    
-            const user = await Admin.create({
-                name,
-                email: userEmail.trim(),
-                password: hashedPassword,
-            });
-    
-            const token = jwt.sign(
-                { userId : user._id },
-                process.env.SECRET_KEY,
-                { expiresIn : process.env.JWT_EXPIRES_IN }
-            )
+        const existingUser = await Admin.findOne({ email: userEmail });
 
-            res.cookie("accessToken", token, {
-                httpOnly: true,
-                secure: isLive,
-                sameSite: isLive ? "none" : "lax",
+        if (existingUser) {
+            return res.status(409).json({
+                message: "Admin already exists"
             })
-    
-            return res.status(201).json({
-                message: "Register Successful",
-                userDetails: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                },
-                token: token,
-            });
-}, "REGISTER_ADMIN_CONTROLLER_ERROR");
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await Admin.create({
+            name,
+            email: userEmail.trim(),
+            password: hashedPassword,
+        });
+
+        const token = jwt.sign(
+            { userId: user._id },
+            process.env.SECRET_KEY,
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        )
+
+        res.cookie("accessToken", token, {
+            httpOnly: true,
+            secure: isLive,
+            sameSite: isLive ? "none" : "lax",
+        })
+
+        return res.status(201).json({
+            message: "Register Successful",
+            userDetails: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+            },
+            token: token,
+        });
+    }, "REGISTER_ADMIN_CONTROLLER_ERROR");
 
 export const login = asyncHandler(
-    async(req, res) => {
+    async (req, res) => {
         console.log(req.body)
-    const { userEmail, password } = req.body;
+        const { userEmail, password } = req.body;
 
         if (!userEmail || !password) {
             return res.status(400).json({ message: "Email and password required" });
@@ -88,4 +88,4 @@ export const login = asyncHandler(
             token: token
         });
 
-}, "LOGIN_ADMIN_ERROR");
+    }, "LOGIN_ADMIN_ERROR");

@@ -38,7 +38,7 @@ export const createController = (config) => {
 
         async verify(req, res) {
             try {
-                const { token, userId } = req.body; // or req.user.id
+                const { token, userId } = req.body;
                 const id = userId || (req.user ? req.user.id : null);
 
                 if (!id || !token) {

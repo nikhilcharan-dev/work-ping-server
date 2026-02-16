@@ -10,6 +10,8 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI =  process.env.GOOGLE_REDIRECT_URI;
 
+const DEFAULT_PASSWORD = process.env.USER_DEFAULT_PASSWORD;
+
 const SCOPE = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email"
