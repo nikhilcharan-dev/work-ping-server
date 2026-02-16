@@ -1,94 +1,130 @@
-import { Router } from 'express';
-import axios from 'axios';
-import 'dotenv/config';
+import axios from "axios";
+import { Router } from "express";
+import jwt from "jsonwebtoken";
+import Account from "#models/Account.js";
+import Admin from "#models/Admin.js";
 
 const router = Router();
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+const REDIRECT_URI =  process.env.GOOGLE_REDIRECT_URI;
 
 const SCOPE = [
-    'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/userinfo.email'
-].join(' ');
-
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/userinfo.email"
+].join(" ");
 
 router.get('/start', (req, res) => {
-    const { state } = req.query;
-    if(state !== "earthisflat") return;
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent&state=${state}`;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent`;
     res.redirect(url);
 });
 
-router.get('/callback', async (req, res) => {
-    const { code, state } = req.query;
+router.get("/callback", async (req, res) => {
+    const { code } = req.query;
+
     try {
-        const tokenRes = await axios.post('https://oauth2.googleapis.com/token', null, {
-            params: {
-                code,
-                client_id: CLIENT_ID,
-                client_secret: CLIENT_SECRET,
-                redirect_uri: REDIRECT_URI,
-                grant_type: 'authorization_code'
+        // Exchange code for tokens
+        const tokenRes = await axios.post(
+            "https://oauth2.googleapis.com/token",
+            null,
+            {
+                params: {
+                    code,
+                    client_id: CLIENT_ID,
+                    client_secret: CLIENT_SECRET,
+                    redirect_uri: REDIRECT_URI,
+                    grant_type: "authorization_code"
+                }
             }
-        });
+        );
 
         const accessToken = tokenRes.data.access_token;
-        // we only get it one sign up not signin
-        const refreshToken = tokenRes.data.refresh_token;
 
-        const userInfoRes = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: {
-                Authorization: `Bearer ${accessToken}`
+        // Get user profile
+        const userInfoRes = await axios.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
             }
-        });
+        );
 
-        const { email, picture } = userInfoRes.data;
-        const expiresIn = Date.now() + (tokenRes.data.expires_in * 1000);
+        const {
+            id: googleId,
+            email,
+            verified_email,
+            name,
+            picture
+        } = userInfoRes.data;
 
-        console.log(userInfoRes.data);
+        if (!verified_email) {
+            return res.status(400).send("Email not verified by Google");
+        }
 
-        // Update User Details
-        // Push with access_token, refresh_token, expiresIn
+        // Check if account exists
+        let account = await Account.findOne({ email });
 
-        // if (alreadyLinked) {
-        //     return res.status(200).send(`
-        //       <script>
-        //         window.opener.postMessage({
-        //             message: "oauth_already_linked"
-        //         }, '*');
-        //         window.close();
-        //       </script>
-        //     `);
-        // }
+        if (!account) {
+            // SIGN UP
+            account = await Account.create({
+                email,
+                emailVerified: true,
+                role: "admin",
+                providers: {
+                    google: {
+                        id: googleId,
+                        linked: true
+                    }
+                }
+            });
 
+            await Admin.create({
+                name,
+                email,
+                profileImageUrl: picture
+            })
+
+        } else {
+            // SIGN IN
+            if (!account.providers.google?.linked) {
+                account.providers.google = {
+                    id: googleId,
+                    linked: true
+                };
+                await account.save();
+            }
+        }
+
+        // Issue YOUR JWT
+        const token = jwt.sign(
+            {
+                accountId: account._id,
+                role: account.role
+            },
+            process.env.SECRET_KEY,
+            { expiresIn: "7d" }
+        );
+
+
+        // Send back to frontend
         res.status(200).send(`
-          <script>
-            window.opener.postMessage({
-                email: "${email}",
-                message: "oauth_success"
-            }, '*');
-            window.close();
-          </script>
+            <script>
+                window.opener.postMessage({
+                    token: "${token}",
+                    message: "oauth_success"
+                }, '*');
+                window.close();
+            </script>
         `);
     } catch (error) {
-        console.error("❌ Google OAuth error:", error.response?.data || error.message);
-        res.status(500).send("OAuth Error: Could not complete authentication.");
+        console.error(
+            "Google OAuth error:",
+            error.response?.data || error.message
+        );
+        res.status(500).send("OAuth Error");
     }
 });
 
-
 export default router;
-
-/*
-{
-  id: '105482525388940160130',
-  email: 'nikhilcharangollapalli@gmail.com',
-  verified_email: true,
-  name: 'Nikhil Charan Gollapalli',
-  given_name: 'Nikhil Charan',
-  family_name: 'Gollapalli',
-  picture: 'https://lh3.googleusercontent.com/a/ACg8ocKzjTGeVA8wuWp9MsNGLrNRvcGJZPF8rCLmHjuASoEnTABHnA=s96-c'
-}
-*/

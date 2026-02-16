@@ -11,7 +11,12 @@ const insertByFrom = asyncHandler(
         const password = process.env.USER_DEFAULT_PASSWORD;
         const mandatory_form_data = {
             ...user_form_data,
-            password: await bcrypt.hash(password, 10),
+        }
+
+        const account_data = {
+            role: user_form_data.role,
+            email: user_form_data.email,
+            password,
         }
 
         if (Object.values(mandatory_form_data).some(value => !value)){
@@ -26,7 +31,7 @@ const insertByFrom = asyncHandler(
 
         const form_data = {...mandatory_form_data, ...filtered_optional_fields};
 
-        insertEmployees([form_data]);
+        insertEmployees([form_data, account_data]);
 
 
     } , "INSERT_BY_FORM_ERROR"

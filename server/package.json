@@ -28,8 +28,10 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.12",
     "nodemon": "^3.1.11",
+    "qrcode": "^1.5.4",
     "redis": "^5.10.0",
     "socket.io": "^4.8.3",
+    "speakeasy": "^2.0.0",
     "xlsx": "^0.18.5"
   },
   "imports": {
@@ -42,6 +44,7 @@
     "#middleware/*": "./middleware/*",
     "#adminHelper/*": "./helpers/admin/*",
     "#config/*": "./config/*",
-    "#helpers/*": "./helpers/*"
+    "#helpers/*": "./helpers/*",
+    "#services/*": "./services/*"
   }
 }
