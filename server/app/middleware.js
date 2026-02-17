@@ -6,6 +6,7 @@ import morgan from "morgan";
 const MODE = process.env.MODE;
 
 const allowedOrigins = [
+    "http://10.144.15.154:5173",
     "http://localhost:5173",
     "https://work-ping-liart.vercel.app",
     "http://127.0.0.1:5501",
@@ -13,6 +14,7 @@ const allowedOrigins = [
     "https://www.workping.live",
     "https://phonepe.workping.live",
     "https://whatsapp.workping.live",
+    process.env.CLIENT_URL,
 ];
 
 const corsOptions = {
@@ -38,6 +40,12 @@ export default function middlewares(app) {
     app.use(cookieParser());
 
     app.use((req, res, next) => {
+        console.log("------------------------------------------------");
+        console.log(`[Request] ${req.method} ${req.url}`);
+        console.log("Origin:", req.headers.origin);
+        console.log("Cookies:", req.cookies);
+        console.log("User-Agent:", req.headers['user-agent']);
+        console.log("------------------------------------------------");
         console.log("Origin IP:", req.ip);
         if (req.headers['user-agent']?.includes('PostmanRuntime') && MODE === "production") {
             return res.status(403).json({

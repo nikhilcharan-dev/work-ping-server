@@ -7,16 +7,21 @@ import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
 import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
 
+
+import projectRoutes from "#webRoutes/admin/project/router.js"
+
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
     app.use("/api/admin/organization", validateCookie ,organizationRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);
+
     //create-team
     app.use("api/admin/get-all-employees", getAllEmployeesRouter);
     app.use("/api/admin/team", teamRoutes);
     app.use("/api/admin/add-employees", addEmployeesRouter );
 
-    //team-members
-    app.use("/api/admin/team-members", validateCookie,  teamMemberRoutes);
+    // Project
+    app.use("/api/project", projectRoutes);
+
 }

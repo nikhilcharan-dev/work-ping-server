@@ -1,16 +1,17 @@
 import mongoose from "mongoose";
 
+/*
+    @password & authentication is moved to Account Schema
+ */
 const adminSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
 
         email: { type: String, required: true, unique: true },
 
-        password: { type: String, required: true },
-
         emailVerified: { type: Boolean, default: false },
 
-        phoneNumber: { type: String, required: true },
+        phoneNumber: { type: String },
 
         phoneVerified: { type: Boolean, default: false },
 
