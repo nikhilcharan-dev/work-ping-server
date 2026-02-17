@@ -20,7 +20,7 @@ const adminSchema = new mongoose.Schema(
             ref: "Plan"
         },
 
-        profileImageUrl: { type: String },
+        paymentId : {}
     },
     { timestamps: true }
 );

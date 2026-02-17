@@ -40,7 +40,7 @@ export const register = asyncHandler(
         const isLive = process.env.MODE === "production";
 
         res.cookie("accessToken", token, {
-            httpOnly: true,
+            httpOnly: false,
             secure: isLive,
             sameSite: isLive ? "none" : "lax",
             maxAge: 1000 * 60 * 60 * 24 // 1 Day
