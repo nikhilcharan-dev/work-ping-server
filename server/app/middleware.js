@@ -7,6 +7,7 @@ const MODE = process.env.MODE;
 
 const allowedOrigins = [
     "http://localhost:5173",
+    "https://work-ping-liart.vercel.app",
     "http://127.0.0.1:5501",
     "https://workping.live",
     "https://www.workping.live",
