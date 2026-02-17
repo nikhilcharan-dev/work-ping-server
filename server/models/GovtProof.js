@@ -8,9 +8,18 @@ const govtProofSchema = new mongoose.Schema(
 
         panNumber: { type: String, required: true },
 
-        bankAccount: { type: String, required: true }
+
+        bankAccount: { type: String, required: true },
+
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true
+        }
     },
     { timestamps: true }
+
 );
 
 export default mongoose.model("GovtProof", govtProofSchema);

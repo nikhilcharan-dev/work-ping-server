@@ -64,4 +64,21 @@ export const getUserTeams = asyncHandler(
     }, "ADMIN_GET_USER_TEAMS_ERROR"
 );
 
-
+// update team member's role in team
+export const updateTeamMemberRole = asyncHandler(
+    async(req, res) => {
+        const {membershipId, roleInTeam} = req.body;
+        if(!membershipId || !mongoose.Types.ObjectId.isValid(membershipId)){
+            return res.status(400).json({error: "Invalid membershipId"});
+        }
+        if(!roleInTeam){
+            return res.status(400).json({error: "Missing required field: roleInTeam"});
+        }
+        const updatedMembership = await TeamMembership.findByIdAndUpdate(membershipId, {roleInTeam}, {new: true});
+        if(updatedMembership === null) return res.status(400).json({error: "No team membership found with given id"});
+        return res.status(200).json({
+            success: "Team member's role updated successfully",
+            membershipDetails: updatedMembership
+        });
+    }, "ADMIN_UPDATE_TEAM_MEMBER_ROLE_ERROR"
+);

@@ -2,29 +2,37 @@ import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema(
     {
-        name: { type: String, required: true, index: true },
-
-        description: String,
-
+        name: {
+            type: String,
+            required: true,
+            index: true,
+            trim: true,
+        },
+        description: {
+            type: String,
+            trim: true,
+        },
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
             index: true
         },
-
         projectManager: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true
         },
-
-        assignedDate: { type: Date, required: true },
-
+        assignedDate: {
+            type: Date,
+            default: Date.now,
+            required: true
+        },
         dueDate: Date,
-
-        contractedBy: String,
-
+        contractedBy: {
+            type: String,
+            trim: true,
+        },
         status: {
             type: String,
             enum: ["active", "completed", "onHold"],
@@ -32,7 +40,24 @@ const projectSchema = new mongoose.Schema(
             index: true
         }
     },
-    { timestamps: true }
+    { timestamps: true, strict: true }
 );
+
+projectSchema.index(
+    { name: 1, organizationId: 1 },
+    { unique: true }
+);
+
+export const requiredProjectFields = [
+    "name",
+    "organizationId",
+    "projectManager",
+];
+
+export const optionalProjectFields = [
+    "description",
+    "dueDate",
+    "contractedBy"
+];
 
 export default mongoose.model("Project", projectSchema);
