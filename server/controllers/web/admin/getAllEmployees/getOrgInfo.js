@@ -1,17 +1,10 @@
-import User from "#models/User.js";
 import AdminOrg from "#models/Admin.Org.js";
 import Team from "#models/Team.js";
 
-const getAllEmployeesPage = asyncHandler(async (req, res) => {
-    console.log("you are in getAllEmployeesPage");
+const getOrgInfo = asyncHandler(async (req, res) => {
+    console.log("you are in getOrgInfo");
+
     const adminId = req.user;
-    const limit = 10;
-
-    const employees = await User.find()
-        .sort({ employeeId: 1 })
-        .limit(limit);
-
-    const totalRecords = await User.countDocuments();
 
     const adminOrgs = await AdminOrg.aggregate([
         {
@@ -53,15 +46,8 @@ const getAllEmployeesPage = asyncHandler(async (req, res) => {
         });
     }
 
-    res.status(200).json({
-        orgInfo,
-        records: {
-            totalPages: Math.ceil(totalRecords / limit),
-            totalRecords,
-            data: employees
-        }
-    });
+    res.status(200).json(orgInfo);
 
-}, "GET_ALL_EMPLOYEES_CONTROLLER");
+}, "GET_ORG_INFO");
 
-export default getAllEmployeesPage;
+export default getOrgInfo;
