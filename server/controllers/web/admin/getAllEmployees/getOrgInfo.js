@@ -1,7 +1,7 @@
 import AdminOrg from "#models/Admin.Org.js";
 import Team from "#models/Team.js";
 
-const getOrgInfo = asyncHandler(async (req, res) => {
+const getOrganizationInfo = asyncHandler(async (req, res) => {
     console.log("you are in getOrgInfo");
 
     const adminId = req.user;
@@ -29,7 +29,7 @@ const getOrgInfo = asyncHandler(async (req, res) => {
         }
     ]);
 
-    const orgInfo = [];
+    const organizationInfo = {};
 
     for (const org of adminOrgs) {
 
@@ -39,15 +39,14 @@ const getOrgInfo = asyncHandler(async (req, res) => {
             .sort({ teamName: 1 })
             .lean();
 
-        orgInfo.push({
+        organizationInfo["org.organizationName"]={
             organizationId: org.organizationId,
-            organizationName: org.organizationName,
-            teams: formattedTeams
-        });
+            teams
+        }
     }
 
-    res.status(200).json(orgInfo);
+    res.status(200).json(organizationInfo);
 
 }, "GET_ORG_INFO");
 
-export default getOrgInfo;
+export default getOrganizationInfo;
