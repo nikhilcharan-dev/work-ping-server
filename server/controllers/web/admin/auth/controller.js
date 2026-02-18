@@ -63,6 +63,8 @@ export const register = asyncHandler(
 export const login = asyncHandler(
     async (req, res) => {
         const { email, password } = req.body;
+        
+        
 
         if (!email || !password) {
             return res.status(400).json({ message: "Email and password required" });
@@ -72,7 +74,6 @@ export const login = asyncHandler(
         if (!account || account.role !== "admin") {
             return res.status(401).json({ message: "Admin does not exist" });
         }
-        const adminAccount = await Account.findOne({ email: admin.email })
         const isMatch = await bcrypt.compare(
             password,
             account.password
