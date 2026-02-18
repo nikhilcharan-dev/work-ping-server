@@ -39,7 +39,7 @@ const getOrganizationInfo = asyncHandler(async (req, res) => {
             .sort({ teamName: 1 })
             .lean();
 
-        organizationInfo["org.organizationName"]={
+        organizationInfo[org.organizationName]={
             organizationId: org.organizationId,
             teams
         }
