@@ -3,14 +3,18 @@ import User from "#models/User.js";
 const getAllEmployeesByPageNumber = asyncHandler(
   async (req, res) => {
 
-    let { organizationId, teamId, page = 1 } = req.query;
+    let { search, organizationId, teamId, page = 1 } = req.query;
     page = Number(page);
-
+    search=search.trim();
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const filter = {};
-
+    const filter = {
+        $or: [
+            {name: {$regex: search, $options: "i"}},
+            {email: {$regex: search, $options: "i"}}
+        ]
+    }
     if (organizationId) {
       filter.organizationId = organizationId;
     }
