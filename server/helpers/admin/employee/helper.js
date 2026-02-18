@@ -7,7 +7,7 @@ export const insertEmployees = asyncHandler(
         //     sendMail({
         //         from: `WorkPing <${process.env.MAIL_SERVICE_EMAIL}>`,
         //         to: user.email,
-        //
+        //         html: <html />
         //     })
         // }
     }, "EMPLOYEE_INSERTION_HELPER_ERROR"
