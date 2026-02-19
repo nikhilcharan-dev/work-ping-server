@@ -34,22 +34,29 @@ const addOrganization = asyncHandler( async (req,res)=>{
     return res.status(201).json(newOrganization);
 }, "ADMIN_ADD_ORG_ERROR" );
 
-const getOrganizationsOfAdmin = asyncHandler(async (req , res)=>{
+const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
+
     let { userId } = req.user;
-    let { search="" } = req.query;
-    search.trim()
     userId = new mongoose.Types.ObjectId(userId);
-    let existingAdmin = await Admin.findById(userId)
-    if(!existingAdmin) {
+
+    let existingAdmin = await Admin.findById(userId);
+    if (!existingAdmin) {
         return res.status(404).json({
-            error : "Admin Doesn't Exists"
-        })
+            error: "Admin Doesn't Exist"
+        });
     }
-    const adminOrganisations = await OrgAdmin.aggregate([
+
+    let { search = "", page = 1 } = req.query;
+
+    search = search.trim();
+    page = Number(page);
+
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const filter = [
         {
-            $match: {
-                adminId: userId
-            }
+            $match: { adminId: userId }
         },
         {
             $lookup: {
@@ -59,20 +66,46 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res)=>{
                 as: "organization"
             }
         },
-        {
-            $unwind: "$organization"
-        },
+        { $unwind: "$organization" },
         {
             $match: {
                 "organization.organizationName": {
-                    $regex: search ,
+                    $regex: search,
                     $options: "i"
                 }
             }
         }
-    ])
-    return res.status(200).json(adminOrganisations)
-}, "ADMIN_GET_ORG_ERROR" );
+    ];
+
+    const count = await OrgAdmin.aggregate([
+        ...filter,
+        { $count: "count" }
+    ]);
+
+    const totalRecords = count[0]?.count || 0;
+    const totalPages = Math.ceil(totalRecords / limit) || 1;
+
+    const adminOrganisations = await OrgAdmin.aggregate([
+        ...filter,
+        { $sort: { "organization.organizationName": 1 } },
+        { $skip: skip },
+        { $limit: limit }
+    ]);
+
+    const organizations = adminOrganisations.map(item => (
+        item.organizationId
+    ));
+
+    console.log(organizations);
+
+    return res.status(200).json({
+        totalRecords,
+        totalPages,
+        organizations
+    });
+
+}, "ADMIN_GET_ORG_ERROR");
+
 
 const updateOrganization = asyncHandler(async (req,res)=>{
     const updateOrganizationTo = req.body;
@@ -94,7 +127,7 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
-    return res.status(200).json(existingOrganization) 
+    return res.status(200).json(existingOrganization)
 });
 
 const deleteOrganization = asyncHandler(async (req,res)=>{
