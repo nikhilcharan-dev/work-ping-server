@@ -26,11 +26,11 @@ const addOrganization = asyncHandler( async (req,res)=>{
     }
     const newOrganization =  await Organisation.create(req.body);
 
-    await OrgAdmin.create({
+    let check = await OrgAdmin.create({
         organizationId : newOrganization._id,
         primaryAdmin : userId
     })
-
+    console.log(check)
     return res.status(201).json(newOrganization);
 }, "ADMIN_ADD_ORG_ERROR" );
 
@@ -56,7 +56,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
 
     const filter = [
         {
-            $match: { adminId: userId }
+            $match: { primaryAdmin: userId }
         },
         {
             $lookup: {
@@ -69,7 +69,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         { $unwind: "$organization" },
         {
             $match: {
-                "organization.organizationName": {
+                "organization.name": {
                     $regex: search,
                     $options: "i"
                 }
@@ -83,21 +83,20 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
     ]);
 
     const totalRecords = count[0]?.count || 0;
-    const totalPages = Math.ceil(totalRecords / limit) || 1;
+    const totalPages = Math.ceil(totalRecords / limit);
 
     const adminOrganisations = await OrgAdmin.aggregate([
         ...filter,
-        { $sort: { "organization.organizationName": 1 } },
+        { $sort: { "organization.name": 1 } },
         { $skip: skip },
         { $limit: limit }
     ]);
-
-    const organizations = adminOrganisations.map(item => (
-        item.organizationId
+    
+    const organizations = []
+    adminOrganisations.forEach(item => (
+        organizations.push(item.organization)
     ));
-
-    console.log(organizations);
-
+    console.log(toString(organizations))
     return res.status(200).json({
         totalRecords,
         totalPages,
@@ -146,7 +145,6 @@ const deleteOrganization = asyncHandler(async (req,res)=>{
     ).lean());
 }, "ADMIN_DELETE_ORG_ERROR");
 
-//COMPLETE GET ALL ORGANISATIONS OF AN ADMIN
 
 export {
     addOrganization,
