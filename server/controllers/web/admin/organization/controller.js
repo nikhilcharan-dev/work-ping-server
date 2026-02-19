@@ -36,6 +36,8 @@ const addOrganization = asyncHandler( async (req,res)=>{
 
 const getOrganizationsOfAdmin = asyncHandler(async (req , res)=>{
     let { userId } = req.user;
+    let { search="" } = req.query;
+    search.trim()
     userId = new mongoose.Types.ObjectId(userId);
     let existingAdmin = await Admin.findById(userId)
     if(!existingAdmin) {
@@ -43,11 +45,32 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res)=>{
             error : "Admin Doesn't Exists"
         })
     }
-    const adminOrganisations = await OrgAdmin.find({
-        primaryAdmin : userId
-    }).populate({
-        path: "organizationId",
-    })
+    const adminOrganisations = await OrgAdmin.aggregate([
+        {
+            $match: {
+                adminId: userId
+            }
+        },
+        {
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization"
+            }
+        },
+        {
+            $unwind: "$organization"
+        },
+        {
+            $match: {
+                "organization.organizationName": {
+                    $regex: search ,
+                    $options: "i"
+                }
+            }
+        }
+    ])
     return res.status(200).json(adminOrganisations)
 }, "ADMIN_GET_ORG_ERROR" );
 
