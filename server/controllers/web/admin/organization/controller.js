@@ -78,10 +78,8 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         },
         { $sort: { "organization.name": 1 } },
     ];
-    const pagination = await Pagination.call(AdminOrg,search,page,limit,filter);
-
-    const totalRecords = pagination.totalRecords
-    const totalPages = pagination.totalPages
+    
+    const pagination = await Pagination.call(AdminOrg,page,limit,filter);
 
     const adminOrganisations = pagination.documents
     
@@ -89,10 +87,12 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
     adminOrganisations.forEach(item => (
         organizations.push(item.organization)
     ));
+
     console.log(toString(organizations))
+    
     return res.status(200).json({
-        totalRecords,
-        totalPages,
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
         organizations
     });
 

@@ -1,42 +1,51 @@
 import User from "#models/User.js";
+import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
+
 const getAllEmployeesByPageNumber = asyncHandler(
   async (req, res) => {
 
-    let { search = "", organizationId, teamId, page = 1 ,limit } = req.query;
+    let { search = "", organizationId, teamId, page = 1, limit = 10 } = req.query;
 
-    let filter = []
+    search = search.trim();
+
+    let filter = [];
+
+    if (search) {
+      filter.push({
+        $match: {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } }
+          ]
+        }
+      });
+    }
 
     if (organizationId) {
-        filter.push(
-            {
-                $match : { organizationId : { $eq: { organizationId } } }
-            }
-        )
+      filter.push({
+        $match: {
+          organizationId: new mongoose.Types.ObjectId(organizationId)
+        }
+      });
     }
 
     if (teamId) {
-        filter.push(
-            {
-                $match : { teamId : { $eq: { teamId } } }
-            }
-        )
+      filter.push({
+        $match: {
+          teamId: new mongoose.Types.ObjectId(teamId)
+        }
+      });
     }
+    
 
-    console.log(filter);
-
-    const pagination = await Pagination.call(User,search ,page, limit, filter);
-
-    const totalRecords = pagination.totalRecords
-    const totalPages = pagination.totalPages
-    const employees = pagination.documents
+    const pagination = await Pagination.call(User, page, limit, filter);
 
     res.status(200).json({
-      totalPages,
-      totalRecords,
-      data: employees
+      totalPages: pagination.totalPages,
+      totalRecords: pagination.totalRecords,
+      data: pagination.documents
     });
-
   },
   "GET_ALL_EMPLOYEES_BY_PAGE_NUMBER_CONTROLLER"
 );

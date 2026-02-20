@@ -1,18 +1,19 @@
-async function pagination(search="", page=1 , limit = 10 , filter = [] ) {
-    search.trim()
+async function pagination( page=1 , limit = 10 , filter = [] ) {
     page = Number(page)
+    limit = Number(limit)
     const skip = (page - 1) * limit;
     const count = await this.aggregate([
         ...filter,
-        { $sort : 0 },
-        { $count: "count" }
+        {
+            $count: "count" 
+        }
     ]);
     const totalRecords = count[0]?.count || 0;
     const totalPages = Math.ceil(totalRecords / limit);
     const documents = await this.aggregate([
         ...filter,
-        { $limit: limit },
         { $skip: skip },
+        { $limit: limit },
     ])
 
     return {
