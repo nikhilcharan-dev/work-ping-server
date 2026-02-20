@@ -1,47 +1,39 @@
 import User from "#models/User.js";
-
+import Pagination from "#helpers/pagination.js";
 const getAllEmployeesByPageNumber = asyncHandler(
   async (req, res) => {
 
-    let { search = "", organizationId, teamId, page = 1 } = req.query;
+    let { search = "", organizationId, teamId, page = 1 ,limit } = req.query;
 
-    page = Number(page);
-    const limit = 10;
-    const skip = (page - 1) * limit;
-
-    search = search.trim(); 
-
-    const filter = {};
+    let filter = []
 
     if (organizationId) {
-      filter.organizationId = organizationId;
+        filter.push(
+            {
+                $match : { organizationId : { $eq: { organizationId } } }
+            }
+        )
     }
 
     if (teamId) {
-      filter.teamId = teamId;
-    }
-
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } }
-      ];
+        filter.push(
+            {
+                $match : { teamId : { $eq: { teamId } } }
+            }
+        )
     }
 
     console.log(filter);
 
-    const totalRecords = await User.countDocuments(filter);
+    const pagination = await Pagination.call(User,search ,page, limit, filter);
 
-    const employees = await User
-      .find(filter)
-      .sort({ employeeId: 1 })
-      .skip(skip)
-      .limit(limit);
+    const totalRecords = pagination.totalRecords
+    const totalPages = pagination.totalPages
+    const employees = pagination.documents
 
     res.status(200).json({
-      totalPages: Math.ceil(totalRecords / limit),
+      totalPages,
       totalRecords,
-      currentPage: page,
       data: employees
     });
 

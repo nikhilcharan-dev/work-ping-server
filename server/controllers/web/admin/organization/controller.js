@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Organisation from '#models/Organisation.js';
 import OrgAdmin from '#models/Admin.Org.js';
 import Admin from '#models/Admin.js'
+import Pagination from "#helpers/pagination.js";
+import AdminOrg from "#models/Admin.Org.js";
 
 const existingOrganizationOfAdminWithSameName = async (userId , organizationName)=>{
     let existingOrg = await OrgAdmin.find({
@@ -46,12 +48,11 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         });
     }
 
-    let { search = "", page = 1 } = req.query;
+    let { search = "", page = 1 ,limit = 10 } = req.query;
 
     search = search.trim();
     page = Number(page);
 
-    const limit = 10;
     const skip = (page - 1) * limit;
 
     const filter = [
@@ -74,23 +75,15 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
                     $options: "i"
                 }
             }
-        }
-    ];
-
-    const count = await OrgAdmin.aggregate([
-        ...filter,
-        { $count: "count" }
-    ]);
-
-    const totalRecords = count[0]?.count || 0;
-    const totalPages = Math.ceil(totalRecords / limit);
-
-    const adminOrganisations = await OrgAdmin.aggregate([
-        ...filter,
+        },
         { $sort: { "organization.name": 1 } },
-        { $skip: skip },
-        { $limit: limit }
-    ]);
+    ];
+    const pagination = await Pagination.call(AdminOrg,search,page,limit,filter);
+
+    const totalRecords = pagination.totalRecords
+    const totalPages = pagination.totalPages
+
+    const adminOrganisations = pagination.documents
     
     const organizations = []
     adminOrganisations.forEach(item => (
