@@ -74,6 +74,7 @@ export const login = asyncHandler(
         if (!account || account.role !== "admin") {
             return res.status(401).json({ message: "Admin does not exist" });
         }
+        const adminAccount = await Account.findOne({ email })
         const isMatch = await bcrypt.compare(
             password,
             account.password
@@ -120,7 +121,14 @@ export const logout = asyncHandler(
             httpOnly: true,
             secure: isLive,
             sameSite: isLive ? "none" : "lax",
+            path: "/"
         })
+        .status(200)
+        .json({
+            message: "Logout successful"
+        });
+
+        
     }, "ADMIN_LOGOUT_ERROR"
 )
 
