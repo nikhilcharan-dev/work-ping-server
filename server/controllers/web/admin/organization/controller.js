@@ -79,7 +79,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         { $sort: { "organization.name": 1 } },
     ];
     
-    const pagination = await Pagination.call(AdminOrg,page,limit,filter);
+    const pagination = await Pagination(AdminOrg,page,limit,filter);
 
     const adminOrganisations = pagination.documents
     

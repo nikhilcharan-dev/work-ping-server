@@ -39,7 +39,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     }
     
 
-    const pagination = await Pagination.call(User, page, limit, filter);
+    const pagination = await Pagination(User, page, limit, filter);
 
     res.status(200).json({
       totalPages: pagination.totalPages,
