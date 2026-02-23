@@ -67,6 +67,34 @@ export const getAllTeams =  asyncHandler(
     }, "ADMIN_GET_TEAMS_ERROR"
 );
 
+export const getTeamsPagination = asyncHandler(
+    async(req, res) => {
+        const {organizationId, page = 1, limit = 10, search = ""} = req.query;
+
+        const skip = (page - 1) * limit;
+
+        const filter = { organizationId };
+
+        if (search.trim()) {
+            filter.$or = [
+                { teamName: { $regex: search, $options: "i" } },
+                { leaderId: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        const totalItems = await Team.countDocuments(filter);
+        const totalPages = Math.ceil(totalItems / limit);
+
+        const teamList = await Team .find(filter)
+                                    .skip(skip)
+                                    .limit(limit)
+                                    .populate({path: "managerId", select: "employeeId"})
+                                    .populate({path: "leaderId" , select: "employeeId"});
+
+        return res.status(200).json({teamList, totalRecords: totalItems, totalPages});
+    }, "GET_TEAMS_PAGINATION_ERROR"
+)
+
 export const updateTeam = asyncHandler(
     async(req, res) => {
         const {teamId, ...updatableDetails} = req.body;

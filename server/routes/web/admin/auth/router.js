@@ -1,12 +1,10 @@
 import { Router } from 'express';
-import { register, login, logout } from "#webController/admin/auth/controller.js";
+import * as Auth from "#webController/admin/auth/controller.js";
 
 const router = Router();
 
-router.post('/register', register);
-
-router.post("/login", login);
-
-router.post("/logout", logout);
+router.post('/register', Auth.register);
+router.post("/login", Auth.login);
+router.post("/logout", Auth.logout);
 
 export default router;

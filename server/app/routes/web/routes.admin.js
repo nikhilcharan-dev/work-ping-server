@@ -4,6 +4,7 @@ import organizationRouter from "#webRoutes/admin/organization/router.js"
 import teamRoutes from "#webRoutes/admin/team/routes.js";
 import validateCookie from "#middleware/jwtBearer.js";
 import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
+import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 
 
 import projectRoutes from "#webRoutes/admin/project/router.js"
@@ -13,6 +14,9 @@ export default function adminRoutes(app) {
     app.use("/api/admin/organization", validateCookie ,organizationRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);
+
+    // Forgot Password
+    
 
     //create-team
     app.use("/api/admin/team", teamRoutes);

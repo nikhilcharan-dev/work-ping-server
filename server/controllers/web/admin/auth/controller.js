@@ -2,8 +2,12 @@ import Admin from "#models/Admin.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Account from "#models/Account.js";
+import mailClient from "#utils/axios.mail.js";
 import axios from "axios";
-import {send_email_otp} from "#webController/admin/otp/controller.js";
+import validateCookie from "#middleware/jwtBearer.js";
+
+
+
 export const register = asyncHandler(
     async (req, res) => {
         console.log(req.body);
@@ -90,12 +94,6 @@ export const login = asyncHandler(
 
         const isLive = process.env.MODE === "production";
         console.log(token)
-        // res.cookie("accessToken", token, {
-        //     httpOnly: false,
-        //     secure: isLive,
-        //     sameSite: "none",
-        //     maxAge: 1000 * 60 * 60 * 24
-        // })
 
         res.cookie("accessToken", token, {
             httpOnly: true,
@@ -128,44 +126,4 @@ export const logout = asyncHandler(
 
         
     }, "ADMIN_LOGOUT_ERROR"
-)
-
-// export const forgot_password_send_otp = asyncHandler(
-//     async (req, res) => {
-//         const {email} = req.body;
-//         const send_otp_end_point = process.env.MAIL_SERVICE_URI + "/send-email-otp";
-//         await send_otp = axios.post(send_otp_end_point, {
-//             email: email,
-//         });
-//
-//         if(send_otp.status !== "success") {
-//             return res.status(401).json({
-//                 error: "Something went wrong",
-//             })
-//         }
-//         res.status(200).json({
-//             "status": "success"
-//         })
-//     }, "FORGOT_PASSWORD_SEND_OTP_ERROR");
-//
-// export const forgot_password_verify_otp = asyncHandler(
-//     async (req, res) => {
-//         const {email, otp} = req.body;
-//         const verify_otp_end_point = process.env.MAIL_SERVICE_URI + "/verify-email-otp";
-//         await verify_otp = axios.post(verify_otp_end_point, {
-//             email: email,
-//             otp: otp
-//         });
-//
-//         if(verify_otp.status !== "success") {
-//             return res.status(401).json({
-//                 message: "Invalid OTP",
-//             })
-//         }
-//
-//         res.status(200).json({
-//             "message": "OTP Verification Successful",
-//         })
-//
-//     }
-// )
+);
