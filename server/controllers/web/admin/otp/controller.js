@@ -9,7 +9,6 @@ export const send_email_otp = asyncHandler(async(req, res) => {
             message: "Email already exists",
         })
     }
-    console.log("sending");
     await mailClient.post("/send-email-otp", {
         email: email,
     })
@@ -45,3 +44,4 @@ export const verify_phone_otp =  asyncHandler(async(req, res) => {
         status: "success",
     })
 }, "AUTH_VERIFY_PHONE_OTP_ERROR");
+

@@ -2,8 +2,12 @@ import Admin from "#models/Admin.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Account from "#models/Account.js";
+import mailClient from "#utils/axios.mail.js";
 import axios from "axios";
-import {send_email_otp} from "#webController/admin/otp/controller.js";
+import validateCookie from "#middleware/jwtBearer.js";
+
+
+
 export const register = asyncHandler(
     async (req, res) => {
         console.log(req.body);
@@ -90,12 +94,6 @@ export const login = asyncHandler(
 
         const isLive = process.env.MODE === "production";
         console.log(token)
-        // res.cookie("accessToken", token, {
-        //     httpOnly: false,
-        //     secure: isLive,
-        //     sameSite: "none",
-        //     maxAge: 1000 * 60 * 60 * 24
-        // })
 
         res.cookie("accessToken", token, {
             httpOnly: true,
