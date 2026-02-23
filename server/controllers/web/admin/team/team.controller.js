@@ -1,15 +1,19 @@
+import Organisation from "#models/Organisation.js";
 import Team from "#models/Team.js";
 import mongoose from "mongoose";
 
 export const createTeam = asyncHandler(
     async(req, res) => {
+        console.log(req.cookies);
         const {teamName, teamManagerId: managerId, description, teamLeaderId: leaderId, organizationId} = req.body;
         
-        if(!teamName || !managerId || !organizationId){
+        if(!teamName || !organizationId){
             return res.status(400).json({
                 error : "Missing required fields"
             });
         }
+
+        
 
         const teamExists = await Team.findOne({teamName, organizationId}) !== null ? true : false;
 
@@ -18,7 +22,7 @@ export const createTeam = asyncHandler(
             filledDetails: req.body
         });
         
-        const detailObject = {teamName, managerId, leaderId, organizationId}
+        const detailObject = {teamName, managerId : managerId || null, leaderId : leaderId || null, organizationId}
 
         if(description !== undefined && description !== null) detailObject.description = description;
 
@@ -37,6 +41,7 @@ export const createTeam = asyncHandler(
 export const getTeam = asyncHandler(
     async(req, res) => {
         const {teamId} = req.body;
+
 
         if(!teamId) return res.status(400).json({error: "Invalid Request : teamId required"});
         
