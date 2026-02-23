@@ -109,7 +109,7 @@ export const login = asyncHandler(
 
         return res.status(200).json({
             message: "Login Successful",
-            token: token
+            token: token,
         });
 
     }, "LOGIN_ADMIN_ERROR");

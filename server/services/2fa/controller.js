@@ -12,7 +12,8 @@ export const createController = (config) => {
     return {
         async setup(req, res) {
             try {
-                const userId = req.user ? req.user.id : req.body.userId; // adjust based on auth
+                const userId = req.user ? req.user.userId : req.body.userId; // adjust based on auth
+                console.log("ID: ", userId);
                 if (!userId) {
                     return res.status(400).json({ error: 'User ID is required' });
                 }
@@ -39,7 +40,7 @@ export const createController = (config) => {
         async verify(req, res) {
             try {
                 const { token, userId } = req.body;
-                const id = userId || (req.user ? req.user.id : null);
+                const id = userId || (req.user ? req.user.userId : null);
 
                 if (!id || !token) {
                     return res.status(400).json({ error: 'User ID and Token are required' });

@@ -7,10 +7,12 @@ import attendanceRoutes from "#webRoutes/user/attendance/router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import jwt from "jsonwebtoken";
+import Account from "#models/Account.js";
+import Admin from "#models/Admin.js";
 
 export default function centralRoutes(app) {
     // cookie verify
-    app.get("/verify-cookie", (req, res) => {
+    app.get("/verify-cookie", async (req, res) => {
 
         try {
             const cookie = req.cookies?.accessToken;
@@ -21,21 +23,21 @@ export default function centralRoutes(app) {
                 })
             }
 
-            jwt.verify(cookie, process.env.SECRET_KEY, (err, decoded) => {
+            const { userId } = jwt.decode(cookie, process.env.SECRET_KEY, (err, decoded) => {
                 if (err) {
                     return res.status(403).json({
                         error: "Unauthorized",
                     })
-                }else{
-                     return res.status(200).json({
-                        error: "authorized",
-                    })
                 }
-
-
             })
 
+            console.log(userId)
+            const user = await Admin.findById(userId)
+            const acc = await Account.findOne({ email: user.email})
+            res.status(200).json(user)
+
         } catch (err) {
+            console.log(err)
             return res.status(500).send({
                 error: "Internal Server Error",
             })
