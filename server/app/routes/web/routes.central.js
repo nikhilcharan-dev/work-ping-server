@@ -4,6 +4,7 @@ import googleServicesRoutes from "../../../services/google/google.signin.js"
 import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js"
 
 import attendanceRoutes from "#webRoutes/user/attendance/router.js";
+import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import jwt from "jsonwebtoken";
@@ -46,6 +47,8 @@ export default function centralRoutes(app) {
 
     // Verification
     app.use("/api/otp", otpRoutes);
+
+    app.use("/api/admin/forgot-password", forgotPasswordRouter);
 
     // Google SignIn
     app.use("/auth/google", googleServicesRoutes)

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Organisation from '#models/Organisation.js';
+import Organization from '#models/Organization.js';
 import OrgAdmin from '#models/Admin.Org.js';
 import Admin from '#models/Admin.js'
 import Pagination from "#helpers/pagination.js";
@@ -26,7 +26,7 @@ const addOrganization = asyncHandler( async (req,res)=>{
     if(adminOrganisationsWithSameName.length) {
         return res.status(409).json({ "error" : "Organization already exits" });
     }
-    const newOrganization =  await Organisation.create(req.body);
+    const newOrganization =  await Organization.create(req.body);
 
     let check = await OrgAdmin.create({
         organizationId : newOrganization._id,
@@ -101,11 +101,11 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
 
 const updateOrganization = asyncHandler(async (req,res)=>{
     const updateOrganizationTo = req.body;
-    let existingOrganization = await Organisation.findById(updateOrganizationTo._id);
+    let existingOrganization = await Organization.findById(updateOrganizationTo._id);
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
-    return res.status(200).json( await Organisation.findByIdAndUpdate(
+    return res.status(200).json( await Organization.findByIdAndUpdate(
         updateOrganizationTo._id,
         updateOrganizationTo,
         {new : true}
@@ -115,7 +115,7 @@ const updateOrganization = asyncHandler(async (req,res)=>{
 const getOrganizationById = asyncHandler( async (req,res)=>{
     let { organizationId } = req.body;
     organizationId = new mongoose.Types.ObjectId(organizationId)
-    let existingOrganization = await Organisation.findById(organizationId);
+    let existingOrganization = await Organization.findById(organizationId);
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
@@ -125,7 +125,7 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
 const deleteOrganization = asyncHandler(async (req,res)=>{
     let { organizationId , passKey } = req.body;
     organizationId = new mongoose.Types.ObjectId(organizationId)
-    let existingOrganization = await Organisation.findById(organizationId);
+    let existingOrganization = await Organization.findById(organizationId);
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
@@ -133,10 +133,24 @@ const deleteOrganization = asyncHandler(async (req,res)=>{
         return res.status(401).json({error : "Incorrect Passkey"});
     }
     await OrgAdmin.findOneAndDelete({organizationId: organizationId});
-    return res.status(200).json(await Organisation.findByIdAndDelete(
+    return res.status(200).json(await Organization.findByIdAndDelete(
         organizationId
     ).lean());
 }, "ADMIN_DELETE_ORG_ERROR");
+
+const getOrganizationIDsOfAdmin = asyncHandler(async (req,res)=>{
+    let { userId } = req.user;
+    userId = new mongoose.Types.ObjectId(userId);
+    let existingAdmin = await Admin.findById(userId);
+    if (!existingAdmin) {
+        return res.status(404).json({
+            error: "Admin Doesn't Exist"
+        });
+    }
+    let organizationIds = await OrgAdmin.find({primaryAdmin : userId}).populate({path: "organizationId", select: "_id name"}).lean();
+    organizationIds = organizationIds.map(doc => ({organizationId: doc.organizationId._id, name: doc.organizationId.name}));
+    return res.status(200).json(organizationIds);
+}, "ADMIN_GET_ORG_IDS_ERROR");
 
 
 export {
@@ -144,5 +158,6 @@ export {
     updateOrganization,
     getOrganizationById,
     getOrganizationsOfAdmin,
-    deleteOrganization
+    deleteOrganization,
+    getOrganizationIDsOfAdmin
 }

@@ -1,6 +1,8 @@
-import Organisation from "#models/Organisation.js";
+import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
+import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
+import pagination from "#helpers/pagination.js";
 
 export const createTeam = asyncHandler(
     async(req, res) => {
@@ -66,6 +68,48 @@ export const getAllTeams =  asyncHandler(
 
     }, "ADMIN_GET_TEAMS_ERROR"
 );
+
+export const getTeamsPagination = asyncHandler(
+    async(req, res) => {
+        const {organizationId, page = 1, limit = 10, search = ""} = req.query;
+
+        const adminId = req.userId;
+
+        const thefilter = [];
+
+        const orgList = []
+        
+        if(organizationId){
+            
+            orgList.push(new mongoose.Types.ObjectId(organizationId));
+                
+        
+        } else {
+            const orgs = await AdminOrg.find({adminId}).select("organizationId");
+            orgList.push(...orgs.map(org => org.organizationId));
+        }
+
+        thefilter.push({
+            $match: {
+                organizationId: { $in: orgList.map(org => org) }
+            }
+        })
+
+        if(search.trim() !== "") {
+            thefilter.push({
+                $match: {
+                    teamName: { $regex: search.trim(), $options: "i" }
+                }
+            })
+        }
+
+        console.log("checkpoint", thefilter)
+
+        const results = await pagination(Team, page, limit, thefilter)
+
+        return res.status(200).json({teamList: results.documents, totalRecords: results.totalRecords, totalPages: results.totalPages});
+    }, "GET_TEAMS_PAGINATION_ERROR"
+)
 
 export const updateTeam = asyncHandler(
     async(req, res) => {

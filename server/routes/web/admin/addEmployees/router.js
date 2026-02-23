@@ -9,5 +9,3 @@ router.post("/by-form", insertByForm);
 router.post("/by-excel", uploadExcel.single('file') ,insertByExcel);
 
 export default router;
-
-
