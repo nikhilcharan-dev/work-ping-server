@@ -9,7 +9,8 @@ export default function twoFactorRoutes(app) {
         // Save secret in Account model
         saveSecret: async (userId, secret) => {
             await Account.findByIdAndUpdate(userId, {
-                twoFactorSecret: secret
+                twoFactorSecret: secret,
+                twoFactorEnabled: true,
             });
         },
 

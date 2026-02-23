@@ -40,7 +40,8 @@ const accountSchema = new mongoose.Schema({
     },
 
     twoFactorSecret: {
-        type: String
+        type: String,
+        default: ""
     },
 
 }, { timestamps: true });

@@ -19,7 +19,7 @@ export const createController = (config) => {
                 }
 
                 const secret = speakeasy.generateSecret({
-                    name: `${appName} (${userId})`
+                    name: `${appName}: Administrator`,
                 });
 
                 const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);

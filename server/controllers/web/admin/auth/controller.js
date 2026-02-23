@@ -32,6 +32,7 @@ export const register = asyncHandler(
             password: hashedPassword,
             email: user.email,
             role: "admin",
+            twoFactorEnabled: false,
         });
         const token = jwt.sign(
             { userId: user._id },
