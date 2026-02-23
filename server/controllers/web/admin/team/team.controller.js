@@ -1,4 +1,4 @@
-import Organisation from "#models/Organisation.js";
+import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
@@ -77,11 +77,21 @@ export const getTeamsPagination = asyncHandler(
 
         const thefilter = [];
 
-        const orgList = await AdminOrg.find({adminId}).select("organizationId");
+        const orgList = []
+        
+        if(organizationId){
+            
+            orgList.push(new mongoose.Types.ObjectId(organizationId));
+                
+        
+        } else {
+            const orgs = await AdminOrg.find({adminId}).select("organizationId");
+            orgList.push(...orgs.map(org => org.organizationId));
+        }
 
         thefilter.push({
             $match: {
-                organizationId: { $in: orgList.map(org => org.organizationId) }
+                organizationId: { $in: orgList.map(org => org) }
             }
         })
 
@@ -93,13 +103,7 @@ export const getTeamsPagination = asyncHandler(
             })
         }
 
-        if(organizationId){
-            thefilter.push({
-                $match: {
-                    organizationId: new mongoose.Types.ObjectId(organizationId)
-                }
-            })
-        }
+        console.log("checkpoint", thefilter)
 
         const results = await pagination(Team, page, limit, thefilter)
 

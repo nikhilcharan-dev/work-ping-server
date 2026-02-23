@@ -14,7 +14,6 @@ const allowedOrigins = [
     "https://www.workping.live",
     "https://phonepe.workping.live",
     "https://whatsapp.workping.live",
-    "https://super-guide-5gq6jvjx7v7vf7jg9-5173.app.github.dev",
     process.env.CLIENT_URL,
 ];
 
