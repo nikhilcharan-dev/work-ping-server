@@ -1,6 +1,8 @@
 import Organisation from "#models/Organisation.js";
 import Team from "#models/Team.js";
+import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
+import pagination from "#helpers/pagination.js";
 
 export const createTeam = asyncHandler(
     async(req, res) => {
@@ -71,27 +73,37 @@ export const getTeamsPagination = asyncHandler(
     async(req, res) => {
         const {organizationId, page = 1, limit = 10, search = ""} = req.query;
 
-        const skip = (page - 1) * limit;
+        const adminId = req.userId;
 
-        const filter = { organizationId };
+        const thefilter = [];
 
-        if (search.trim()) {
-            filter.$or = [
-                { teamName: { $regex: search, $options: "i" } },
-                { leaderId: { $regex: search, $options: "i" } }
-            ];
+        const orgList = await AdminOrg.find({adminId}).select("organizationId");
+
+        thefilter.push({
+            $match: {
+                organizationId: { $in: orgList.map(org => org.organizationId) }
+            }
+        })
+
+        if(search.trim() !== "") {
+            thefilter.push({
+                $match: {
+                    teamName: { $regex: search.trim(), $options: "i" }
+                }
+            })
         }
 
-        const totalItems = await Team.countDocuments(filter);
-        const totalPages = Math.ceil(totalItems / limit);
+        if(organizationId){
+            thefilter.push({
+                $match: {
+                    organizationId: new mongoose.Types.ObjectId(organizationId)
+                }
+            })
+        }
 
-        const teamList = await Team .find(filter)
-                                    .skip(skip)
-                                    .limit(limit)
-                                    .populate({path: "managerId", select: "employeeId"})
-                                    .populate({path: "leaderId" , select: "employeeId"});
+        const results = await pagination(Team, page, limit, thefilter)
 
-        return res.status(200).json({teamList, totalRecords: totalItems, totalPages});
+        return res.status(200).json({teamList: results.documents, totalRecords: results.totalRecords, totalPages: results.totalPages});
     }, "GET_TEAMS_PAGINATION_ERROR"
 )
 
