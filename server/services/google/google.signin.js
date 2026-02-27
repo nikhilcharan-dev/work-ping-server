@@ -3,14 +3,14 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import Account from "#models/Account.js";
 import Admin from "#models/Admin.js";
+import User from "#models/User.js";
 
 const router = Router();
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI =  process.env.GOOGLE_REDIRECT_URI;
-
-const DEFAULT_PASSWORD = process.env.USER_DEFAULT_PASSWORD;
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 const SCOPE = [
     "https://www.googleapis.com/auth/userinfo.profile",
@@ -24,6 +24,10 @@ router.get('/start', (req, res) => {
 
 router.get("/callback", async (req, res) => {
     const { code } = req.query;
+
+    if (!code) {
+        return res.status(400).send("Authorization code missing");
+    }
 
     try {
         // Exchange code for tokens
@@ -68,8 +72,10 @@ router.get("/callback", async (req, res) => {
         // Check if account exists
         let account = await Account.findOne({ email });
 
+        let profileId;
+
         if (!account) {
-            // SIGN UP
+            // SIGN UP — admin only for new OAuth registrations
             account = await Account.create({
                 email,
                 emailVerified: true,
@@ -82,14 +88,16 @@ router.get("/callback", async (req, res) => {
                 }
             });
 
-            await Admin.create({
+            const admin = await Admin.create({
                 name,
                 email,
+                emailVerified: true,
                 profileImageUrl: picture
-            })
+            });
 
+            profileId = admin._id;
         } else {
-            // SIGN IN
+            // SIGN IN — link provider if not already linked
             if (!account.providers.google?.linked) {
                 account.providers.google = {
                     id: googleId,
@@ -97,26 +105,49 @@ router.get("/callback", async (req, res) => {
                 };
                 await account.save();
             }
+
+            // Look up the correct profile based on role
+            if (account.role === "admin") {
+                const admin = await Admin.findOne({ email });
+                profileId = admin?._id;
+            } else {
+                const user = await User.findOne({ email });
+                profileId = user?._id;
+            }
+
+            if (!profileId) {
+                return res.status(404).send("Profile not found for this account");
+            }
         }
 
-        // Issue YOUR JWT
+        // Issue JWT with same payload structure as normal auth
         const token = jwt.sign(
-            {
-                accountId: account._id,
-                role: account.role
-            },
+            { userId: profileId },
             process.env.SECRET_KEY,
-            { expiresIn: "7d" }
+            { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
         );
 
+        // Set httpOnly cookie (same as normal login)
+        const isLive = process.env.MODE === "production";
 
-        // Send back to frontend
+        res.cookie("accessToken", token, {
+            httpOnly: true,
+            secure: isLive,
+            sameSite: isLive ? "none" : "lax",
+            maxAge: 1000 * 60 * 60 * 24
+        });
+
+        // Send back to frontend via postMessage
+        const safeToken = JSON.stringify(token);
+        const targetOrigin = JSON.stringify(CLIENT_URL);
         res.status(200).send(`
             <script>
-                window.opener.postMessage({
-                    token: "${token}",
-                    message: "oauth_success"
-                }, '*');
+                if (window.opener) {
+                    window.opener.postMessage({
+                        token: ${safeToken},
+                        message: "oauth_success"
+                    }, ${targetOrigin});
+                }
                 window.close();
             </script>
         `);

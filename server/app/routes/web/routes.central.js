@@ -8,16 +8,15 @@ import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import jwt from "jsonwebtoken";
-import Account from "#models/Account.js";
 import Admin from "#models/Admin.js";
+import User from "#models/User.js";
 
 export default function centralRoutes(app) {
-    // cookie verify
+    // cookie verify — works for both admin and user roles
     app.get("/verify-cookie", async (req, res) => {
 
         try {
             const cookie = req.cookies?.accessToken;
-            console.log(cookie);
             if (!cookie) {
                 return res.status(403).json({
                     error: "Unauthorized",
@@ -34,12 +33,20 @@ export default function centralRoutes(app) {
             }
             const { userId } = decoded;
 
-            console.log(userId)
-            const user = await Admin.findById(userId)
-            if (!user) {
+            // Try Admin first, then User
+            let profile = await Admin.findById(userId);
+            let role = "admin";
+
+            if (!profile) {
+                profile = await User.findById(userId);
+                role = "user";
+            }
+
+            if (!profile) {
                 return res.status(404).json({ error: "User not found" });
             }
-            res.status(200).json(user)
+
+            res.status(200).json({ ...profile.toObject(), role })
 
         } catch (err) {
             console.log(err)
@@ -62,6 +69,4 @@ export default function centralRoutes(app) {
 
     // Attendance
     app.use("/api/attendance", validateCookie, attendanceRoutes);
-
-    // app.use("/api/profile", validateCookie, profileRoutes);
 }

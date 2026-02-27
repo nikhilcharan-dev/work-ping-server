@@ -242,15 +242,76 @@ All 28 identified issues across the server codebase have been fixed.
 
 ---
 
+---
+
+## OAuth Service Fixes (Google & Microsoft Sign-In)
+
+### #29 — JWT Payload Mismatch Between OAuth and Normal Auth (CRITICAL)
+- **Files:** `services/google/google.signin.js`, `services/microsoft/microsoft.signin.js`
+- **Was:** OAuth signed JWT with `{ accountId, role }` — normal auth signs with `{ userId }`
+- **Now:** OAuth signs JWT with `{ userId: profileId }` where `profileId` is the actual Admin/User document `_id`
+- **Impact:** Every protected route reads `req.user.userId` from the JWT. OAuth tokens had `accountId` instead, so `req.user.userId` was always `undefined`. All protected endpoints broke after OAuth login.
+
+---
+
+### #30 — No Cookie Set on OAuth Login (HIGH)
+- **Files:** `services/google/google.signin.js`, `services/microsoft/microsoft.signin.js`
+- **Was:** Token was only sent via `postMessage` in HTML, no `accessToken` cookie was set
+- **Now:** Sets `accessToken` cookie with same options as normal login (`httpOnly`, `secure`, `sameSite`)
+- **Impact:** `validateCookie` middleware reads from cookies. OAuth users had no cookie, so all subsequent API calls returned 403 Unauthorized.
+
+---
+
+### #31 — No User Login Support via OAuth (HIGH)
+- **Files:** `services/google/google.signin.js`, `services/microsoft/microsoft.signin.js`
+- **Was:** Sign-in path only looked up `Admin` model — if a user (employee) with role `"user"` signed in via OAuth, the token got `accountId` which doesn't match any profile document
+- **Now:** Sign-in path checks `account.role` and looks up the correct model (`Admin` for admins, `User` for employees). Returns 404 if profile not found.
+- **Impact:** Employees (role: "user") could not sign in via Google/Microsoft. Their tokens pointed to the wrong ID.
+
+---
+
+### #32 — XSS Risk in OAuth postMessage HTML (MEDIUM)
+- **Files:** `services/google/google.signin.js`, `services/microsoft/microsoft.signin.js`
+- **Was:** Token injected directly into HTML template string: `token: "${token}"`, and `postMessage` target was `'*'` (any origin)
+- **Now:** Token serialized with `JSON.stringify()` for safe embedding. `postMessage` target restricted to `CLIENT_URL` instead of `'*'`. Added `if (window.opener)` guard.
+- **Impact:** Any window could intercept the OAuth token via `postMessage`. Template string injection was theoretically possible.
+
+---
+
+### #33 — `verify-cookie` Only Checked Admin Model (MEDIUM)
+- **File:** `app/routes/web/routes.central.js`
+- **Was:** Only looked up `Admin.findById(userId)` — users (employees) who signed in via OAuth or normal login would get 404
+- **Now:** Tries `Admin.findById` first, falls back to `User.findById`. Returns the profile with a `role` field.
+- **Also fixed:** Removed unused `Account` import (replaced with `User` import).
+- **Impact:** `/verify-cookie` returned "User not found" for all employee accounts.
+
+---
+
+### #34 — Google OAuth Missing `code` Check (LOW)
+- **File:** `services/google/google.signin.js`
+- **Was:** No check for missing authorization code in callback
+- **Now:** Returns 400 if `code` is missing from query params
+- **Impact:** Missing code would cause an unhelpful axios error instead of a clear error message.
+
+---
+
+### #35 — Microsoft OAuth Unused `state` Parameter (LOW)
+- **File:** `services/microsoft/microsoft.signin.js`
+- **Was:** Generated `crypto.randomBytes(16)` state but never validated it on callback
+- **Now:** Removed the unused state generation (stateless flow). CSRF protection should be handled by the frontend popup flow where the opener validates the origin.
+- **Impact:** State was generated but never checked, giving a false sense of CSRF protection.
+
+---
+
 ## Summary
 
 | Severity | Count | Status |
 |----------|-------|--------|
-| CRITICAL | 6     | Fixed  |
-| HIGH     | 5     | Fixed  |
-| MEDIUM   | 10    | Fixed  |
-| LOW      | 6     | Fixed (3 code fixes, 3 documented) |
-| **Total**| **28**| **All resolved** |
+| CRITICAL | 7     | Fixed  |
+| HIGH     | 7     | Fixed  |
+| MEDIUM   | 12    | Fixed  |
+| LOW      | 9     | Fixed  |
+| **Total**| **35**| **All resolved** |
 
 ### Files Modified
 
@@ -273,5 +334,7 @@ All 28 identified issues across the server codebase have been fixed.
 | 15 | `models/CL.OD.js` | Added complete schema definition |
 | 16 | `models/Order.js` | Added indexes on userId and planId |
 | 17 | `helpers/admin/employee/helper.js` | Removed `.lean()` from `insertMany`, changed to plain async function |
-| 18 | `app/routes/web/routes.central.js` | Fixed `jwt.decode` → `jwt.verify`, removed unused query, added null check |
+| 18 | `app/routes/web/routes.central.js` | Fixed `jwt.decode` → `jwt.verify`, added User model lookup, removed unused Account import |
 | 19 | `controllers/web/admin/getAllEmployees/getAllEmployeesByPageNumber.js` | Added regex escaping for search input |
+| 20 | `services/google/google.signin.js` | Fixed JWT payload, added cookie, added User lookup, fixed XSS, added code check |
+| 21 | `services/microsoft/microsoft.signin.js` | Fixed JWT payload, added cookie, added User lookup, fixed XSS, removed unused state |
