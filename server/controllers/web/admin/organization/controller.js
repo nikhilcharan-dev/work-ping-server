@@ -20,6 +20,9 @@ const existingOrganizationOfAdminWithSameName = async (userId , organizationName
 const addOrganization = asyncHandler( async (req,res)=>{
     console.log("entered")
     let { name } = req.body;
+    if (!name) {
+        return res.status(400).json({ error: "Organization name is required" });
+    }
     let { userId } =  req.user;
     userId = new mongoose.Types.ObjectId(userId);
     let adminOrganisationsWithSameName =await existingOrganizationOfAdminWithSameName(userId,name)
@@ -71,7 +74,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         {
             $match: {
                 "organization.name": {
-                    $regex: search,
+                    $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
                     $options: "i"
                 }
             }
@@ -88,7 +91,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         organizations.push(item.organization)
     ));
 
-    console.log(toString(organizations))
+    console.log(JSON.stringify(organizations))
     
     return res.status(200).json({
         totalRecords: pagination.totalRecords,
@@ -120,7 +123,7 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
     return res.status(200).json(existingOrganization)
-});
+}, "ADMIN_GET_ORG_BY_ID_ERROR");
 
 const deleteOrganization = asyncHandler(async (req,res)=>{
     let { organizationId , passKey } = req.body;
@@ -129,7 +132,7 @@ const deleteOrganization = asyncHandler(async (req,res)=>{
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
-    if(passKey != existingOrganization.passKey) {
+    if(passKey !== existingOrganization.passKey) {
         return res.status(401).json({error : "Incorrect Passkey"});
     }
     await OrgAdmin.findOneAndDelete({organizationId: organizationId});

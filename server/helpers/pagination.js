@@ -1,6 +1,6 @@
 const pagination = async ( MODEL, page=1 , limit = 10 , filter = [] )=>{
-    page = Number(page)
-    limit = Number(limit)
+    page = Math.max(1, Number(page) || 1);
+    limit = Math.max(1, Number(limit) || 10);
     const skip = (page - 1) * limit;
 
     try{

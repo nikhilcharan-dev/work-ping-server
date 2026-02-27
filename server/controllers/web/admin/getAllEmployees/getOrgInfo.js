@@ -1,14 +1,15 @@
 import AdminOrg from "#models/Admin.Org.js";
 import Team from "#models/Team.js";
+import mongoose from "mongoose";
 
 const getOrganizationInfo = asyncHandler(async (req, res) => {
     console.log("you are in getOrgInfo");
 
-    const adminId = req.user;
+    const adminId = new mongoose.Types.ObjectId(req.user.userId);
 
     const adminOrgs = await AdminOrg.aggregate([
         {
-            $match: { adminId: adminId }
+            $match: { primaryAdmin: adminId }
         },
         {
             $lookup: {
@@ -47,6 +48,6 @@ const getOrganizationInfo = asyncHandler(async (req, res) => {
 
     res.status(200).json(organizationInfo);
 
-}, "GET_ORG_INFO");
+}, "ADMIN_GET_ORG_INFO_ERROR");
 
 export default getOrganizationInfo;

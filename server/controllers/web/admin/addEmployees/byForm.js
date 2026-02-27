@@ -47,10 +47,14 @@ const insertByFrom = asyncHandler(
 
         const form_data = {...mandatory_form_data, ...filtered_optional_fields};
 
-        insertEmployees([form_data]);
+        await insertEmployees([form_data]);
 
         console.log("Check4");
 
+        return res.status(201).json({
+            message: "Employee added successfully",
+            employeeData: form_data
+        });
 
     } ,  "INSERT_BY_FORM_ERROR"
 );

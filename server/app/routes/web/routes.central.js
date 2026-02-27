@@ -24,17 +24,21 @@ export default function centralRoutes(app) {
                 })
             }
 
-            const { userId } = jwt.decode(cookie, process.env.SECRET_KEY, (err, decoded) => {
-                if (err) {
-                    return res.status(403).json({
-                        error: "Unauthorized",
-                    })
-                }
-            })
+            let decoded;
+            try {
+                decoded = jwt.verify(cookie, process.env.SECRET_KEY);
+            } catch (jwtErr) {
+                return res.status(403).json({
+                    error: "Unauthorized",
+                })
+            }
+            const { userId } = decoded;
 
             console.log(userId)
             const user = await Admin.findById(userId)
-            const acc = await Account.findOne({ email: user.email})
+            if (!user) {
+                return res.status(404).json({ error: "User not found" });
+            }
             res.status(200).json(user)
 
         } catch (err) {

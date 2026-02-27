@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import Account from "#models/Account.js";
 import mailClient from "#utils/axios.mail.js";
 import axios from "axios";
-import validateCookie from "#middleware/jwtBearer.js";
 
 
 

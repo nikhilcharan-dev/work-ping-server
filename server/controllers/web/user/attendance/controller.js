@@ -2,7 +2,7 @@ import axios from "axios";
 import FormData from "form-data";
 
 export const verify_mark_attendance =  asyncHandler(async(req, res) => {
-    const userId = req.user.id;
+    const userId = req.user.userId;
         const frames = req.files;
 
         if (!frames || frames.length < 2) {
@@ -25,7 +25,7 @@ export const verify_mark_attendance =  asyncHandler(async(req, res) => {
         formData.append("user_id", userId);
 
         const flaskRes = await axios.post(
-            "http://127.0.0.1:5000/verify-attendance",
+            (process.env.FLASK_SERVICE_URI || "http://127.0.0.1:5000") + "/verify-attendance",
             formData,
             {
                 headers: formData.getHeaders(),

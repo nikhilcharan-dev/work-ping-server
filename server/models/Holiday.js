@@ -25,4 +25,4 @@ holidayInfoSchema.index(
     { unique: true }
 );
 
-export default mongoose.model("DayInfo", holidayInfoSchema);
+export default mongoose.model("Holiday", holidayInfoSchema);
