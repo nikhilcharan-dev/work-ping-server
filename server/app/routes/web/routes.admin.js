@@ -21,7 +21,7 @@ export default function adminRoutes(app) {
     
 
     //create-team
-    app.use("/api/admin/get-all-employees", getAllEmployeesRouter);
+    app.use("/api/admin/get-all-employees", validateCookie, getAllEmployeesRouter);
     app.use("/api/admin/team", teamRoutes);
     app.use("/api/admin/add-employees", addEmployeesRouter );
 
