@@ -22,10 +22,10 @@ export default function adminRoutes(app) {
 
     //create-team
     app.use("/api/admin/get-all-employees", validateCookie, getAllEmployeesRouter);
-    app.use("/api/admin/team", teamRoutes);
-    app.use("/api/admin/add-employees", addEmployeesRouter );
+    app.use("/api/admin/team", validateCookie, teamRoutes);
+    app.use("/api/admin/add-employees", validateCookie, addEmployeesRouter );
 
     // Project
-    app.use("/api/project", projectRoutes);
+    app.use("/api/project", validateCookie, projectRoutes);
 
 }
