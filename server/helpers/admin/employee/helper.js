@@ -1,14 +1,12 @@
 import User from "#models/User.js";
 
-export const insertEmployees = asyncHandler(
-    async(data) => {
-        await User.insertMany(data).lean();
-        // for(const user in data) {
-        //     sendMail({
-        //         from: `WorkPing <${process.env.MAIL_SERVICE_EMAIL}>`,
-        //         to: user.email,
-        //         html: <html />
-        //     })
-        // }
-    }, "EMPLOYEE_INSERTION_HELPER_ERROR"
-);
+export const insertEmployees = async (data) => {
+    await User.insertMany(data);
+    // for(const user of data) {
+    //     sendMail({
+    //         from: `WorkPing <${process.env.MAIL_SERVICE_EMAIL}>`,
+    //         to: user.email,
+    //         html: <html />
+    //     })
+    // }
+};

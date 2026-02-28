@@ -1,14 +1,13 @@
-
 import mongoose from "mongoose"
 
 const projectTeamSchema = new mongoose.Schema({
-    team_name : { type : String , required : true } ,
-    project_id : { type : mongoose.Schema.Types.ObjectId , ref: "Project" },
-    organization_id : { type : mongoose.Schema.Types.ObjectId, ref: "Organization" } ,
-    team_manager_id : { type : mongoose.Schema.Types.ObjectId, ref: "User" } ,
+    teamName : { type : String , required : true } ,
+    projectId : { type : mongoose.Schema.Types.ObjectId , ref: "Project" },
+    organizationId : { type : mongoose.Schema.Types.ObjectId, ref: "Organization" } ,
+    teamManagerId : { type : mongoose.Schema.Types.ObjectId, ref: "User" } ,
     description : { type : String },
-    team_leader_id : { type : mongoose.Schema.Types.ObjectId, ref: "User" },
+    teamLeaderId : { type : mongoose.Schema.Types.ObjectId, ref: "User" },
     users : [{ type : mongoose.Schema.Types.ObjectId , ref: "User"} ]
-}); 
+}, { timestamps: true });
 
 export default mongoose.model("ProjectTeam", projectTeamSchema);

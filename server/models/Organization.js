@@ -14,6 +14,8 @@ const organizationSchema = new mongoose.Schema(
 
         foundedAt: { type: Date },
 
+        passKey: { type: String },
+
     },
     { timestamps: true }
 );

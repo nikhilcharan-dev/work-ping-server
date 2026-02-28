@@ -1,19 +1,21 @@
-import Organisation from "#models/Organisation.js";
+import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
+import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
+import pagination from "#helpers/pagination.js";
 
 export const createTeam = asyncHandler(
     async(req, res) => {
         console.log(req.cookies);
-        const {teamName, teamManagerId: managerId, description, teamLeaderId: leaderId, organizationId} = req.body;
-        
+        const {teamName, teamManagerId: managerId, description, teamLeaderIds: leaderIds, organizationId} = req.body;
+
         if(!teamName || !organizationId){
             return res.status(400).json({
                 error : "Missing required fields"
             });
         }
 
-        
+
 
         const teamExists = await Team.findOne({teamName, organizationId}) !== null ? true : false;
 
@@ -21,8 +23,8 @@ export const createTeam = asyncHandler(
             error: "teamName already in use",
             filledDetails: req.body
         });
-        
-        const detailObject = {teamName, managerId : managerId || null, leaderId : leaderId || null, organizationId}
+
+        const detailObject = {teamName, managerId : managerId || null, leaderIds : leaderIds || [], organizationId}
 
         if(description !== undefined && description !== null) detailObject.description = description;
 
@@ -44,14 +46,14 @@ export const getTeam = asyncHandler(
 
 
         if(!teamId) return res.status(400).json({error: "Invalid Request : teamId required"});
-        
-        const finder = await Team.findById(teamId).populate({path: "managerId", select: "name email"}).populate({path: "leaderId" , select: "name email"});
 
-        if(finder === null) return res.status(400).json({error: "Team does not exist with given id"}); 
+        const finder = await Team.findById(teamId).populate({path: "managerId", select: "name email"}).populate({path: "leaderIds" , select: "name email"});
+
+        if(finder === null) return res.status(400).json({error: "Team does not exist with given id"});
 
         return res.status(200).json(finder);
-        
-    }
+
+    }, "ADMIN_GET_TEAM_ERROR"
 );
 
 export const getAllTeams =  asyncHandler(
@@ -59,13 +61,55 @@ export const getAllTeams =  asyncHandler(
         const {organizationId} = req.body;
 
         if(!organizationId) return res.status(400).json({error: "Invalid Request : organizationId required"})
-        
-        const teamList = await Team.find({organizationId: organizationId}).populate({path: "managerId", select: "name email"}).populate({path: "leaderId" , select: "name email"});
+
+        const teamList = await Team.find({organizationId: organizationId}).populate({path: "managerId", select: "name email"}).populate({path: "leaderIds" , select: "name email"});
 
         return res.status(200).json(teamList);
 
     }, "ADMIN_GET_TEAMS_ERROR"
 );
+
+export const getTeamsPagination = asyncHandler(
+    async(req, res) => {
+        const {organizationId, page = 1, limit = 10, search = ""} = req.query;
+
+        const adminId = req.user.userId;
+
+        const thefilter = [];
+
+        const orgList = []
+
+        if(organizationId){
+
+            orgList.push(new mongoose.Types.ObjectId(organizationId));
+
+
+        } else {
+            const orgs = await AdminOrg.find({primaryAdmin: adminId}).select("organizationId");
+            orgList.push(...orgs.map(org => org.organizationId));
+        }
+
+        thefilter.push({
+            $match: {
+                organizationId: { $in: orgList.map(org => org) }
+            }
+        })
+
+        if(search.trim() !== "") {
+            thefilter.push({
+                $match: {
+                    teamName: { $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: "i" }
+                }
+            })
+        }
+
+        console.log("checkpoint", thefilter)
+
+        const results = await pagination(Team, page, limit, thefilter)
+
+        return res.status(200).json({teamList: results.documents, totalRecords: results.totalRecords, totalPages: results.totalPages});
+    }, "GET_TEAMS_PAGINATION_ERROR"
+)
 
 export const updateTeam = asyncHandler(
     async(req, res) => {
@@ -77,7 +121,7 @@ export const updateTeam = asyncHandler(
         const updater = await Team.findByIdAndUpdate(teamId ,updatableDetails, { new: true, runValidators: true });
 
         return res.status(200).json({success: "Team Details updated.", updatedDetails: updater})
-                
+
     }, "ADMIN_UPDATE_TEAM_ERROR"
 )
 
@@ -96,4 +140,3 @@ export const deleteTeam = asyncHandler(
 
     }, "ADMIN_DELETE_TEAM_ERROR"
 )
-

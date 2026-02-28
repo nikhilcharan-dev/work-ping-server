@@ -1,12 +1,27 @@
 import { insertEmployees } from "#adminHelper/employee/helper.js";
 import bcrypt from "bcrypt";
+import {pick} from "#helpers/data.reducer.js";
 
 const insertByFrom = asyncHandler(
     async(req, res) => {
-        const {userName : name, email, phone, userId: employeeId, gender, organizationId, role} = req.body; // mandatory fields
-        const {dob, address, doj: dateOfJoining, teamId, roleInTeam, isActive, aadhaar: aadhaarId, pan: panId} = req.body; // optional fields
-        const user_form_data = {name, email, phone, employeeId, gender, organizationId, role};
-        const optional_form_data = {dob, address, dateOfJoining, teamId, roleInTeam, isActive};
+
+        
+        const {userName : name, email, phone, userId: employeeId, organizationId, doj: dateOfJoining} = req.body; // mandatory fields
+        const {gender, salary, dob, address, teamId, roleInTeam, isActive} = req.body; // optional fields
+
+
+
+        const user_form_data = {name, email, phone, employeeId, organizationId, dateOfJoining};
+        const optional_form_data = {gender, salary, dob, address, teamId, roleInTeam, isActive};
+
+        const toemp = {
+            "userName": "athi***gaku",
+            "email" : "123@gmail.com",
+            "phone": "7777777777",
+            "userId": "1234",
+            "organizationId": "64a1f0c9e8bfae5d6c3b2a1f",
+            "dateOfJoining": "2023-06-01",
+        }
 
         const password = process.env.USER_DEFAULT_PASSWORD;
         const mandatory_form_data = {
@@ -32,10 +47,14 @@ const insertByFrom = asyncHandler(
 
         const form_data = {...mandatory_form_data, ...filtered_optional_fields};
 
-        insertEmployees([form_data]);
+        await insertEmployees([form_data]);
 
         console.log("Check4");
 
+        return res.status(201).json({
+            message: "Employee added successfully",
+            employeeData: form_data
+        });
 
     } ,  "INSERT_BY_FORM_ERROR"
 );

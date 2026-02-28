@@ -19,6 +19,6 @@ export function setup2FA(app, config) {
     const router = createRoutes(controller);
 
     // app.use('/2fa', validateCookie,  router);
-    app.use('/api/auth/2fa',  router);
+    app.use('/api/auth/2fa', validateCookie,  router);
     return { controller, router };
 }

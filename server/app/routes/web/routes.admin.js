@@ -4,6 +4,7 @@ import organizationRouter from "#webRoutes/admin/organization/router.js"
 import teamRoutes from "#webRoutes/admin/team/routes.js";
 import validateCookie from "#middleware/jwtBearer.js";
 import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
+import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 // import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
 
@@ -16,12 +17,15 @@ export default function adminRoutes(app) {
     // OTP
     app.use("/api/admin/otp", otpRoutes);
 
+    // Forgot Password
+    
+
     //create-team
-    app.use("/api/admin/get-all-employees", getAllEmployeesRouter);
-    app.use("/api/admin/team", teamRoutes);
-    app.use("/api/admin/add-employees", addEmployeesRouter );
+    app.use("/api/admin/get-all-employees", validateCookie, getAllEmployeesRouter);
+    app.use("/api/admin/team", validateCookie, teamRoutes);
+    app.use("/api/admin/add-employees", validateCookie, addEmployeesRouter );
 
     // Project
-    app.use("/api/project", projectRoutes);
+    app.use("/api/project", validateCookie, projectRoutes);
 
 }

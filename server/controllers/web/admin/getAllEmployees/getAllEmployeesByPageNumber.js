@@ -7,7 +7,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
 
     let { search = "", organizationId, teamId, page = 1, limit = 10 } = req.query;
 
-    search = search.trim();
+    search = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     let filter = [];
 

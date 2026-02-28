@@ -1,10 +1,10 @@
 import User from "#models/User.js";
-import Organisation from "#models/Organisation.js";
+import Organization from "#models/Organization.js";
 
 
 const init = async () => {
     
-    const orgcreateres = await Organisation.create({
+    const orgcreateres = await Organization.create({
         name: "testOrg",
 
     })

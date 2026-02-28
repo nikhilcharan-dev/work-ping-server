@@ -1,5 +1,6 @@
 import fs from "fs";
 import xlsx from "xlsx";
+import bcrypt from "bcrypt";
 import User from "#models/User.js";
 import Account from "#models/Account.js";
 
@@ -72,10 +73,11 @@ const insertByExcel =
                     try {
                         const user = await User.create(row);
 
+                        const hashedPassword = await bcrypt.hash(process.env.USER_DEFAULT_PASSWORD, 10);
                         await Account.create({
                             role: "user",
                             email: row.email.trim(),
-                            password:  process.env.USER_DEFAULT_PASSWORD,
+                            password: hashedPassword,
                         })
                     } catch(err) {
                         console.log(err.message);
