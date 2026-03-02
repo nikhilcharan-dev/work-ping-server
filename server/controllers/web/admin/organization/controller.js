@@ -125,20 +125,23 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
     return res.status(200).json(existingOrganization)
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
-const deleteOrganization = asyncHandler(async (req,res)=>{
-    let { organizationId , passKey } = req.body;
-    organizationId = new mongoose.Types.ObjectId(organizationId)
-    let existingOrganization = await Organization.findById(organizationId);
-    if(!existingOrganization) {
-        return res.status(404).json({error: "Organizaton Doesn't Exists"});
+const deleteOrganization = asyncHandler(async (req, res) => {
+    let { organizationIds } = req.body;
+
+    organizationIds = organizationIds.map(
+        (organizationId) => new mongoose.Types.ObjectId(organizationId)
+    );
+
+    for (const organizationId of organizationIds) {
+        await OrgAdmin.findOneAndDelete({ organizationId });
+        await Organization.findByIdAndDelete(organizationId);
     }
-    if(passKey !== existingOrganization.passKey) {
-        return res.status(401).json({error : "Incorrect Passkey"});
-    }
-    await OrgAdmin.findOneAndDelete({organizationId: organizationId});
-    return res.status(200).json(await Organization.findByIdAndDelete(
-        organizationId
-    ).lean());
+
+    return res.status(200).json({
+        success: true,
+        message: "Organization deleted successfully",
+    });
+
 }, "ADMIN_DELETE_ORG_ERROR");
 
 const getOrganizationIDsOfAdmin = asyncHandler(async (req,res)=>{
