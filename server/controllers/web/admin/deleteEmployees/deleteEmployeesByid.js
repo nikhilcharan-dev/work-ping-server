@@ -2,10 +2,11 @@ import User from "#models/User.js"
 import mongoose from "mongoose";
 const deleteEmployeesById = asyncHandler(
     async (req, res) => {
-        const { ids } = req.body;
+        const { data } = req.body;
 
-        for (const id of ids) {
-            await User.findByIdAndDelete(new mongoose.Items.ObjectId(id));
+        for (const id of data) {
+            console.log(id)
+            await User.findByIdAndDelete(new mongoose.Types.ObjectId(id));
         }
 
         return res.status(200).json({

@@ -126,11 +126,13 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
 const deleteOrganization = asyncHandler(async (req, res) => {
-    let { organizationIds } = req.body;
 
-    organizationIds = organizationIds.map(
-        (organizationId) => new mongoose.Types.ObjectId(organizationId)
+    const { data } = req.body;
+
+    const organizationIds = data.map(
+        id => new mongoose.Types.ObjectId(id)
     );
+
 
     for (const organizationId of organizationIds) {
         await OrgAdmin.findOneAndDelete({ organizationId });

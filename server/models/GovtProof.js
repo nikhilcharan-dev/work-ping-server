@@ -8,7 +8,6 @@ const govtProofSchema = new mongoose.Schema(
 
         panNumber: { type: String, required: true },
 
-
         bankAccount: { type: String, required: true },
 
         userId: {
