@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Organisation from '#models/Organisation.js';
 import OrgAdmin from '#models/Admin.Org.js';
 import Admin from '#models/Admin.js'
+import Pagination from "#helpers/pagination.js";
+import AdminOrg from "#models/Admin.Org.js";
 
 const existingOrganizationOfAdminWithSameName = async (userId , organizationName)=>{
     let existingOrg = await OrgAdmin.find({
@@ -26,30 +28,76 @@ const addOrganization = asyncHandler( async (req,res)=>{
     }
     const newOrganization =  await Organisation.create(req.body);
 
-    await OrgAdmin.create({
+    let check = await OrgAdmin.create({
         organizationId : newOrganization._id,
         primaryAdmin : userId
     })
-
+    console.log(check)
     return res.status(201).json(newOrganization);
 }, "ADMIN_ADD_ORG_ERROR" );
 
-const getOrganizationsOfAdmin = asyncHandler(async (req , res)=>{
+const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
+
     let { userId } = req.user;
     userId = new mongoose.Types.ObjectId(userId);
-    let existingAdmin = await Admin.findById(userId)
-    if(!existingAdmin) {
+
+    let existingAdmin = await Admin.findById(userId);
+    if (!existingAdmin) {
         return res.status(404).json({
-            error : "Admin Doesn't Exists"
-        })
+            error: "Admin Doesn't Exist"
+        });
     }
-    const adminOrganisations = await OrgAdmin.find({
-        primaryAdmin : userId
-    }).populate({
-        path: "organizationId",
-    })
-    return res.status(200).json(adminOrganisations)
-}, "ADMIN_GET_ORG_ERROR" );
+
+    let { search = "", page = 1 ,limit = 10 } = req.query;
+
+    search = search.trim();
+    page = Number(page);
+
+    const skip = (page - 1) * limit;
+
+    const filter = [
+        {
+            $match: { primaryAdmin: userId }
+        },
+        {
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization"
+            }
+        },
+        { $unwind: "$organization" },
+        {
+            $match: {
+                "organization.name": {
+                    $regex: search,
+                    $options: "i"
+                }
+            }
+        },
+        { $sort: { "organization.name": 1 } },
+    ];
+    
+    const pagination = await Pagination.call(AdminOrg,page,limit,filter);
+
+    const adminOrganisations = pagination.documents
+    
+    const organizations = []
+    adminOrganisations.forEach(item => (
+        organizations.push(item.organization)
+    ));
+
+    console.log(toString(organizations))
+    
+    return res.status(200).json({
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
+        organizations
+    });
+
+}, "ADMIN_GET_ORG_ERROR");
+
 
 const updateOrganization = asyncHandler(async (req,res)=>{
     const updateOrganizationTo = req.body;
@@ -71,7 +119,7 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
     }
-    return res.status(200).json(existingOrganization) 
+    return res.status(200).json(existingOrganization)
 });
 
 const deleteOrganization = asyncHandler(async (req,res)=>{
@@ -90,7 +138,6 @@ const deleteOrganization = asyncHandler(async (req,res)=>{
     ).lean());
 }, "ADMIN_DELETE_ORG_ERROR");
 
-//COMPLETE GET ALL ORGANISATIONS OF AN ADMIN
 
 export {
     addOrganization,
