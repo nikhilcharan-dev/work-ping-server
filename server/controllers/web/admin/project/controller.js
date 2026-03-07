@@ -1,5 +1,6 @@
 import Project, { requiredProjectFields, optionalProjectFields  } from "#models/Project.js";
 import { pick } from "#helpers/data.reducer.js";
+import Pagination from "#helpers/pagination.js";
 
 export const createProject = asyncHandler(
     async (req, res) => {
@@ -41,29 +42,37 @@ export const createProject = asyncHandler(
 
 export const getProjects = asyncHandler(
     async (req, res) => {
-        const { organizationId, page = 1, limit = 10 } = req.query;
+        let { organizationId, search="" , page = 1, limit = 10 } = req.query;
+        
+        let filter = []
 
-        const query = organizationId ? { organizationId } : {};
-        const skip = (page - 1) * limit;
+        if (search) {
+            search = search.trim()
+            filter.push({
+                $match: {
+                    "name": {
+                        $regex: search,
+                        $options: "i"
+                    }
+                }
+            });
+        }
+    
+        if (organizationId) {
+            filter.push({
+            $match: {
+                organizationId: new mongoose.Types.ObjectId(organizationId)
+            }
+            });
+        }
+    
 
-        const projects = await Project.find(query)
-            .limit(parseInt(limit))
-            .skip(skip)
-            .sort({ createdAt: -1 });
-
-        const total = await Project.countDocuments(query);
+        const pagination = await Pagination(Project,page, limit,filter);
 
         return res.status(200).json({
-            status: "success",
-            data: {
-                projects,
-                pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    total,
-                    pages: Math.ceil(total / limit)
-                }
-            }
+            projects: pagination.documents,
+            totalPages: pagination.totalPages,
+            totalRecords: pagination.totalRecords
         });
     },
     "GET_PROJECTS_ERROR");
