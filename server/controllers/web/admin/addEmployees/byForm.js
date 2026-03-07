@@ -7,7 +7,7 @@ const insertByFrom = asyncHandler(
 
         
         const {userName : name, email, phone, userId: employeeId, organizationId, doj: dateOfJoining} = req.body; // mandatory fields
-        const {gender, salary, dob, address, teamId, roleInTeam, isActive} = req.body; // optional fields
+        const {gender, salary, dob, address,teamName , teamId, roleInTeam, isActive} = req.body; // optional fields
 
 
 
