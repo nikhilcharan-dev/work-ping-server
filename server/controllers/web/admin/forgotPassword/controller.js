@@ -1,16 +1,24 @@
 import Account from "#models/Account.js";
 import mailClient from "#utils/axios.mail.js";
 import bcrypt from "bcrypt";
+import {
+    validateEmail,
+    validatePassword,
+    validateOTP,
+    validateRequiredFields
+} from "#utils/validators.js";
 
 export const send_otp = asyncHandler(
     async (req, res) => {
         const {email} = req.body;
 
-        if (!email) {
-            return res.status(400).json({ error: "Email is required" });
+        // Validate email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.valid) {
+            return res.status(400).json({ error: emailValidation.error });
         }
 
-        const findAdmin = await Account.findOne({email: email.trim()});
+        const findAdmin = await Account.findOne({email: emailValidation.normalized});
 
         if(!findAdmin) {
             return res.status(200).json({
@@ -20,7 +28,7 @@ export const send_otp = asyncHandler(
 
         try{
             await mailClient.post("/send-email-otp", {
-                email: email,
+                email: emailValidation.normalized,
             })
         } catch(err) {
             return res.status(500).json({
@@ -38,11 +46,25 @@ export const verify_otp = asyncHandler(
     async (req, res) => {
         const {email, otp} = req.body;
 
-        if (!email || !otp) {
-            return res.status(400).json({ error: "Email and OTP are required" });
+        // Validate required fields
+        const requiredCheck = validateRequiredFields({ email, otp }, ['email', 'otp']);
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ error: requiredCheck.error });
         }
 
-        const findAdmin = await Account.findOne({email: email.trim()});
+        // Validate email format
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.valid) {
+            return res.status(400).json({ error: emailValidation.error });
+        }
+
+        // Validate OTP format
+        const otpValidation = validateOTP(otp);
+        if (!otpValidation.valid) {
+            return res.status(400).json({ error: otpValidation.error });
+        }
+
+        const findAdmin = await Account.findOne({email: emailValidation.normalized});
 
         if(!findAdmin) {
             return res.status(401).json({
@@ -52,7 +74,7 @@ export const verify_otp = asyncHandler(
 
         try{
             await mailClient.post("/verify-email-otp", {
-                email: email,
+                email: emailValidation.normalized,
                 otp: otp,
             })
         } catch(err) {
@@ -72,13 +94,34 @@ export const verify_otp_and_change_password = asyncHandler(
     async (req, res) => {
         const {email, otp, newPassword} = req.body;
 
-        if(!email || !otp || !newPassword) {
-            return res.status(400).json({
-                message: "Email, OTP, and new password are required",
-            })
+        // Validate required fields
+        const requiredCheck = validateRequiredFields(
+            { email, otp, newPassword }, 
+            ['email', 'otp', 'newPassword']
+        );
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ message: requiredCheck.error });
         }
 
-        const account = await Account.findOne({ email: email.trim() });
+        // Validate email format
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.valid) {
+            return res.status(400).json({ message: emailValidation.error });
+        }
+
+        // Validate OTP format
+        const otpValidation = validateOTP(otp);
+        if (!otpValidation.valid) {
+            return res.status(400).json({ message: otpValidation.error });
+        }
+
+        // Validate password strength
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) {
+            return res.status(400).json({ message: passwordValidation.error });
+        }
+
+        const account = await Account.findOne({ email: emailValidation.normalized });
 
         if (!account || account.role !== "admin") {
             return res.status(401).json({ message: "Admin does not exist" });
@@ -86,7 +129,7 @@ export const verify_otp_and_change_password = asyncHandler(
 
         try{
             await mailClient.post("/verify-email-otp", {
-                email: email,
+                email: emailValidation.normalized,
                 otp: otp,
             })
         }catch(err) {

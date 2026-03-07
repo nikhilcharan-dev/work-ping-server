@@ -3,19 +3,48 @@ import Team from "#models/Team.js";
 import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
+import {
+    validateObjectId,
+    validateString,
+    validateRequiredFields
+} from "#utils/validators.js";
 
 export const createTeam = asyncHandler(
     async(req, res) => {
         console.log(req.cookies);
         const {teamName, teamManagerId: managerId, description, teamLeaderIds: leaderIds, organizationId} = req.body;
 
-        if(!teamName || !organizationId){
-            return res.status(400).json({
-                error : "Missing required fields"
-            });
+        // Validate required fields
+        const requiredCheck = validateRequiredFields(
+            { teamName, organizationId },
+            ['teamName', 'organizationId']
+        );
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ error: requiredCheck.error });
         }
-
-
+        
+        // Validate team name
+        const nameValidation = validateString(teamName, "Team name", {
+            minLength: 2,
+            maxLength: 100
+        });
+        if (!nameValidation.valid) {
+            return res.status(400).json({ error: nameValidation.error });
+        }
+        
+        // Validate organization ID
+        const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgIdValidation.valid) {
+            return res.status(400).json({ error: orgIdValidation.error });
+        }
+        
+        // Validate manager ID if provided
+        if (managerId) {
+            const managerIdValidation = validateObjectId(managerId, "Manager ID");
+            if (!managerIdValidation.valid) {
+                return res.status(400).json({ error: managerIdValidation.error });
+            }
+        }
 
         const teamExists = await Team.findOne({teamName, organizationId}) !== null ? true : false;
 
@@ -26,7 +55,15 @@ export const createTeam = asyncHandler(
 
         const detailObject = {teamName, managerId : managerId || null, leaderIds : leaderIds || [], organizationId}
 
-        if(description !== undefined && description !== null) detailObject.description = description;
+        if(description !== undefined && description !== null) {
+            const descValidation = validateString(description, "Description", {
+                maxLength: 500
+            });
+            if (!descValidation.valid) {
+                return res.status(400).json({ error: descValidation.error });
+            }
+            detailObject.description = description;
+        }
 
         const addTeam = await Team.create(detailObject);
 
@@ -44,8 +81,11 @@ export const getTeam = asyncHandler(
     async(req, res) => {
         const {teamId} = req.body;
 
-
-        if(!teamId) return res.status(400).json({error: "Invalid Request : teamId required"});
+        // Validate team ID
+        const idValidation = validateObjectId(teamId, "Team ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
+        }
 
         const finder = await Team.findById(teamId).populate({path: "managerId", select: "name email"}).populate({path: "leaderIds" , select: "name email"});
 
@@ -60,7 +100,11 @@ export const getAllTeams =  asyncHandler(
     async(req, res) => {
         const {organizationId} = req.body;
 
-        if(!organizationId) return res.status(400).json({error: "Invalid Request : organizationId required"})
+        // Validate organization ID
+        const idValidation = validateObjectId(organizationId, "Organization ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
+        }
 
         const teamList = await Team.find({organizationId: organizationId}).populate({path: "managerId", select: "name email"}).populate({path: "leaderIds" , select: "name email"});
 
@@ -128,7 +172,12 @@ export const updateTeam = asyncHandler(
 export const deleteTeam = asyncHandler(
     async(req, res) => {
         const {teamId} = req.body;
-        if(!teamId) return res.status(400).json({error: "Invalid Request : teamId required"})
+        
+        // Validate team ID
+        const idValidation = validateObjectId(teamId, "Team ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
+        }
 
         // Cache the team for 30 days
 

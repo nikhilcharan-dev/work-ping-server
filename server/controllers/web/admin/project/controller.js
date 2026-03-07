@@ -1,5 +1,10 @@
 import Project, { requiredProjectFields, optionalProjectFields  } from "#models/Project.js";
 import { pick } from "#helpers/data.reducer.js";
+import {
+    validateObjectId,
+    validateString,
+    validatePagination
+} from "#utils/validators.js";
 
 export const createProject = asyncHandler(
     async (req, res) => {
@@ -71,6 +76,15 @@ export const getProjects = asyncHandler(
 export const getProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
+        
+        // Validate project ID
+        const idValidation = validateObjectId(id, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: idValidation.error
+            });
+        }
 
         const project = await Project.findById(id);
 
@@ -91,6 +105,15 @@ export const getProject = asyncHandler(
 export const updateProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
+        
+        // Validate project ID
+        const idValidation = validateObjectId(id, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: idValidation.error
+            });
+        }
 
         const project = await Project.findById(id);
 
@@ -102,6 +125,20 @@ export const updateProject = asyncHandler(
         }
 
         const updateData = pick(req.body, [...requiredProjectFields, ...optionalProjectFields]);
+        
+        // Validate name if being updated
+        if (updateData.name) {
+            const nameValidation = validateString(updateData.name, "Project name", {
+                minLength: 2,
+                maxLength: 200
+            });
+            if (!nameValidation.valid) {
+                return res.status(400).json({
+                    status: "error",
+                    error: nameValidation.error
+                });
+            }
+        }
 
         if (updateData.name && updateData.name !== project.name) {
             const isExisting = await Project.findOne({
@@ -134,6 +171,15 @@ export const updateProject = asyncHandler(
 export const deleteProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
+        
+        // Validate project ID
+        const idValidation = validateObjectId(id, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: idValidation.error
+            });
+        }
 
         const project = await Project.findById(id);
 
