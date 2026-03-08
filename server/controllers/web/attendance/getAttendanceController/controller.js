@@ -49,8 +49,7 @@ const getAttendanceByUserId = asyncHandler(
 
     return res.status(200).json(attendanceRecord);
   },
-  "GET_ATTENDANCE_BY_USER_ID"
-);
+  "GET_ATTENDANCE_BY_USER_ID");
 
 const getAttendanceByTeamId = asyncHandler(
   async (req, res) => {
@@ -112,8 +111,7 @@ const getAttendanceByTeamId = asyncHandler(
       records: teamAttendance,
     });
   },
-  "GET_ATTENDANCE_BY_TEAM_ID"
-);
+  "GET_ATTENDANCE_BY_TEAM_ID");
 
 const getAttendanceByOrganizationId = asyncHandler(
   async (req, res) => {
@@ -176,8 +174,7 @@ const getAttendanceByOrganizationId = asyncHandler(
       records: organizationAttendance,
     });
   },
-  "GET_ATTENDANCE_BY_ORGANIZATION_ID"
-);
+  "GET_ATTENDANCE_BY_ORGANIZATION_ID");
 
 export {
   getAttendanceByUserId,

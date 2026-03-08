@@ -39,8 +39,7 @@ export const send_otp = asyncHandler(
         return res.status(200).json({
             message: "If admin exists with this email, OTP will be sent to the email address",
         })
-    }, "FORGOT_PASSWORD_SEND_OTP_ERROR"
-)
+    }, "FORGOT_PASSWORD_SEND_OTP_ERROR");
 
 export const verify_otp = asyncHandler(
     async (req, res) => {
@@ -87,8 +86,7 @@ export const verify_otp = asyncHandler(
             "message": "OTP Verification Successful",
         })
 
-    }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR"
-)
+    }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR" );
 
 export const verify_otp_and_change_password = asyncHandler(
     async (req, res) => {
@@ -154,5 +152,4 @@ export const verify_otp_and_change_password = asyncHandler(
         res.status(200).json({
             message: "Password changed successfully",
         })
-    }, "CHANGE_PASSWORD_ERROR"
-)
+    }, "CHANGE_PASSWORD_ERROR");

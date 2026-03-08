@@ -312,8 +312,6 @@ const insertByExcel = asyncHandler(
             successfulRecords,
             failedRecords
         });
-    },
-    "ERROR_PROCESSING_EXCEL_FILE"
-);
+    }, "ERROR_PROCESSING_EXCEL_FILE");
 
 export default insertByExcel;  

@@ -182,8 +182,7 @@ export const logout = asyncHandler(
         });
 
         
-    }, "ADMIN_LOGOUT_ERROR"
-)
+    }, "ADMIN_LOGOUT_ERROR");
 
 export const forgot_password_send_otp = asyncHandler(
     async (req, res) => {
@@ -216,8 +215,7 @@ export const forgot_password_send_otp = asyncHandler(
         res.status(200).json({
             status: "success"
         });
-    }, "FORGOT_PASSWORD_SEND_OTP_ERROR"
-);
+    }, "FORGOT_PASSWORD_SEND_OTP_ERROR");
 
 export const forgot_password_verify_otp = asyncHandler(
     async (req, res) => {
@@ -250,8 +248,7 @@ export const forgot_password_verify_otp = asyncHandler(
         res.status(200).json({
             message: "OTP Verification Successful",
         });
-    }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR"
-);
+    }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR");
 
 // Reset password after OTP verification
 export const forgot_password_reset = asyncHandler(
@@ -306,5 +303,4 @@ export const forgot_password_reset = asyncHandler(
         await account.save();
 
         res.status(200).json({ message: "Password reset successful" });
-    }, "FORGOT_PASSWORD_RESET_ERROR"
-);
+    }, "FORGOT_PASSWORD_RESET_ERROR");

@@ -74,8 +74,7 @@ export const createTeam = asyncHandler(
             teamDetails: detailObject
         })
 
-    }, "ADMIN_CREATE_TEAM_ERROR"
-);
+    }, "ADMIN_CREATE_TEAM_ERROR");
 
 export const getTeam = asyncHandler(
     async(req, res) => {
@@ -93,8 +92,7 @@ export const getTeam = asyncHandler(
 
         return res.status(200).json(finder);
 
-    }, "ADMIN_GET_TEAM_ERROR"
-);
+    }, "ADMIN_GET_TEAM_ERROR");
 
 export const getAllTeams =  asyncHandler(
     async(req, res) => {
@@ -110,8 +108,7 @@ export const getAllTeams =  asyncHandler(
 
         return res.status(200).json(teamList);
 
-    }, "ADMIN_GET_TEAMS_ERROR"
-);
+    }, "ADMIN_GET_TEAMS_ERROR");
 
 export const getTeamsPagination = asyncHandler(
     async(req, res) => {
@@ -152,8 +149,7 @@ export const getTeamsPagination = asyncHandler(
         const results = await pagination(Team, page, limit, thefilter)
 
         return res.status(200).json({teamList: results.documents, totalRecords: results.totalRecords, totalPages: results.totalPages});
-    }, "GET_TEAMS_PAGINATION_ERROR"
-)
+    }, "GET_TEAMS_PAGINATION_ERROR");
 
 export const updateTeam = asyncHandler(
     async(req, res) => {
@@ -166,8 +162,7 @@ export const updateTeam = asyncHandler(
 
         return res.status(200).json({success: "Team Details updated.", updatedDetails: updater})
 
-    }, "ADMIN_UPDATE_TEAM_ERROR"
-)
+    }, "ADMIN_UPDATE_TEAM_ERROR");
 
 export const deleteTeam = asyncHandler(
     async(req, res) => {
@@ -187,5 +182,4 @@ export const deleteTeam = asyncHandler(
 
         return res.status(200).json({success: "Team Deleted"});
 
-    }, "ADMIN_DELETE_TEAM_ERROR"
-)
+    }, "ADMIN_DELETE_TEAM_ERROR");

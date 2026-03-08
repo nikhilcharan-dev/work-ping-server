@@ -63,8 +63,7 @@ export const addTeamMemberToTeam = asyncHandler(
             success: "User added to team successfully",
             membershipDetails: detailObject
         });
-    }, "ADMIN_ADD_TEAM_MEMBER_ERROR"
-);
+    }, "ADMIN_ADD_TEAM_MEMBER_ERROR");
 
 export const removeTeamMemberFromTeam = asyncHandler(
     async(req, res) => {
@@ -84,8 +83,7 @@ export const removeTeamMemberFromTeam = asyncHandler(
             success: "User removed from team successfully",
             membershipId: removal._id
         });
-    }, "ADMIN_REMOVE_TEAM_MEMBER_ERROR"
-);
+    }, "ADMIN_REMOVE_TEAM_MEMBER_ERROR");
 
 export const getTeamMembers = asyncHandler(
     async(req, res) => {
@@ -99,8 +97,7 @@ export const getTeamMembers = asyncHandler(
         
         const membersList = await TeamMembership.find({teamId: teamId}).populate({path: "userId", select: "name email"});
         return res.status(200).json(membersList);
-    }, "ADMIN_GET_TEAM_MEMBERS_ERROR"
-);
+    }, "ADMIN_GET_TEAM_MEMBERS_ERROR");
 
 
 export const getUserTeams = asyncHandler(
@@ -115,8 +112,7 @@ export const getUserTeams = asyncHandler(
         
         const teamsList = await TeamMembership.find({userId: userId}).populate({path: "teamId", select: "teamName description"});
         return res.status(200).json(teamsList);
-    }, "ADMIN_GET_USER_TEAMS_ERROR"
-);
+    }, "ADMIN_GET_USER_TEAMS_ERROR");
 
 // update team member's role in team
 export const updateTeamMemberRole = asyncHandler(
@@ -145,5 +141,4 @@ export const updateTeamMemberRole = asyncHandler(
             success: "Team member's role updated successfully",
             membershipDetails: updatedMembership
         });
-    }, "ADMIN_UPDATE_TEAM_MEMBER_ROLE_ERROR"
-);
+    }, "ADMIN_UPDATE_TEAM_MEMBER_ROLE_ERROR");

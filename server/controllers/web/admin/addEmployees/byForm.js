@@ -34,9 +34,9 @@ const insertByForm = asyncHandler(
         } = req.body; // optional fields
 
         // Validate mandatory fields
-        if (!name || !email || !phone || !employeeId || !dateOfJoining || !role) {
+        if (!name || !email || !phone || !employeeId || !dateOfJoining || !role || !aadhaar) {
             return res.status(400).json({
-                error: "Mandatory fields are missing (name, email, phone, userId, doj, role)"
+                error: "Mandatory fields are missing (name, email, phone, userId, doj, role, aadhaar)"
             });
         }
 
@@ -74,6 +74,32 @@ const insertByForm = asyncHandler(
             return res.status(400).json({
                 error: "Invalid email format"
             });
+        }
+
+        // Validate identity document formats
+        const aadhaarRegex = /^\d{12}$/;
+        if (!aadhaarRegex.test(String(aadhaar).trim())) {
+            return res.status(400).json({
+                error: "Invalid aadhaar format. Must be exactly 12 digits"
+            });
+        }
+
+        if (pan) {
+            const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+            if (!panRegex.test(String(pan).trim().toUpperCase())) {
+                return res.status(400).json({
+                    error: "Invalid PAN format. Expected format: AAAAA9999A"
+                });
+            }
+        }
+
+        if (passport) {
+            const passportRegex = /^[A-Z][1-9]\d{6}$/;
+            if (!passportRegex.test(String(passport).trim().toUpperCase())) {
+                return res.status(400).json({
+                    error: "Invalid passport format. Expected format: A1234567"
+                });
+            }
         }
 
         // Find organization by name
@@ -128,13 +154,11 @@ const insertByForm = asyncHandler(
             });
         }
 
-        // Validate GovtProof data if any field is provided
-        if (aadhaar || pan || bankId || passport) {
-            if (!aadhaar || !pan || !bankId) {
-                return res.status(400).json({
-                    error: "If providing government proof, aadhaar, pan, and bankId are all required"
-                });
-            }
+        // PAN and bankId must be provided together to create GovtProof
+        if ((pan && !bankId) || (!pan && bankId)) {
+            return res.status(400).json({
+                error: "pan and bankId must be provided together"
+            });
         }
 
         // Prepare user data
@@ -194,15 +218,15 @@ const insertByForm = asyncHandler(
             await Account.create([accountData], { session });
 
             // Create government proof if provided
-            if (aadhaar && pan && bankId) {
+            if (pan && bankId) {
                 const govtProofData = {
-                    aadhaarNumber: aadhaar,
-                    panNumber: pan,
+                    aadhaarNumber: String(aadhaar).trim(),
+                    panNumber: String(pan).trim().toUpperCase(),
                     bankAccount: bankId,
                     userId: newUser._id
                 };
 
-                if (passport) govtProofData.passportNumber = passport;
+                if (passport) govtProofData.passportNumber = String(passport).trim().toUpperCase();
 
                 await GovtProof.create([govtProofData], { session });
             }
@@ -236,7 +260,6 @@ const insertByForm = asyncHandler(
             throw error;
         }
 
-    }, "INSERT_BY_FORM_ERROR"
-);
+    }, "INSERT_BY_FORM_ERROR");
 
 export default insertByForm;
