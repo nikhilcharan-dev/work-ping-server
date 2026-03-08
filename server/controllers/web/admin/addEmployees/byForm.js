@@ -196,9 +196,9 @@ const insertByForm = asyncHandler(
         if (roleInTeam) userData.roleInTeam = roleInTeam;
         if (isActive !== undefined) userData.isActive = isActive;
 
-        // Use transaction for atomicity
-        const session = await mongoose.startSession();
-        session.startTransaction();
+        // // Use transaction for atomicity
+        // const session = await mongoose.startSession();
+        // session.startTransaction();
 
         try {
             // Create user
@@ -232,8 +232,8 @@ const insertByForm = asyncHandler(
             }
 
             // Commit transaction
-            await session.commitTransaction();
-            session.endSession();
+            // await session.commitTransaction();
+            // session.endSession();
 
             return res.status(201).json({
                 message: "Employee added successfully",
@@ -253,8 +253,8 @@ const insertByForm = asyncHandler(
 
         } catch (error) {
             // Rollback transaction on error
-            await session.abortTransaction();
-            session.endSession();
+            // await session.abortTransaction();
+            // session.endSession();
             
             // Re-throw to be handled by asyncHandler
             throw error;

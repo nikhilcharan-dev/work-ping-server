@@ -207,8 +207,8 @@ const insertByExcel = asyncHandler(
             }
 
             // Use transaction for atomicity
-            const session = await mongoose.startSession();
-            session.startTransaction();
+            // const session = await mongoose.startSession();
+            // session.startTransaction();
 
             try {
                 // Prepare user data
@@ -263,8 +263,8 @@ const insertByExcel = asyncHandler(
                 }
 
                 // Commit transaction
-                await session.commitTransaction();
-                session.endSession();
+                // await session.commitTransaction();
+                // session.endSession();
 
                 successfulRecords.push({
                     rowNumber,
@@ -275,8 +275,8 @@ const insertByExcel = asyncHandler(
 
             } catch (error) {
                 // Rollback transaction on error
-                await session.abortTransaction();
-                session.endSession();
+                // await session.abortTransaction();
+                // session.endSession();
 
                 failedRecords.push({
                     error: error.message || "Database error occurred",
