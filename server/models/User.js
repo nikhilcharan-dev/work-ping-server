@@ -47,10 +47,10 @@ const userSchema = new mongoose.Schema(
         },
 
         // skills links experience
-        roleInTeam: {
+        role: {
             type: String,
-            enum: ["manager", "teamLead", "member"],
-            default: "member",
+            enum: ["manager", "teamLead", "employee"],
+            default: "employee",
             index: true
         },
 
