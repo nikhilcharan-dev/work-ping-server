@@ -10,6 +10,7 @@ import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 
 
 import projectRoutes from "#webRoutes/admin/project/router.js"
+import deleteEmployeesById from "#webController/admin/deleteEmployees/deleteEmployeesByid.js";
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
@@ -22,6 +23,7 @@ export default function adminRoutes(app) {
 
     //create-team
     app.use("/api/admin/get-all-employees", validateCookie, getAllEmployeesRouter);
+    app.use("/api/admin/employees",validateCookie, deleteEmployeesById)
     app.use("/api/admin/team", validateCookie, teamRoutes);
     app.use("/api/admin/add-employees", validateCookie, addEmployeesRouter );
 
