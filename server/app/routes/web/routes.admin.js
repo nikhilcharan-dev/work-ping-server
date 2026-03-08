@@ -28,6 +28,6 @@ export default function adminRoutes(app) {
     app.use("/api/admin/add-employees", validateCookie, addEmployeesRouter );
 
     // Project
-    app.use("/api/project", validateCookie, projectRoutes);
+    app.use("/api/admin/project", validateCookie, projectRoutes);
 
 }
