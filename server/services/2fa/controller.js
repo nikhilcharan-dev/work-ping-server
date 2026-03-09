@@ -25,6 +25,8 @@ export const createController = (config) => {
                 const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
 
                 await saveSecret(userId, secret.base32);
+                
+                console.log(secret.base32)
 
                 res.json({
                     message: '2FA setup initiated',
@@ -39,9 +41,9 @@ export const createController = (config) => {
 
         async verify(req, res) {
             try {
-                const { token, userId } = req.body;
+                const { code : token, userId } = req.body;
                 const id = userId || (req.user ? req.user.userId : null);
-
+                
                 if (!id || !token) {
                     return res.status(400).json({ error: 'User ID and Token are required' });
                 }
@@ -52,7 +54,7 @@ export const createController = (config) => {
                 // GENERIC ERROR: Don't reveal if user exists or has 2FA specific error
                 // Unless we really want to, but security audit said no.
                 // However, if secret is null, verification fails naturally.
-
+                console.log(secret)
                 const verified = secret ? speakeasy.totp.verify({
                     secret: secret,
                     encoding: 'base32',
