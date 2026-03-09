@@ -1,12 +1,22 @@
 import User from "#models/User.js";
+import { sendGreetingMail } from "#services/mailer/mail.service.js";
 
 export const insertEmployees = async (data) => {
     await User.insertMany(data);
-    // for(const user of data) {
-    //     sendMail({
-    //         from: `WorkPing <${process.env.MAIL_SERVICE_EMAIL}>`,
-    //         to: user.email,
-    //         html: <html />
-    //     })
-    // }
+
+    // Send welcome / onboarding email to each new employee
+    for (const user of data) {
+        try {
+            await sendGreetingMail(
+                user.email,
+                user.name,
+                user.organizationId?.toString() ?? "WorkPing",
+                user.roleInTeam ?? "Team Member"
+            );
+        } catch (err) {
+            // Log but don't block — employee creation shouldn't fail if mail service is down
+            console.error(`Failed to send greeting email to ${user.email}:`, err.message);
+        }
+    }
 };
+
