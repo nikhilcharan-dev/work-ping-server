@@ -4,14 +4,16 @@ const orderSchema = new mongoose.Schema(
     {
         userId : {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User", 
-            required: true
+            ref: "User",
+            required: true,
+            index: true
         },
 
         planId : {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Plan", 
-            required: true
+            ref: "Plan",
+            required: true,
+            index: true
         },
 
         amount : {type: Number, required: true},

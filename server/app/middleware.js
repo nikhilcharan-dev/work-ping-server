@@ -6,7 +6,7 @@ import morgan from "morgan";
 const MODE = process.env.MODE;
 
 const allowedOrigins = [
-    "http://10.144.15.154:5173",
+    "http://localhost:63342",
     "http://localhost:5173",
     "https://work-ping-liart.vercel.app",
     "http://127.0.0.1:5501",

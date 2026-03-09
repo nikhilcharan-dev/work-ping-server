@@ -7,7 +7,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
 
     let { search = "", organizationId, teamId, page = 1, limit = 10 } = req.query;
 
-    search = search.trim();
+    search = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     let filter = [];
 
@@ -39,7 +39,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     }
     
 
-    const pagination = await Pagination.call(User, page, limit, filter);
+    const pagination = await Pagination(User, page, limit, filter);
 
     res.status(200).json({
       totalPages: pagination.totalPages,

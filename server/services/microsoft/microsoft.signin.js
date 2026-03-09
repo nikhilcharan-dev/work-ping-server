@@ -2,14 +2,15 @@ import axios from "axios";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import Account from "#models/Account.js";
-import crypto from "crypto";
 import Admin from "#models/Admin.js";
+import User from "#models/User.js";
 
 const router = Router();
 
 const MS_CLIENT_ID = process.env.MS_CLIENT_ID;
 const MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET;
 const MS_REDIRECT_URI = process.env.MS_REDIRECT_URI;
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 const SCOPE = [
     "openid",
@@ -20,16 +21,13 @@ const SCOPE = [
 
 
 router.get("/start", (req, res) => {
-    const state = crypto.randomBytes(16).toString("hex");
-
     const authUrl =
         `https://login.microsoftonline.com/common/oauth2/v2.0/authorize` +
         `?client_id=${MS_CLIENT_ID}` +
         `&response_type=code` +
         `&redirect_uri=${encodeURIComponent(MS_REDIRECT_URI)}` +
         `&response_mode=query` +
-        `&scope=${encodeURIComponent(SCOPE)}` +
-        `&state=${state}`;
+        `&scope=${encodeURIComponent(SCOPE)}`;
 
     res.redirect(authUrl);
 });
@@ -78,8 +76,6 @@ router.get("/callback", async (req, res) => {
             id
         } = profileRes.data;
 
-        console.log(profileRes.data);
-
         const email = mail || userPrincipalName;
         const microsoftId = id;
 
@@ -90,12 +86,14 @@ router.get("/callback", async (req, res) => {
         // Find existing account
         let account = await Account.findOne({ email });
 
+        let profileId;
+
         if (!account) {
-            // SIGN UP
+            // SIGN UP — admin only for new OAuth registrations
             account = await Account.create({
                 email,
                 emailVerified: true,
-                role: "admin", // default role
+                role: "admin",
                 providers: {
                     microsoft: {
                         id: microsoftId,
@@ -104,10 +102,13 @@ router.get("/callback", async (req, res) => {
                 }
             });
 
-             await Admin.create({
-                 name: displayName,
-                 email,
-            })
+            const admin = await Admin.create({
+                name: displayName,
+                email,
+                emailVerified: true,
+            });
+
+            profileId = admin._id;
         } else {
             // SIGN IN + LINK IF NOT LINKED
             if (!account.providers?.microsoft?.linked) {
@@ -117,24 +118,49 @@ router.get("/callback", async (req, res) => {
                 };
                 await account.save();
             }
+
+            // Look up the correct profile based on role
+            if (account.role === "admin") {
+                const admin = await Admin.findOne({ email });
+                profileId = admin?._id;
+            } else {
+                const user = await User.findOne({ email });
+                profileId = user?._id;
+            }
+
+            if (!profileId) {
+                return res.status(404).send("Profile not found for this account");
+            }
         }
 
-        // Issue YOUR JWT
+        // Issue JWT with same payload structure as normal auth
         const appToken = jwt.sign(
-            {
-                accountId: account._id,
-                role: account.role
-            },
+            { userId: profileId },
             process.env.SECRET_KEY,
-            { expiresIn: "7d" }
+            { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
         );
 
+        // Set httpOnly cookie (same as normal login)
+        const isLive = process.env.MODE === "production";
+
+        res.cookie("accessToken", appToken, {
+            httpOnly: true,
+            secure: isLive,
+            sameSite: isLive ? "none" : "lax",
+            maxAge: 1000 * 60 * 60 * 24
+        });
+
+        // Send back to frontend via postMessage
+        const safeToken = JSON.stringify(appToken);
+        const targetOrigin = JSON.stringify(CLIENT_URL);
         res.status(200).send(`
           <script>
-            window.opener.postMessage({
-                token: "${appToken}",
-                message: "oauth_success"
-            }, '*');
+            if (window.opener) {
+                window.opener.postMessage({
+                    token: ${safeToken},
+                    message: "oauth_success"
+                }, ${targetOrigin});
+            }
             window.close();
           </script>
         `);

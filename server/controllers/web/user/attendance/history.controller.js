@@ -1,0 +1,97 @@
+import Attendance from "#models/Attendance.js";
+import User from "#models/User.js";
+import mongoose from "mongoose";
+import Pagination from "#helpers/pagination.js";
+
+export const getMyAttendance = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        let { page = 1, limit = 10, startDate, endDate, status } = req.query;
+
+        const filter = [
+            { $match: { userId: new mongoose.Types.ObjectId(userId) } }
+        ];
+
+        if (startDate || endDate) {
+            const dateFilter = {};
+            if (startDate) dateFilter.$gte = new Date(startDate);
+            if (endDate) dateFilter.$lte = new Date(endDate);
+            filter.push({ $match: { date: dateFilter } });
+        }
+
+        if (status) {
+            filter.push({ $match: { status } });
+        }
+
+        filter.push({ $sort: { date: -1 } });
+
+        const pagination = await Pagination(Attendance, page, limit, filter);
+
+        return res.status(200).json({
+            totalRecords: pagination.totalRecords,
+            totalPages: pagination.totalPages,
+            attendance: pagination.documents
+        });
+    }, "USER_GET_MY_ATTENDANCE_ERROR"
+);
+
+export const getAttendanceByDate = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { date } = req.query;
+
+        if (!date) {
+            return res.status(400).json({ error: "Date is required" });
+        }
+
+        const queryDate = new Date(date);
+        const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
+
+        const attendance = await Attendance.findOne({
+            userId,
+            date: { $gte: startOfDay, $lte: endOfDay }
+        });
+
+        if (!attendance) {
+            return res.status(404).json({ error: "No attendance record found for the given date" });
+        }
+
+        return res.status(200).json(attendance);
+    }, "USER_GET_ATTENDANCE_BY_DATE_ERROR"
+);
+
+export const getMyAttendanceSummary = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { month, year } = req.query;
+
+        if (!month || !year) {
+            return res.status(400).json({ error: "Month and year are required" });
+        }
+
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59);
+
+        const records = await Attendance.find({
+            userId,
+            date: { $gte: startDate, $lte: endDate }
+        });
+
+        const summary = {
+            totalDays: records.length,
+            present: 0,
+            absent: 0,
+            late: 0,
+            halfDay: 0
+        };
+
+        records.forEach(record => {
+            if (summary[record.status] !== undefined) {
+                summary[record.status]++;
+            }
+        });
+
+        return res.status(200).json(summary);
+    }, "USER_GET_ATTENDANCE_SUMMARY_ERROR"
+);
