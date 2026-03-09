@@ -144,6 +144,9 @@ export const login = asyncHandler(
         }
 
         const admin = await Admin.findOne({ email: emailValidation.normalized });
+            if (!admin) {
+                return res.status(401).json({ message: "Admin profile not found" });
+            }
 
         const token = await jwt.sign({ userId: admin._id }, process.env.SECRET_KEY, {
             expiresIn: process.env.JWT_EXPIRES_IN,

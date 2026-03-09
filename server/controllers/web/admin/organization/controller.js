@@ -115,7 +115,6 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
 
 }, "ADMIN_GET_ORG_ERROR");
 
-
 const updateOrganization = asyncHandler(async (req,res)=>{
     const updateOrganizationTo = req.body;
     
@@ -160,7 +159,7 @@ const updateOrganization = asyncHandler(async (req,res)=>{
 }, "ADMIN_UPDATE_ORG_ERROR");
 
 const getOrganizationById = asyncHandler( async (req,res)=>{
-    let { organizationId } = req.body;
+    let { id : organizationId } = req.params;
     
     // Validate organization ID
     const idValidation = validateObjectId(organizationId, "Organization ID");
@@ -177,7 +176,7 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
 const deleteOrganization = asyncHandler(async (req,res)=>{
-    let { organizationId , passKey } = req.body;
+    let { organizationId } = req.body;
     
     // Validate organization ID
     const idValidation = validateObjectId(organizationId, "Organization ID");
@@ -185,22 +184,11 @@ const deleteOrganization = asyncHandler(async (req,res)=>{
         return res.status(400).json({ error: idValidation.error });
     }
     
-    // Validate passKey
-    const passKeyValidation = validateString(passKey, "PassKey", {
-        required: true,
-        minLength: 1
-    });
-    if (!passKeyValidation.valid) {
-        return res.status(400).json({ error: passKeyValidation.error });
-    }
     
     organizationId = new mongoose.Types.ObjectId(organizationId)
     let existingOrganization = await Organization.findById(organizationId);
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
-    }
-    if(passKey !== existingOrganization.passKey) {
-        return res.status(401).json({error : "Incorrect Passkey"});
     }
     await OrgAdmin.findOneAndDelete({organizationId: organizationId});
     return res.status(200).json(await Organization.findByIdAndDelete(

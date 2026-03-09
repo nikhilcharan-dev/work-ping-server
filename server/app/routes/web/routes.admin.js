@@ -7,6 +7,7 @@ import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
 import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 // import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
+import getEmployee from "#webRoutes/admin/employee/router.js";
 
 
 import projectRoutes from "#webRoutes/admin/project/router.js"
@@ -22,6 +23,7 @@ export default function adminRoutes(app) {
     
 
     //create-team
+    app.use("/api/admin/employee", validateCookie, getEmployee);
     app.use("/api/admin/get-all-employees", validateCookie, getAllEmployeesRouter);
     app.use("/api/admin/employees",validateCookie, deleteEmployeesById)
     app.use("/api/admin/team", validateCookie, teamRoutes);

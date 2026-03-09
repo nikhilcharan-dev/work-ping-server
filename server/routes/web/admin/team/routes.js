@@ -7,7 +7,7 @@ const router = Router();
 // Team routes
 
 router.post('/create-team', createTeam);
-router.post('/get-team', getTeam);
+router.get('/get-team/:id', getTeam);
 router.post('/get-all-teams', getAllTeams);
 router.post('/update-team', updateTeam);
 router.post('/delete-team', deleteTeam);

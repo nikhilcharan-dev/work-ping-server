@@ -96,8 +96,7 @@ export const getProject = asyncHandler(
         }
 
         return res.status(200).json({
-            status: "success",
-            data: project
+            ...project
         });
     },
     "GET_PROJECT_ERROR");

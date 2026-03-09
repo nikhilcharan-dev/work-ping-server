@@ -78,7 +78,7 @@ export const createTeam = asyncHandler(
 
 export const getTeam = asyncHandler(
     async(req, res) => {
-        const {teamId} = req.body;
+        const {id : teamId} = req.params;
 
         // Validate team ID
         const idValidation = validateObjectId(teamId, "Team ID");
