@@ -1,5 +1,11 @@
 import Project, { requiredProjectFields, optionalProjectFields  } from "#models/Project.js";
 import { pick } from "#helpers/data.reducer.js";
+import Pagination from "#helpers/pagination.js";
+import {
+    validateObjectId,
+    validateString,
+    validatePagination
+} from "#utils/validators.js";
 
 export const createProject = asyncHandler(
     async (req, res) => {
@@ -41,29 +47,37 @@ export const createProject = asyncHandler(
 
 export const getProjects = asyncHandler(
     async (req, res) => {
-        const { organizationId, page = 1, limit = 10 } = req.query;
+        let { organizationId, search="" , page = 1, limit = 10 } = req.query;
+        
+        let filter = []
 
-        const query = organizationId ? { organizationId } : {};
-        const skip = (page - 1) * limit;
+        if (search) {
+            search = search.trim()
+            filter.push({
+                $match: {
+                    "name": {
+                        $regex: search,
+                        $options: "i"
+                    }
+                }
+            });
+        }
+    
+        if (organizationId) {
+            filter.push({
+            $match: {
+                organizationId: new mongoose.Types.ObjectId(organizationId)
+            }
+            });
+        }
+    
 
-        const projects = await Project.find(query)
-            .limit(parseInt(limit))
-            .skip(skip)
-            .sort({ createdAt: -1 });
-
-        const total = await Project.countDocuments(query);
+        const pagination = await Pagination(Project,page, limit,filter);
 
         return res.status(200).json({
-            status: "success",
-            data: {
-                projects,
-                pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    total,
-                    pages: Math.ceil(total / limit)
-                }
-            }
+            projects: pagination.documents,
+            totalPages: pagination.totalPages,
+            totalRecords: pagination.totalRecords
         });
     },
     "GET_PROJECTS_ERROR");
@@ -71,6 +85,15 @@ export const getProjects = asyncHandler(
 export const getProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
+        
+        // Validate project ID
+        const idValidation = validateObjectId(id, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: idValidation.error
+            });
+        }
 
         const project = await Project.findById(id);
 
@@ -82,8 +105,7 @@ export const getProject = asyncHandler(
         }
 
         return res.status(200).json({
-            status: "success",
-            data: project
+            ...project
         });
     },
     "GET_PROJECT_ERROR");
@@ -91,6 +113,15 @@ export const getProject = asyncHandler(
 export const updateProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
+        
+        // Validate project ID
+        const idValidation = validateObjectId(id, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: idValidation.error
+            });
+        }
 
         const project = await Project.findById(id);
 
@@ -102,6 +133,20 @@ export const updateProject = asyncHandler(
         }
 
         const updateData = pick(req.body, [...requiredProjectFields, ...optionalProjectFields]);
+        
+        // Validate name if being updated
+        if (updateData.name) {
+            const nameValidation = validateString(updateData.name, "Project name", {
+                minLength: 2,
+                maxLength: 200
+            });
+            if (!nameValidation.valid) {
+                return res.status(400).json({
+                    status: "error",
+                    error: nameValidation.error
+                });
+            }
+        }
 
         if (updateData.name && updateData.name !== project.name) {
             const isExisting = await Project.findOne({
@@ -134,6 +179,15 @@ export const updateProject = asyncHandler(
 export const deleteProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
+        
+        // Validate project ID
+        const idValidation = validateObjectId(id, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: idValidation.error
+            });
+        }
 
         const project = await Project.findById(id);
 

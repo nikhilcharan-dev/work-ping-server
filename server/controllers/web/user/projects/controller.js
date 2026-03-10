@@ -3,11 +3,27 @@ import ProjectMember from "#models/ProjectMember.js";
 import User from "#models/User.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
+import {
+    validateObjectId,
+    validateEnum
+} from "#utils/validators.js";
 
 export const getMyProjects = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
         let { page = 1, limit = 10, status } = req.query;
+        
+        // Validate status if provided
+        if (status) {
+            const statusValidation = validateEnum(
+                status,
+                ["active", "completed", "onHold"],
+                "Status"
+            );
+            if (!statusValidation.valid) {
+                return res.status(400).json({ error: statusValidation.error });
+            }
+        }
 
         const filter = [
             { $match: { userId: new mongoose.Types.ObjectId(userId), isActive: true } },
@@ -43,8 +59,10 @@ export const getProjectById = asyncHandler(
         const { userId } = req.user;
         const { projectId } = req.params;
 
-        if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
-            return res.status(400).json({ error: "Invalid projectId" });
+        // Validate project ID
+        const idValidation = validateObjectId(projectId, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
         }
 
         const membership = await ProjectMember.findOne({
@@ -77,8 +95,10 @@ export const getProjectMembers = asyncHandler(
         const { userId } = req.user;
         const { projectId } = req.params;
 
-        if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
-            return res.status(400).json({ error: "Invalid projectId" });
+        // Validate project ID
+        const idValidation = validateObjectId(projectId, "Project ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
         }
 
         const membership = await ProjectMember.findOne({

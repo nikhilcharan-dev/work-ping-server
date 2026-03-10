@@ -6,9 +6,9 @@ const govtProofSchema = new mongoose.Schema(
 
         passportNumber: String,
 
-        panNumber: { type: String, required: true },
+        panNumber: String,
 
-        bankAccount: { type: String, required: true },
+        bankAccount: String,
 
         userId: {
             type: mongoose.Schema.Types.ObjectId,

@@ -2,6 +2,16 @@ import User from '#models/User.js';
 import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+import {
+    validateEmail,
+    validatePhone,
+    validatePassword,
+    validateName,
+    validateDate,
+    validateEnum,
+    validateString,
+    validateRequiredFields
+} from "#utils/validators.js";
 
 export const getProfile = asyncHandler(
     async (req, res) => {
@@ -30,10 +40,83 @@ export const updateProfile = asyncHandler(
 
         const allowedFields = ["name", "phone", "gender", "dob", "address", "profileImage"];
         const updates = {};
-        for (const field of allowedFields) {
-            if (req.body[field] !== undefined) {
-                updates[field] = req.body[field];
+        
+        // Validate name if being updated
+        if (req.body.name !== undefined) {
+            const nameValidation = validateName(req.body.name);
+            if (!nameValidation.valid) {
+                return res.status(400).json({ error: nameValidation.error });
             }
+            updates.name = nameValidation.normalized;
+        }
+        
+        // Validate phone if being updated
+        if (req.body.phone !== undefined) {
+            const phoneValidation = validatePhone(req.body.phone);
+            if (!phoneValidation.valid) {
+                return res.status(400).json({ error: phoneValidation.error });
+            }
+            // Check phone uniqueness
+            const existingPhone = await User.findOne({ 
+                phone: phoneValidation.normalized, 
+                _id: { $ne: userId } 
+            });
+            if (existingPhone) {
+                return res.status(409).json({ error: "Phone number already in use" });
+            }
+            updates.phone = phoneValidation.normalized;
+        }
+        
+        // Validate gender if being updated
+        if (req.body.gender !== undefined) {
+            const genderValidation = validateEnum(
+                req.body.gender, 
+                ["male", "female", "other"], 
+                "Gender"
+            );
+            if (!genderValidation.valid) {
+                return res.status(400).json({ error: genderValidation.error });
+            }
+            updates.gender = genderValidation.normalized;
+        }
+        
+        // Validate DOB if being updated
+        if (req.body.dob !== undefined) {
+            const dobValidation = validateDate(
+                req.body.dob, 
+                "Date of birth", 
+                { noFuture: true, minAge: 18 }
+            );
+            if (!dobValidation.valid) {
+                return res.status(400).json({ error: dobValidation.error });
+            }
+            updates.dob = dobValidation.normalized;
+        }
+        
+        // Validate address if being updated
+        if (req.body.address !== undefined) {
+            const addressValidation = validateString(
+                req.body.address, 
+                "Address", 
+                { maxLength: 500 }
+            );
+            if (!addressValidation.valid) {
+                return res.status(400).json({ error: addressValidation.error });
+            }
+            updates.address = addressValidation.normalized;
+        }
+        
+        // Validate profile image if being updated
+        if (req.body.profileImage !== undefined) {
+            const profileImageValidation = validateString(
+                req.body.profileImage, 
+                "Profile image", 
+                { maxLength: 500 }
+            );
+            if (!profileImageValidation.valid) {
+                return res.status(400).json({ error: profileImageValidation.error });
+            }
+            updates.profileImage = profileImageValidation.normalized;
         }
 
         if (Object.keys(updates).length === 0) {
@@ -58,8 +141,19 @@ export const changePassword = asyncHandler(
         const { userId } = req.user;
         const { currentPassword, newPassword } = req.body;
 
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: "Current password and new password are required" });
+        // Validate required fields
+        const requiredCheck = validateRequiredFields(
+            { currentPassword, newPassword },
+            ['currentPassword', 'newPassword']
+        );
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ error: requiredCheck.error });
+        }
+        
+        // Validate new password strength
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) {
+            return res.status(400).json({ error: passwordValidation.error });
         }
 
         const user = await User.findById(userId);
@@ -75,6 +169,12 @@ export const changePassword = asyncHandler(
         const isMatch = await bcrypt.compare(currentPassword, account.password);
         if (!isMatch) {
             return res.status(401).json({ error: "Current password is incorrect" });
+        }
+        
+        // Check if new password is same as current
+        const isSamePassword = await bcrypt.compare(newPassword, account.password);
+        if (isSamePassword) {
+            return res.status(400).json({ error: "New password cannot be the same as current password" });
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);

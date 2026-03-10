@@ -2,11 +2,28 @@ import Salary from "#models/Salary.js";
 import User from "#models/User.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
+import {
+    validateObjectId,
+    validateMonth,
+    validateEnum
+} from "#utils/validators.js";
 
 export const getMySalarySlips = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
         let { page = 1, limit = 10, status } = req.query;
+        
+        // Validate status if provided
+        if (status) {
+            const statusValidation = validateEnum(
+                status,
+                ["pending", "paid"],
+                "Status"
+            );
+            if (!statusValidation.valid) {
+                return res.status(400).json({ error: statusValidation.error });
+            }
+        }
 
         const filter = [
             { $match: { userId: new mongoose.Types.ObjectId(userId) } }
@@ -33,8 +50,10 @@ export const getSalarySlipById = asyncHandler(
         const { userId } = req.user;
         const { salaryId } = req.params;
 
-        if (!salaryId || !mongoose.Types.ObjectId.isValid(salaryId)) {
-            return res.status(400).json({ error: "Invalid salaryId" });
+        // Validate salary ID
+        const idValidation = validateObjectId(salaryId, "Salary ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
         }
 
         const salary = await Salary.findOne({ _id: salaryId, userId });
@@ -52,8 +71,10 @@ export const getSalaryByMonth = asyncHandler(
         const { userId } = req.user;
         const { month } = req.query;
 
-        if (!month) {
-            return res.status(400).json({ error: "Month is required (e.g. '2025-06')" });
+        // Validate month format
+        const monthValidation = validateMonth(month);
+        if (!monthValidation.valid) {
+            return res.status(400).json({ error: monthValidation.error });
         }
 
         const salary = await Salary.findOne({ userId, month });

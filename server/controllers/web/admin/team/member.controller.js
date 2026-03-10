@@ -1,13 +1,55 @@
 import TeamMembership from "#models/TeamMembership.js";
 import mongoose from "mongoose";
+import {
+    validateObjectId,
+    validateRequiredFields,
+    validateEnum
+} from "#utils/validators.js";
 
 
 export const addTeamMemberToTeam = asyncHandler(
     async(req, res) => {
-        const {userId, teamId, organizationId, roleInTeam} = req.body;  
-        if(!userId || !teamId || !organizationId){
-            return res.status(400).json({error: "Missing required fields"});
-        }   
+        const {userId, teamId, organizationId, roleInTeam} = req.body;
+        
+        // Validate required fields
+        const requiredCheck = validateRequiredFields(
+            { userId, teamId, organizationId },
+            ['userId', 'teamId', 'organizationId']
+        );
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ error: requiredCheck.error });
+        }
+        
+        // Validate user ID
+        const userIdValidation = validateObjectId(userId, "User ID");
+        if (!userIdValidation.valid) {
+            return res.status(400).json({ error: userIdValidation.error });
+        }
+        
+        // Validate team ID
+        const teamIdValidation = validateObjectId(teamId, "Team ID");
+        if (!teamIdValidation.valid) {
+            return res.status(400).json({ error: teamIdValidation.error });
+        }
+        
+        // Validate organization ID
+        const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgIdValidation.valid) {
+            return res.status(400).json({ error: orgIdValidation.error });
+        }
+        
+        // Validate roleInTeam if provided
+        if (roleInTeam) {
+            const roleValidation = validateEnum(
+                roleInTeam,
+                ["manager", "teamLead", "member"],
+                "Role in team"
+            );
+            if (!roleValidation.valid) {
+                return res.status(400).json({ error: roleValidation.error });
+            }
+        }
+        
         const membershipExists = await TeamMembership.findOne({userId, teamId, organizationId}) !== null ? true : false;
 
         if(membershipExists) return res.status(400).json({error: "User is already a member of the team"});
@@ -21,15 +63,18 @@ export const addTeamMemberToTeam = asyncHandler(
             success: "User added to team successfully",
             membershipDetails: detailObject
         });
-    }, "ADMIN_ADD_TEAM_MEMBER_ERROR"
-);
+    }, "ADMIN_ADD_TEAM_MEMBER_ERROR");
 
 export const removeTeamMemberFromTeam = asyncHandler(
     async(req, res) => {
         const {membershipId} = req.body;
-        if(!membershipId || !mongoose.Types.ObjectId.isValid(membershipId)){
-            return res.status(400).json({error: "Invalid membershipId"});
+        
+        // Validate membership ID
+        const idValidation = validateObjectId(membershipId, "Membership ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
         }
+        
         const removal = await TeamMembership.findByIdAndDelete(membershipId);
 
         if(removal === null) return res.status(400).json({error: "No team membership found with given id"});
@@ -38,47 +83,62 @@ export const removeTeamMemberFromTeam = asyncHandler(
             success: "User removed from team successfully",
             membershipId: removal._id
         });
-    }, "ADMIN_REMOVE_TEAM_MEMBER_ERROR"
-);
+    }, "ADMIN_REMOVE_TEAM_MEMBER_ERROR");
 
 export const getTeamMembers = asyncHandler(
     async(req, res) => {
         const {teamId} = req.body;
-        if(!teamId || !mongoose.Types.ObjectId.isValid(teamId)){
-            return res.status(400).json({error: "Invalid teamId"});
-        }   
+        
+        // Validate team ID
+        const idValidation = validateObjectId(teamId, "Team ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
+        }
+        
         const membersList = await TeamMembership.find({teamId: teamId}).populate({path: "userId", select: "name email"});
         return res.status(200).json(membersList);
-    }, "ADMIN_GET_TEAM_MEMBERS_ERROR"
-);
+    }, "ADMIN_GET_TEAM_MEMBERS_ERROR");
 
 
 export const getUserTeams = asyncHandler(
     async(req, res) => {
         const {userId} = req.body;
-        if(!userId || !mongoose.Types.ObjectId.isValid(userId)){
-            return res.status(400).json({error: "Invalid userId"});
+        
+        // Validate user ID
+        const idValidation = validateObjectId(userId, "User ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
         }
+        
         const teamsList = await TeamMembership.find({userId: userId}).populate({path: "teamId", select: "teamName description"});
         return res.status(200).json(teamsList);
-    }, "ADMIN_GET_USER_TEAMS_ERROR"
-);
+    }, "ADMIN_GET_USER_TEAMS_ERROR");
 
 // update team member's role in team
 export const updateTeamMemberRole = asyncHandler(
     async(req, res) => {
         const {membershipId, roleInTeam} = req.body;
-        if(!membershipId || !mongoose.Types.ObjectId.isValid(membershipId)){
-            return res.status(400).json({error: "Invalid membershipId"});
+        
+        // Validate membership ID
+        const idValidation = validateObjectId(membershipId, "Membership ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
         }
-        if(!roleInTeam){
-            return res.status(400).json({error: "Missing required field: roleInTeam"});
+        
+        // Validate roleInTeam
+        const roleValidation = validateEnum(
+            roleInTeam,
+            ["manager", "teamLead", "member"],
+            "Role in team"
+        );
+        if (!roleValidation.valid) {
+            return res.status(400).json({ error: roleValidation.error });
         }
-        const updatedMembership = await TeamMembership.findByIdAndUpdate(membershipId, {roleInTeam}, {new: true});
+        
+        const updatedMembership = await TeamMembership.findByIdAndUpdate(membershipId, {roleInTeam}, {new: true, runValidators: true});
         if(updatedMembership === null) return res.status(400).json({error: "No team membership found with given id"});
         return res.status(200).json({
             success: "Team member's role updated successfully",
             membershipDetails: updatedMembership
         });
-    }, "ADMIN_UPDATE_TEAM_MEMBER_ROLE_ERROR"
-);
+    }, "ADMIN_UPDATE_TEAM_MEMBER_ROLE_ERROR");

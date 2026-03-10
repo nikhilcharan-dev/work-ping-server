@@ -4,6 +4,12 @@ import OrgAdmin from '#models/Admin.Org.js';
 import Admin from '#models/Admin.js'
 import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
+import {
+    validateObjectId,
+    validateString,
+    validateNumber,
+    validatePagination
+} from "#utils/validators.js";
 
 const existingOrganizationOfAdminWithSameName = async (userId , organizationName)=>{
     let existingOrg = await OrgAdmin.find({
@@ -20,9 +26,17 @@ const existingOrganizationOfAdminWithSameName = async (userId , organizationName
 const addOrganization = asyncHandler( async (req,res)=>{
     console.log("entered")
     let { name } = req.body;
-    if (!name) {
-        return res.status(400).json({ error: "Organization name is required" });
+    
+    // Validate organization name
+    const nameValidation = validateString(name, "Organization name", {
+        required: true,
+        minLength: 2,
+        maxLength: 100
+    });
+    if (!nameValidation.valid) {
+        return res.status(400).json({ error: nameValidation.error });
     }
+    
     let { userId } =  req.user;
     userId = new mongoose.Types.ObjectId(userId);
     let adminOrganisationsWithSameName =await existingOrganizationOfAdminWithSameName(userId,name)
@@ -74,7 +88,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         {
             $match: {
                 "organization.name": {
-                    $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                    $regex: search,
                     $options: "i"
                 }
             }
@@ -101,9 +115,38 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
 
 }, "ADMIN_GET_ORG_ERROR");
 
-
 const updateOrganization = asyncHandler(async (req,res)=>{
     const updateOrganizationTo = req.body;
+    
+    // Validate organization ID
+    const idValidation = validateObjectId(updateOrganizationTo._id, "Organization ID");
+    if (!idValidation.valid) {
+        return res.status(400).json({ error: idValidation.error });
+    }
+    
+    // Validate name if being updated
+    if (updateOrganizationTo.name) {
+        const nameValidation = validateString(updateOrganizationTo.name, "Organization name", {
+            minLength: 2,
+            maxLength: 100
+        });
+        if (!nameValidation.valid) {
+            return res.status(400).json({ error: nameValidation.error });
+        }
+    }
+    
+    // Validate clDays if being updated
+    if (updateOrganizationTo.clDays !== undefined) {
+        const clDaysValidation = validateNumber(updateOrganizationTo.clDays, "CL Days", {
+            min: 0,
+            max: 365,
+            integer: true
+        });
+        if (!clDaysValidation.valid) {
+            return res.status(400).json({ error: clDaysValidation.error });
+        }
+    }
+    
     let existingOrganization = await Organization.findById(updateOrganizationTo._id);
     if(!existingOrganization) {
         return res.status(404).json({error: "Organizaton Doesn't Exists"});
@@ -111,12 +154,19 @@ const updateOrganization = asyncHandler(async (req,res)=>{
     return res.status(200).json( await Organization.findByIdAndUpdate(
         updateOrganizationTo._id,
         updateOrganizationTo,
-        {new : true}
+        {new : true, runValidators: true}
     ).lean());
 }, "ADMIN_UPDATE_ORG_ERROR");
 
 const getOrganizationById = asyncHandler( async (req,res)=>{
-    let { organizationId } = req.body;
+    let { id : organizationId } = req.params;
+    
+    // Validate organization ID
+    const idValidation = validateObjectId(organizationId, "Organization ID");
+    if (!idValidation.valid) {
+        return res.status(400).json({ error: idValidation.error });
+    }
+    
     organizationId = new mongoose.Types.ObjectId(organizationId)
     let existingOrganization = await Organization.findById(organizationId);
     if(!existingOrganization) {
@@ -125,25 +175,25 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
     return res.status(200).json(existingOrganization)
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
-const deleteOrganization = asyncHandler(async (req, res) => {
-
-    const { data } = req.body;
-
-    const organizationIds = data.map(
-        id => new mongoose.Types.ObjectId(id)
-    );
-
-
-    for (const organizationId of organizationIds) {
-        await OrgAdmin.findOneAndDelete({ organizationId });
-        await Organization.findByIdAndDelete(organizationId);
+const deleteOrganization = asyncHandler(async (req,res)=>{
+    let { organizationId } = req.body;
+    
+    // Validate organization ID
+    const idValidation = validateObjectId(organizationId, "Organization ID");
+    if (!idValidation.valid) {
+        return res.status(400).json({ error: idValidation.error });
     }
-
-    return res.status(200).json({
-        success: true,
-        message: "Organization deleted successfully",
-    });
-
+    
+    
+    organizationId = new mongoose.Types.ObjectId(organizationId)
+    let existingOrganization = await Organization.findById(organizationId);
+    if(!existingOrganization) {
+        return res.status(404).json({error: "Organizaton Doesn't Exists"});
+    }
+    await OrgAdmin.findOneAndDelete({organizationId: organizationId});
+    return res.status(200).json(await Organization.findByIdAndDelete(
+        organizationId
+    ).lean());
 }, "ADMIN_DELETE_ORG_ERROR");
 
 const getOrganizationIDsOfAdmin = asyncHandler(async (req,res)=>{
