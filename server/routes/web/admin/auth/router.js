@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { register, login, logout, forgot_password_send_otp, forgot_password_verify_otp, forgot_password_reset } from "#webController/admin/auth/controller.js";
 import * as Auth from "#webController/admin/auth/controller.js";
+import { send_otp, verify_otp, verify_otp_and_change_password } from "#webController/admin/forgotPassword/controller.js";
 
 const router = Router();
 
@@ -8,9 +8,9 @@ router.post('/register', Auth.register);
 router.post("/login", Auth.login);
 router.post("/logout", Auth.logout);
 
-// Forgot password routes
-router.post("/forgot-password/send-otp", forgot_password_send_otp);
-router.post("/forgot-password/verify-otp", forgot_password_verify_otp);
-router.post("/forgot-password/reset", forgot_password_reset);
+// Forgot password routes (delegated to forgotPassword controller)
+router.post("/forgot-password/send-otp", send_otp);
+router.post("/forgot-password/verify-otp", verify_otp);
+router.post("/forgot-password/reset", verify_otp_and_change_password);
 
 export default router;

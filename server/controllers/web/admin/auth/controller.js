@@ -179,10 +179,10 @@ export const logout = asyncHandler(
             sameSite: isLive ? "none" : "lax",
             path: "/"
         })
-        .status(200)
-        .json({
-            message: "Logout successful"
-        });
+            .status(200)
+            .json({
+                message: "Logout successful"
+            });
 
         
     }, "ADMIN_LOGOUT_ERROR");
