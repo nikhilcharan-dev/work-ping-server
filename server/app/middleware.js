@@ -13,7 +13,7 @@ const allowedOrigins = [
     "https://www.workping.live",
     "https://phonepe.workping.live",
     "https://whatsapp.workping.live",
-    "https://miniature-telegram-7vrjqw7xrp69hp77r-5173.app.github.dev",
+    "https://glorious-couscous-97qgvw6xqj79hxj5g-5173.app.github.dev",
     process.env.CLIENT_URL,
 ];
 

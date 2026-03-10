@@ -5,12 +5,13 @@ import {
     validateObjectId,
     validateString
 } from "#utils/validators.js";
+import OrgAdmin from "#models/Admin.Org.js";
 
 const getAllEmployeesByPageNumber = asyncHandler(
   async (req, res) => {
-
+    
     let { search = "", organizationId, teamId, page = 1, limit } = req.query;
-
+    
     // Validate search string length
     if (search !== "") {
       const searchValidation = validateString(search, "Search", {
@@ -59,6 +60,25 @@ const getAllEmployeesByPageNumber = asyncHandler(
         }
       });
     }
+    else {
+      console.log("user id ", req.user)
+      const orgAdmins = await OrgAdmin.find(
+        { primaryAdmin: new mongoose.Types.ObjectId(req.user.userId) },
+        { organizationId: 1 }
+      );
+
+      const organizationIds = orgAdmins.map(org => org.organizationId);
+
+      console.log("org" , organizationIds);
+
+      filter.push({
+        $match: {
+          organizationId: { $in: organizationIds }
+        }
+      });
+
+    }
+
     if(teamId){
       
       if (teamId!="none") {

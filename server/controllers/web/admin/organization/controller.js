@@ -176,24 +176,49 @@ const getOrganizationById = asyncHandler( async (req,res)=>{
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
 const deleteOrganization = asyncHandler(async (req,res)=>{
-    let { organizationId } = req.body;
     
-    // Validate organization ID
-    const idValidation = validateObjectId(organizationId, "Organization ID");
-    if (!idValidation.valid) {
-        return res.status(400).json({ error: idValidation.error });
+    let { data : organizationIds } = req.body;
+
+    if (!Array.isArray(organizationIds) || organizationIds.length === 0) {
+        return res.status(400).json({ error: "organizationIds must be a non-empty array" });
     }
-    
-    
-    organizationId = new mongoose.Types.ObjectId(organizationId)
-    let existingOrganization = await Organization.findById(organizationId);
-    if(!existingOrganization) {
-        return res.status(404).json({error: "Organizaton Doesn't Exists"});
+
+    // Validate all IDs
+    for (const organizationId of organizationIds) {
+        const idValidation = validateObjectId(organizationId, "Organization ID");
+        if (!idValidation.valid) {
+            return res.status(400).json({ error: idValidation.error });
+        }
     }
-    await OrgAdmin.findOneAndDelete({organizationId: organizationId});
-    return res.status(200).json(await Organization.findByIdAndDelete(
-        organizationId
-    ).lean());
+
+    const objectIds = organizationIds.map(
+        id => new mongoose.Types.ObjectId(id)
+    );
+
+    // Check if organizations exist
+    const existingOrganizations = await Organization.find({
+        _id: { $in: objectIds }
+    }).lean();
+
+    if (existingOrganizations.length === 0) {
+        return res.status(404).json({ error: "Organizations don't exist" });
+    }
+
+    // Delete related admin records
+    await OrgAdmin.deleteMany({
+        organizationId: { $in: objectIds }
+    });
+
+    // Delete organizations
+    await Organization.deleteMany({
+        _id: { $in: objectIds }
+    });
+
+    return res.status(200).json({
+        message: "Organizations deleted successfully",
+        deletedCount: existingOrganizations.length
+    });
+
 }, "ADMIN_DELETE_ORG_ERROR");
 
 const getOrganizationIDsOfAdmin = asyncHandler(async (req,res)=>{

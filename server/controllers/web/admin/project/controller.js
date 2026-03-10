@@ -1,6 +1,7 @@
 import Project, { requiredProjectFields, optionalProjectFields  } from "#models/Project.js";
 import { pick } from "#helpers/data.reducer.js";
 import Pagination from "#helpers/pagination.js";
+import OrgAdmin from "#models/Admin.Org.js"
 import {
     validateObjectId,
     validateString,
@@ -44,7 +45,6 @@ export const createProject = asyncHandler(
         })
     },
     "CREATE_PROJECT_ERROR");
-
 export const getProjects = asyncHandler(
     async (req, res) => {
         let { organizationId, search="" , page = 1, limit = 10 } = req.query;
@@ -55,7 +55,7 @@ export const getProjects = asyncHandler(
             search = search.trim()
             filter.push({
                 $match: {
-                    "name": {
+                    name: {
                         $regex: search,
                         $options: "i"
                     }
@@ -65,14 +65,55 @@ export const getProjects = asyncHandler(
     
         if (organizationId) {
             filter.push({
-            $match: {
-                organizationId: new mongoose.Types.ObjectId(organizationId)
-            }
+                $match: {
+                    organizationId: new mongoose.Types.ObjectId(organizationId)
+                }
             });
         }
-    
+        else {
+
+            const orgAdmins = await OrgAdmin.find(
+                { primaryAdmin: req.user.userId },
+                { organizationId: 1 }
+            );
+
+            const organizationIds = orgAdmins.map(org => org.organizationId);
+
+            filter.push({
+                $match: {
+                    organizationId: { $in: organizationIds }
+                }
+            });
+
+        }
+
+        // 🔹 Join Organization collection
+        filter.push({
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization"
+            }
+        });
+
+        filter.push({
+            $unwind: {
+                path: "$organization",
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        // 🔹 Return organization name
+        filter.push({
+            $addFields: {
+                organizationName: "$organization.name"
+            }
+        });
 
         const pagination = await Pagination(Project,page, limit,filter);
+
+        console.log("data ", pagination)
 
         return res.status(200).json({
             projects: pagination.documents,
@@ -80,8 +121,8 @@ export const getProjects = asyncHandler(
             totalRecords: pagination.totalRecords
         });
     },
-    "GET_PROJECTS_ERROR");
-
+    "GET_PROJECTS_ERROR"
+);
 export const getProject = asyncHandler(
     async (req, res) => {
         const { id } = req.params;

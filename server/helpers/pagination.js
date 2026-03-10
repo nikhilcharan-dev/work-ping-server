@@ -30,6 +30,7 @@ const pagination = async ( MODEL, page=1 , limit , filter = [] )=>{
         };
     }
     catch (err){
+        console.log("error in pagination ")
         console.log(err)
         return {
             documents:[],

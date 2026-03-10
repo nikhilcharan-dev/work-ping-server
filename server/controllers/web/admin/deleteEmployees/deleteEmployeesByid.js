@@ -4,6 +4,8 @@ const deleteEmployeesById = asyncHandler(
     async (req, res) => {
         const { data } = req.body;
 
+        console.log("data" , data)
+
         for (const id of data) {
             console.log(id)
             await User.findByIdAndDelete(new mongoose.Types.ObjectId(id));
