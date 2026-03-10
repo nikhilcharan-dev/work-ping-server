@@ -87,7 +87,9 @@ export const getTeam = asyncHandler(
             return res.status(400).json({ error: idValidation.error });
         }
 
-        const finder = await Team.findById(teamId).populate({path: "managerId", select: "name email"}).populate({path: "leaderIds" , select: "name email"});
+        const finder = await Team.findById(teamId).populate({path: "managerId", select: "employeeId name email"}).populate({path: "leaderIds" , select: "employeeId name email"});
+
+        console.log("jjm",finder)
 
         if(finder === null) return res.status(400).json({error: "Team does not exist with given id"});
 
@@ -105,7 +107,7 @@ export const getAllTeams =  asyncHandler(
             return res.status(400).json({ error: idValidation.error });
         }
 
-        const teamList = await Team.find({organizationId: organizationId}).populate({path: "managerId", select: "name email"}).populate({path: "leaderIds" , select: "name email"});
+        const teamList = await Team.find({organizationId: organizationId}).populate({path: "managerId", select: "employeeId name email"}).populate({path: "leaderIds" , select: "employeeId name email"});
 
         return res.status(200).json(teamList);
 
@@ -190,21 +192,34 @@ export const updateTeam = asyncHandler(
     }, "ADMIN_UPDATE_TEAM_ERROR");
 
 export const deleteTeam = asyncHandler(
-    async(req, res) => {
-        const {teamId} = req.body;
-        
-        // Validate team ID
-        const idValidation = validateObjectId(teamId, "Team ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ error: idValidation.error });
-        }
+  async (req, res) => {
+    const { data : teamIds } = req.body;
 
-        // Cache the team for 30 days
+    // Check if array exists
+    if (!Array.isArray(teamIds) || teamIds.length === 0) {
+      return res.status(400).json({ error: "teamIds must be a non-empty array" });
+    }
 
-        const deleter = await Team.findByIdAndDelete(teamId);
+    // Validate all IDs
+    for (const teamId of teamIds) {
+      const idValidation = validateObjectId(teamId, "Team ID");
+      if (!idValidation.valid) {
+        return res.status(400).json({ error: idValidation.error });
+      }
+    }
 
-        if(deleter === null) return res.status(400).json({error: "Deletion failed, Team doesn't exist"});
+    // Delete teams
+    const result = await Team.deleteMany({
+      _id: { $in: teamIds }
+    });
 
-        return res.status(200).json({success: "Team Deleted"});
+    if (result.deletedCount === 0) {
+      return res.status(400).json({ error: "Deletion failed, Teams don't exist" });
+    }
 
-    }, "ADMIN_DELETE_TEAM_ERROR");
+    return res.status(200).json({
+      success: `${result.deletedCount} team(s) deleted`
+    });
+  },
+  "ADMIN_DELETE_TEAM_ERROR"
+);
