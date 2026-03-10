@@ -11,7 +11,7 @@ import {
 
 const getAttendanceByUserId = asyncHandler(
   async (req, res) => {
-    console.log("request reached");
+    // console.log("request reached");
 
     const { userId, date } = req.body;
     

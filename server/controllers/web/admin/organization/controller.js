@@ -24,7 +24,7 @@ const existingOrganizationOfAdminWithSameName = async (userId , organizationName
 }
 
 const addOrganization = asyncHandler( async (req,res)=>{
-    console.log("entered")
+    // console.log("entered")
     let { name } = req.body;
     
     // Validate organization name
@@ -49,7 +49,7 @@ const addOrganization = asyncHandler( async (req,res)=>{
         organizationId : newOrganization._id,
         primaryAdmin : userId
     })
-    console.log(check)
+    // console.log(check)
     return res.status(201).json(newOrganization);
 }, "ADMIN_ADD_ORG_ERROR" );
 
@@ -105,7 +105,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         organizations.push(item.organization)
     ));
 
-    console.log(JSON.stringify(organizations))
+    // console.log(JSON.stringify(organizations))
     
     return res.status(200).json({
         totalRecords: pagination.totalRecords,

@@ -11,7 +11,7 @@ import {
 
 export const createTeam = asyncHandler(
     async(req, res) => {
-        console.log(req.cookies);
+        // console.log(req.cookies);
         const {teamName, teamManagerId: managerId, description, teamLeaderIds: leaderIds, organizationId} = req.body;
 
         // Validate required fields
