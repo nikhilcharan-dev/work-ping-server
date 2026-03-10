@@ -47,9 +47,10 @@ export default function centralRoutes(app) {
                 return res.status(404).json({ error: "User not found" });
             }
 
-            const authData = Account.findOne({ email: profile.email}).lean();
+            const authData = await Account.findOne({ email: profile.email}).lean();
 
-            res.status(200).json({ ...profile.toObject(), ...authData, role });
+
+            res.status(200).json({ ...authData, ...profile, role });
 
         } catch (err) {
             console.log(err)
