@@ -8,12 +8,12 @@ const MODE = process.env.MODE;
 const allowedOrigins = [
     "http://localhost:63342",
     "http://localhost:5173",
-    "https://work-ping-liart.vercel.app",
     "http://127.0.0.1:5501",
     "https://workping.live",
     "https://www.workping.live",
     "https://phonepe.workping.live",
     "https://whatsapp.workping.live",
+    "https://miniature-telegram-7vrjqw7xrp69hp77r-5173.app.github.dev",
     process.env.CLIENT_URL,
 ];
 
@@ -29,7 +29,7 @@ export default function middlewares(app) {
     app.set("trust proxy", 1);
 
     app.use(cors(corsOptions));
-    // app.options(/.*/, cors(corsOptions));
+    app.options(/.*/, cors(corsOptions));
 
 
     app.use(morgan("dev"));

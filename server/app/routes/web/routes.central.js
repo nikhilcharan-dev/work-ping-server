@@ -10,6 +10,7 @@ import validateCookie from "#middleware/jwtBearer.js";
 import jwt from "jsonwebtoken";
 import Admin from "#models/Admin.js";
 import User from "#models/User.js";
+import Account from "#models/Account.js";
 
 export default function centralRoutes(app) {
     // cookie verify — works for both admin and user roles
@@ -34,11 +35,11 @@ export default function centralRoutes(app) {
             const { userId } = decoded;
 
             // Try Admin first, then User
-            let profile = await Admin.findById(userId);
+            let profile = await Admin.findById(userId).lean();
             let role = "admin";
 
             if (!profile) {
-                profile = await User.findById(userId);
+                profile = await User.findById(userId).lean();
                 role = "user";
             }
 
@@ -46,7 +47,9 @@ export default function centralRoutes(app) {
                 return res.status(404).json({ error: "User not found" });
             }
 
-            res.status(200).json({ ...profile.toObject(), role })
+            const authData = Account.findOne({ email: profile.email}).lean();
+
+            res.status(200).json({ ...profile.toObject(), ...authData, role });
 
         } catch (err) {
             console.log(err)
