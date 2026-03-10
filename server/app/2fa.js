@@ -24,7 +24,7 @@ export default function twoFactorRoutes(app) {
 
         // For JWT-based apps (no session)
         isVerified: (req) => {
-            return req.user?.twoFactorVerified === true;
+            return req.user?.twoFactorEnabled === true;
         }
     });
     console.log("[2FA] Initialised")

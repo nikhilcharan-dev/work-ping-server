@@ -7,7 +7,7 @@ export const createController = (config) => {
         throw new Error('2FA Service requires "saveSecret" and "getSecret" async functions in config.');
     }
 
-    const { saveSecret, getSecret, appName = 'MyApp' } = config;
+    const { saveSecret, getSecret, isVerified, appName = 'MyApp' } = config;
 
     return {
         async setup(req, res) {
@@ -17,7 +17,9 @@ export const createController = (config) => {
                 if (!userId) {
                     return res.status(400).json({ error: 'User ID is required' });
                 }
-
+                if(isVerified(userId)) {
+                    return res.status(403).json({ error: 'Authentication already exists' });
+                }
                 const secret = speakeasy.generateSecret({
                     name: `${appName}: Administrator`,
                 });
