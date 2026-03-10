@@ -7,6 +7,8 @@ const pagination = async ( MODEL, page=1 , limit , filter = [] )=>{
                 $count: "count"
             }
         ]);
+        console.log(filter)
+        console.log(count)
         
         const totalRecords = count[0]?.count || 0;
         const totalPages = Math.ceil(totalRecords / limit);

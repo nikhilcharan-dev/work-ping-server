@@ -12,7 +12,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     let { search = "", organizationId, teamId, page = 1, limit } = req.query;
 
     // Validate search string length
-    if (search) {
+    if (search !== "") {
       const searchValidation = validateString(search, "Search", {
         maxLength: 100
       });
@@ -59,20 +59,22 @@ const getAllEmployeesByPageNumber = asyncHandler(
         }
       });
     }
-
-    if (teamId!="none") {
-      filter.push({
-        $match: {
-          teamId: new mongoose.Types.ObjectId(teamId)
-        }
-      });
-    }
-    else {
-      filter.push({
-        $match: {
-          teamId: null
-        }
-      });
+    if(teamId){
+      
+      if (teamId!="none") {
+        filter.push({
+          $match: {
+            teamId: new mongoose.Types.ObjectId(teamId)
+          }
+        });
+      }
+      else {
+        filter.push({
+          $match: {
+            teamId: null
+          }
+        });
+      }
     }
 
     const pagination = await Pagination(User, page, limit, filter);

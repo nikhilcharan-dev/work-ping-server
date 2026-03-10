@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const accountSchema = new mongoose.Schema({
     role: {
         type: String,
-        enum: ["admin", "user"],
+        enum: ["admin", "user", "manager", "teamlead", "employee"],
         required: true
     },
 
