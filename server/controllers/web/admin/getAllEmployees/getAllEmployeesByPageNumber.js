@@ -9,7 +9,7 @@ import {
 const getAllEmployeesByPageNumber = asyncHandler(
   async (req, res) => {
 
-    let { search = "", organizationId, teamId, page = 1, limit = 10 } = req.query;
+    let { search = "", organizationId, teamId, page = 1, limit } = req.query;
 
     // Validate search string length
     if (search) {
@@ -60,14 +60,20 @@ const getAllEmployeesByPageNumber = asyncHandler(
       });
     }
 
-    if (teamId) {
+    if (teamId!="none") {
       filter.push({
         $match: {
           teamId: new mongoose.Types.ObjectId(teamId)
         }
       });
     }
-    
+    else {
+      filter.push({
+        $match: {
+          teamId: null
+        }
+      });
+    }
 
     const pagination = await Pagination(User, page, limit, filter);
 

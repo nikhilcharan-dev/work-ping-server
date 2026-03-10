@@ -88,7 +88,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         {
             $match: {
                 "organization.name": {
-                    $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                    $regex: search,
                     $options: "i"
                 }
             }
