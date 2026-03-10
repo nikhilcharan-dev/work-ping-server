@@ -1,4 +1,5 @@
 import Organization from "#models/Organization.js";
+import User from "#models/User.js";
 import Team from "#models/Team.js";
 import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
@@ -144,11 +145,35 @@ export const getTeamsPagination = asyncHandler(
             })
         }
 
-        console.log("checkpoint", thefilter)
+        // console.log("checkpoint", thefilter)
 
         const results = await pagination(Team, page, limit, thefilter)
 
-        return res.status(200).json({teamList: results.documents, totalRecords: results.totalRecords, totalPages: results.totalPages});
+        // console.log("checkpoint2", results.documents);
+
+
+        // Replace managerId and leaderIds ObjectIds with employeeId
+        const teamListWithEmployeeIds = await Promise.all(
+            results.documents.map(async (team) => {
+                let managerEmployeeId = null;
+                if (team.managerId) {
+                    const manager = await User.findById(team.managerId).select("employeeId");
+                    managerEmployeeId = manager ? manager.employeeId : null;
+                }
+                let leaderEmployeeIds = [];
+                if (Array.isArray(team.leaderIds) && team.leaderIds.length > 0) {
+                    const leaders = await User.find({ _id: { $in: team.leaderIds } }).select("employeeId");
+                    leaderEmployeeIds = leaders.map(l => l.employeeId);
+                }
+                return {
+                    ...team,
+                    managerId: managerEmployeeId,
+                    leaderIds: leaderEmployeeIds
+                };
+            })
+        );
+
+        return res.status(200).json({teamList: teamListWithEmployeeIds, totalRecords: results.totalRecords, totalPages: results.totalPages});
     }, "GET_TEAMS_PAGINATION_ERROR");
 
 export const updateTeam = asyncHandler(
