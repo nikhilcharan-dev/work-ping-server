@@ -1,9 +1,9 @@
-import mailClient from "#utils/axios.mail.js";
+import mailClient from "#utils/mailClient.js";
 
 /**
  * Centralized Mail Service
  * Wraps all HTTP calls to the mailer microservice.
- * Base URL & auth are configured in axios.mail.js via env vars.
+ * Base URL & auth are configured in mailClient.js via env vars.
  */
 
 // ─── OTP ────────────────────────────────────────────────────────────────
