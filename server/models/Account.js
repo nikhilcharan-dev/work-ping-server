@@ -4,7 +4,7 @@ const accountSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: ["admin", "user", "manager", "teamlead", "employee"],
-        required: true
+        default: "employee"
     },
 
     email: {
