@@ -7,7 +7,7 @@ All 28 identified issues across the server codebase have been fixed.
 ## CRITICAL Fixes
 
 ### #1 — Swapped `(res, req)` Parameters in User Register
-- **File:** `controllers/web/user/auth/controller.js:7`
+- **File:** `controllers/web/user/auth/project.controller.js:7`
 - **Was:** `async (res, req) => {`
 - **Now:** `async (req, res) => {`
 - **Impact:** Entire user registration endpoint was broken. `req.body` was undefined because `res` was being read as `req`.
@@ -32,7 +32,7 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #4 — Hardcoded OTP "111111" in Forgot Password
-- **File:** `controllers/web/admin/forgotPassword/controller.js`
+- **File:** `controllers/web/admin/forgotPassword/project.controller.js`
 - **Was:** OTP verification hardcoded to accept `"111111"`, mail service calls commented out
 - **Now:** Uses `mailClient.post("/send-email-otp", ...)` and `mailClient.post("/verify-email-otp", ...)` for real OTP verification
 - **Also fixed:**
@@ -44,7 +44,7 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #5 — Wrong `req.user.id` in Attendance Controller
-- **File:** `controllers/web/user/attendance/controller.js:5`
+- **File:** `controllers/web/user/attendance/project.controller.js:5`
 - **Was:** `const userId = req.user.id;`
 - **Now:** `const userId = req.user.userId;`
 - **Impact:** JWT payload stores `{ userId }`, not `{ id }`. Attendance marking was broken — `undefined` was sent to the Flask service.
@@ -62,7 +62,7 @@ All 28 identified issues across the server codebase have been fixed.
 ## HIGH Fixes
 
 ### #7 — `leaderId` vs `leaderIds` Mismatch in Team Controller
-- **File:** `controllers/web/admin/team/team.controller.js`
+- **File:** `controllers/web/admin/team/team.project.controller.js`
 - **Was:** `leaderId : leaderId || null` (singular — doesn't match schema)
 - **Now:** `leaderIds : leaderIds || []` (array — matches Team model's `leaderIds` field)
 - **Also fixed destructuring:** `teamLeaderId: leaderId` → `teamLeaderIds: leaderIds`
@@ -71,7 +71,7 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #8 — Wrong `req.userId` in `getTeamsPagination`
-- **File:** `controllers/web/admin/team/team.controller.js:76`
+- **File:** `controllers/web/admin/team/team.project.controller.js:76`
 - **Was:** `const adminId = req.userId;`
 - **Now:** `const adminId = req.user.userId;`
 - **Also fixed:** `AdminOrg.find({adminId})` → `AdminOrg.find({primaryAdmin: adminId})` to match the actual schema field name.
@@ -98,7 +98,7 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #11 — Wrong `.populate("leaderId")` Path in Team Queries
-- **File:** `controllers/web/admin/team/team.controller.js` (lines 50, 65)
+- **File:** `controllers/web/admin/team/team.project.controller.js` (lines 50, 65)
 - **Was:** `.populate({path: "leaderId", select: "name email"})`
 - **Now:** `.populate({path: "leaderIds", select: "name email"})`
 - **Impact:** Leader population silently failed and returned `null` for team leaders in `getTeam` and `getAllTeams`.
@@ -108,7 +108,7 @@ All 28 identified issues across the server codebase have been fixed.
 ## MEDIUM Fixes
 
 ### #12 — Undefined `toString()` Call
-- **File:** `controllers/web/admin/organization/controller.js:91`
+- **File:** `controllers/web/admin/organization/project.controller.js:91`
 - **Was:** `console.log(toString(organizations))` — `toString` is not a defined function in scope
 - **Now:** `console.log(JSON.stringify(organizations))`
 - **Impact:** Runtime error logged to console on every organization list request (non-breaking but noisy).
@@ -116,7 +116,7 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #13 — Loose Equality `!=` Instead of `!==`
-- **File:** `controllers/web/admin/organization/controller.js:132`
+- **File:** `controllers/web/admin/organization/project.controller.js:132`
 - **Was:** `if(passKey != existingOrganization.passKey)`
 - **Now:** `if(passKey !== existingOrganization.passKey)`
 - **Impact:** Type coercion could allow unintended passkey matches (e.g., `0 != "" → false`).
@@ -125,8 +125,8 @@ All 28 identified issues across the server codebase have been fixed.
 
 ### #14 — Missing Feature Tags in `asyncHandler`
 - **Files:**
-  - `controllers/web/admin/team/team.controller.js` (`getTeam`) — added `"ADMIN_GET_TEAM_ERROR"`
-  - `controllers/web/admin/organization/controller.js` (`getOrganizationById`) — added `"ADMIN_GET_ORG_BY_ID_ERROR"`
+  - `controllers/web/admin/team/team.project.controller.js` (`getTeam`) — added `"ADMIN_GET_TEAM_ERROR"`
+  - `controllers/web/admin/organization/project.controller.js` (`getOrganizationById`) — added `"ADMIN_GET_ORG_BY_ID_ERROR"`
   - `controllers/web/admin/getAllEmployees/getOrgInfo.js` — changed to `"ADMIN_GET_ORG_INFO_ERROR"`
 - **Impact:** Error logs showed `"UNKNOWN"` as feature name, making debugging harder.
 
@@ -134,8 +134,8 @@ All 28 identified issues across the server codebase have been fixed.
 
 ### #15 — Regex Injection in Search Queries
 - **Files:**
-  - `controllers/web/admin/organization/controller.js` — escaped regex in org name search
-  - `controllers/web/admin/team/team.controller.js` — escaped regex in team name search
+  - `controllers/web/admin/organization/project.controller.js` — escaped regex in org name search
+  - `controllers/web/admin/team/team.project.controller.js` — escaped regex in team name search
   - `controllers/web/admin/getAllEmployees/getAllEmployeesByPageNumber.js` — escaped regex in employee search
 - **Fix:** Added `.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')` to escape special regex characters from user input before passing to `$regex`.
 - **Impact:** Malicious regex patterns (e.g., `.*`) in search queries could cause ReDoS (Regular Expression Denial of Service) or return unintended results.
@@ -143,21 +143,21 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #16 — Missing Body Validation in `addOrganization`
-- **File:** `controllers/web/admin/organization/controller.js:22-25`
+- **File:** `controllers/web/admin/organization/project.controller.js:22-25`
 - **Added:** `if (!name) { return res.status(400).json({ error: "Organization name is required" }); }`
 - **Impact:** Organizations could be created with empty/undefined names, causing database inconsistencies.
 
 ---
 
 ### #17 — Unused Import in Admin Auth Controller
-- **File:** `controllers/web/admin/auth/controller.js:7`
+- **File:** `controllers/web/admin/auth/project.controller.js:7`
 - **Removed:** `import validateCookie from "#middleware/jwtBearer.js";`
 - **Impact:** Dead import, minor code cleanliness.
 
 ---
 
 ### #18 — Hardcoded Flask Service Endpoint
-- **File:** `controllers/web/user/attendance/controller.js:28`
+- **File:** `controllers/web/user/attendance/project.controller.js:28`
 - **Was:** `"http://127.0.0.1:5000/verify-attendance"`
 - **Now:** `(process.env.FLASK_SERVICE_URI || "http://127.0.0.1:5000") + "/verify-attendance"`
 - **Impact:** Attendance face verification only worked on localhost. Now configurable via environment variable with localhost fallback.
@@ -225,13 +225,13 @@ All 28 identified issues across the server codebase have been fixed.
 ---
 
 ### #26 — Duplicate `AdminOrg` Import in Organization Controller
-- **File:** `controllers/web/admin/organization/controller.js:3,6`
+- **File:** `controllers/web/admin/organization/project.controller.js:3,6`
 - **Note:** `OrgAdmin` and `AdminOrg` are both imported from `#models/Admin.Org.js` — same model imported twice under different names. Not changed to avoid cascading refactors, but documented for awareness.
 
 ---
 
 ### #27 — Unused `skip` Variable in Organization Controller
-- **File:** `controllers/web/admin/organization/controller.js:56`
+- **File:** `controllers/web/admin/organization/project.controller.js:56`
 - **Note:** `const skip = (page - 1) * limit` is calculated but never used (pagination helper handles skip internally). Left in place as it's harmless.
 
 ---
@@ -317,17 +317,17 @@ All 28 identified issues across the server codebase have been fixed.
 
 | # | File | Changes |
 |---|------|---------|
-| 1 | `controllers/web/user/auth/controller.js` | Fixed swapped `(res, req)` parameters |
+| 1 | `controllers/web/user/auth/project.controller.js` | Fixed swapped `(res, req)` parameters |
 | 2 | `controllers/web/admin/addEmployees/byExcel.js` | Added bcrypt import, hashed default password |
 | 3 | `controllers/web/admin/addEmployees/byForm.js` | Added `await`, added response |
-| 4 | `controllers/web/admin/forgotPassword/controller.js` | Replaced hardcoded OTP with real mail service calls |
-| 5 | `controllers/web/user/attendance/controller.js` | Fixed `req.user.id` → `req.user.userId`, environment variable for Flask URL |
+| 4 | `controllers/web/admin/forgotPassword/project.controller.js` | Replaced hardcoded OTP with real mail service calls |
+| 5 | `controllers/web/user/attendance/project.controller.js` | Fixed `req.user.id` → `req.user.userId`, environment variable for Flask URL |
 | 6 | `app/socket.io.js` | Restricted CORS origins, removed duplicate handler |
-| 7 | `controllers/web/admin/team/team.controller.js` | Fixed leaderIds, req.user.userId, populate paths, feature tags, regex escaping, schema field name |
+| 7 | `controllers/web/admin/team/team.project.controller.js` | Fixed leaderIds, req.user.userId, populate paths, feature tags, regex escaping, schema field name |
 | 8 | `routes/web/admin/organization/router.js` | Changed GET to POST for `get-organization-by-id` |
 | 9 | `controllers/web/admin/getAllEmployees/getOrgInfo.js` | Fixed req.user, ObjectId conversion, schema field name, feature tag |
-| 10 | `controllers/web/admin/organization/controller.js` | Fixed toString, loose equality, feature tag, regex escaping, body validation |
-| 11 | `controllers/web/admin/auth/controller.js` | Removed unused import |
+| 10 | `controllers/web/admin/organization/project.controller.js` | Fixed toString, loose equality, feature tag, regex escaping, body validation |
+| 11 | `controllers/web/admin/auth/project.controller.js` | Removed unused import |
 | 12 | `helpers/pagination.js` | Added input validation for page/limit |
 | 13 | `models/ProjectTeam.js` | Renamed snake_case to camelCase, added timestamps |
 | 14 | `models/Holiday.js` | Fixed model name from "DayInfo" to "Holiday" |

@@ -4,7 +4,7 @@ import {
     getProject, 
     updateProject, 
     deleteProject 
-} from "#webController/admin/project/controller.js";
+} from "#webController/admin/project/project.controller.js";
 import { Router } from "express";
 
 const router = Router();
