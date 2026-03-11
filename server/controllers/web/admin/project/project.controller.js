@@ -47,84 +47,115 @@ export const createProject = asyncHandler(
     },
     "CREATE_PROJECT_ERROR");
 
+
 export const getProjects = asyncHandler(
-    async (req, res) => {
-        let { organizationId, search="" , page = 1, limit = 10 } = req.query;
-        
-        let filter = []
+async (req, res) => {
 
-        if (search) {
-            search = search.trim()
-            filter.push({
-                $match: {
-                    name: {
-                        $regex: search,
-                        $options: "i"
-                    }
-                }
-            });
-        }
-    
-        if (organizationId) {
-            filter.push({
-                $match: {
-                    organizationId: new mongoose.Types.ObjectId(organizationId)
-                }
-            });
-        }
-        else {
+    let { organizationId, search = "", page = 1, limit = 10 } = req.query;
 
-            const orgAdmins = await OrgAdmin.find(
-                { primaryAdmin: req.user.userId },
-                { organizationId: 1 }
-            );
+    const paginationValidation = validatePagination(page, limit);
+    if (!paginationValidation.valid) {
+        return res.status(400).json({
+            status: "error",
+            error: paginationValidation.error
+        });
+    }
 
-            const organizationIds = orgAdmins.map(org => org.organizationId);
+    page = Number(page);
+    limit = Number(limit);
 
-            filter.push({
-                $match: {
-                    organizationId: { $in: organizationIds }
-                }
-            });
+    let filter = [];
 
-        }
+    if (search) {
+        search = search.trim();
 
-        // Join Organization collection
         filter.push({
-            $lookup: {
-                from: "organizations",
-                localField: "organizationId",
-                foreignField: "_id",
-                as: "organization"
+            $match: {
+                name: { $regex: search, $options: "i" }
+            }
+        });
+    }
+
+    if (organizationId) {
+
+        const orgValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgValidation.valid) {
+            return res.status(400).json({
+                status: "error",
+                error: orgValidation.error
+            });
+        }
+
+        filter.push({
+            $match: {
+                organizationId: new mongoose.Types.ObjectId(organizationId)
             }
         });
 
+    } else {
+
+        const orgAdmins = await OrgAdmin.find(
+            { primaryAdmin: req.user.userId },
+            { organizationId: 1 }
+        );
+
+        const organizationIds = orgAdmins.map(org => org.organizationId);
+
+        if (organizationIds.length === 0) {
+            return res.status(200).json({
+                projects: [],
+                totalPages: 0,
+                totalRecords: 0
+            });
+        }
+
         filter.push({
-            $unwind: {
-                path: "$organization",
-                preserveNullAndEmptyArrays: true
+            $match: {
+                organizationId: { $in: organizationIds }
             }
         });
+    }
 
-        // Return organization name
-        filter.push({
-            $addFields: {
-                organizationName: "$organization.name"
-            }
-        });
+    // Join Organization
+    filter.push({
+        $lookup: {
+            from: "organizations",
+            localField: "organizationId",
+            foreignField: "_id",
+            as: "organization"
+        }
+    });
 
-        const pagination = await Pagination(Project,page, limit,filter);
+    // Join Manager
+    filter.push({
+        $lookup: {
+            from: "users",
+            localField: "projectManager",
+            foreignField: "_id",
+            as: "manager"
+        }
+    });
 
-        console.log("data ", pagination)
+    // Extract names
+    filter.push({
+        $addFields: {
+            organizationName: { $arrayElemAt: ["$organization.name", 0] },
+            projectManagerName: { $arrayElemAt: ["$manager.name", 0] }
+        }
+    });
 
-        return res.status(200).json({
-            projects: pagination.documents,
-            totalPages: pagination.totalPages,
-            totalRecords: pagination.totalRecords
-        });
-    },
-    "GET_PROJECTS_ERROR"
+    const pagination = await Pagination(Project, page, limit, filter);
+
+    return res.status(200).json({
+        projects: pagination.documents,
+        totalPages: pagination.totalPages,
+        totalRecords: pagination.totalRecords
+    });
+
+},
+"GET_PROJECTS_ERROR"
 );
+
 export const getProject = asyncHandler(
     async (req, res) => {
         const { projectId: id } = req.query;
@@ -157,7 +188,7 @@ export const getProject = asyncHandler(
 
 export const updateProject = asyncHandler(
     async (req, res) => {
-        const {  } = req.body;
+        const { id } = req.body;
         
         // Validate project ID
         const idValidation = validateObjectId(id, "Project ID");
@@ -257,4 +288,4 @@ export const deleteProject = asyncHandler(
     });
   },
   "DELETE_PROJECT_ERROR"
-);
+); 
