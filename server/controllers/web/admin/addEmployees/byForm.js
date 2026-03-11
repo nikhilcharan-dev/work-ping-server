@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 import User from "#models/User.js";
 import Account from "#models/Account.js";
 import GovtProof from "#models/GovtProof.js";
@@ -220,11 +221,14 @@ async (req, res) => {
     if (team) userData.teamId = team._id;
     if (isActive !== undefined) userData.isActive = isActive;
 
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
 
         // Create user
         console.log("newUse" ,userData)
-        const newUser = await User.create(userData);
+        const [newUser] = await User.create([userData], { session });
         // Create account
         const password = process.env.USER_DEFAULT_PASSWORD || "WorkPing@123";
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -240,8 +244,8 @@ async (req, res) => {
         }
         console.log(accountData)
 
-        try { await Account.create(accountData); } 
-        catch(err) { console.error("Error creating account:", err); throw err; }
+        await Account.create([accountData], { session });
+
         // Create govt proof
         if (pan !== "" && bankId !== "") {
 
@@ -256,8 +260,10 @@ async (req, res) => {
                 govtProofData.passportNumber = String(passport).trim().toUpperCase();
             }
 
-            await GovtProof.create(govtProofData);
+            await GovtProof.create([govtProofData], { session });
         }
+
+        await session.commitTransaction();
 
         return res.status(201).json({
             message: "Employee added successfully",
@@ -276,9 +282,12 @@ async (req, res) => {
         });
 
     } catch (error) {
+        await session.abortTransaction();
         console.error("Error inserting employee by form");
         throw error;
 
+    } finally {
+        session.endSession();
     }
 
 }, "INSERT_BY_FORM_ERROR");

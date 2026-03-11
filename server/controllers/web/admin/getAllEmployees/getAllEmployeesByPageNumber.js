@@ -97,7 +97,67 @@ const getAllEmployeesByPageNumber = asyncHandler(
       }
     }
 
+    // Lookup organization name
+    filter.push({
+      $lookup: {
+        from: "organizations",
+        localField: "organizationId",
+        foreignField: "_id",
+        as: "organization"
+      }
+    });
+    filter.push({
+      $unwind: { path: "$organization", preserveNullAndEmptyArrays: true }
+    });
+
+    // Lookup team/department name
+    filter.push({
+      $lookup: {
+        from: "teams",
+        localField: "teamId",
+        foreignField: "_id",
+        as: "team"
+      }
+    });
+    filter.push({
+      $unwind: { path: "$team", preserveNullAndEmptyArrays: true }
+    });
+
+    // Lookup govt proof (PAN, Aadhaar, passport, bank)
+    filter.push({
+      $lookup: {
+        from: "govtproofs",
+        localField: "_id",
+        foreignField: "userId",
+        as: "govtProof"
+      }
+    });
+    filter.push({
+      $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true }
+    });
+
+    // Project fields: replace organizationId with organizationName, add department & govt proof fields
+    filter.push({
+      $addFields: {
+        organizationName: { $ifNull: ["$organization.name", null] },
+        departmentName: { $ifNull: ["$team.teamName", null] },
+        aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+        panNumber: { $ifNull: ["$govtProof.panNumber", null] },
+        passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
+        bankAccount: { $ifNull: ["$govtProof.bankAccount", null] }
+      }
+    });
+    filter.push({
+      $project: {
+        organization: 0,
+        team: 0,
+        govtProof: 0
+      }
+    });
+
     const pagination = await Pagination(User, page, limit, filter);
+
+    console.log("pagination result ", pagination.documents[0]);
 
     res.status(200).json({
       totalPages: pagination.totalPages,
