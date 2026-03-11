@@ -12,7 +12,7 @@ const organizationSchema = new mongoose.Schema(
 
         IPWhitelist: [{ type: String, required: true,index: true }],
 
-        foundedAt: { type: Date }
+        foundedAt: { type: String }
 
     },
     { timestamps: true }

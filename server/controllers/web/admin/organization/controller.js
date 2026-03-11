@@ -105,7 +105,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         organizations.push(item.organization)
     ));
 
-    // console.log(JSON.stringify(organizations))
+    console.log(organizations)
     
     return res.status(200).json({
         totalRecords: pagination.totalRecords,
