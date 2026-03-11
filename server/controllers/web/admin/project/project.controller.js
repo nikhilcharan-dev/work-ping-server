@@ -46,6 +46,7 @@ export const createProject = asyncHandler(
         })
     },
     "CREATE_PROJECT_ERROR");
+
 export const getProjects = asyncHandler(
     async (req, res) => {
         let { organizationId, search="" , page = 1, limit = 10 } = req.query;
@@ -88,7 +89,7 @@ export const getProjects = asyncHandler(
 
         }
 
-        // 🔹 Join Organization collection
+        // Join Organization collection
         filter.push({
             $lookup: {
                 from: "organizations",
@@ -105,7 +106,7 @@ export const getProjects = asyncHandler(
             }
         });
 
-        // 🔹 Return organization name
+        // Return organization name
         filter.push({
             $addFields: {
                 organizationName: "$organization.name"
@@ -126,8 +127,8 @@ export const getProjects = asyncHandler(
 );
 export const getProject = asyncHandler(
     async (req, res) => {
-        const { id } = req.params;
-        
+        const { projectId: id } = req.query;
+         
         // Validate project ID
         const idValidation = validateObjectId(id, "Project ID");
         if (!idValidation.valid) {
@@ -137,7 +138,9 @@ export const getProject = asyncHandler(
             });
         }
 
-        const project = await Project.findById(id);
+        const project = await Project.findById(id).populate("projectManager" ,"name");
+
+        console.log(project)
 
         if (!project) {
             return res.status(404).json({
@@ -154,7 +157,7 @@ export const getProject = asyncHandler(
 
 export const updateProject = asyncHandler(
     async (req, res) => {
-        const { id } = req.params;
+        const {  } = req.body;
         
         // Validate project ID
         const idValidation = validateObjectId(id, "Project ID");

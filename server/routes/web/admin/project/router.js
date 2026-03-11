@@ -18,8 +18,8 @@ const router = Router();
 
 router.post("/create-project", createProject);
 router.get("/get-projects", getProjects);
-router.get("/get-project/:id", getProject);
-router.put("/update-project/:id", updateProject);
+router.get("/get-project", getProject);
+router.post("/update-project", updateProject);
 router.post("/delete-projects", deleteProject);
 
 // Project Members
