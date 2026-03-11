@@ -127,7 +127,7 @@ export const removeTeamMemberFromTeam = asyncHandler(
 
 export const getTeamMembers = asyncHandler(
     async(req, res) => {
-        const {teamId} = req.body;
+        const {teamId} = req.query;
         
         // Validate team ID
         const idValidation = validateObjectId(teamId, "Team ID");
@@ -142,7 +142,7 @@ export const getTeamMembers = asyncHandler(
 
 export const getUserTeams = asyncHandler(
     async(req, res) => {
-        const {userId} = req.body;
+        const {userId} = req.query;
         
         // Validate user ID
         const idValidation = validateObjectId(userId, "User ID");
