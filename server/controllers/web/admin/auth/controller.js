@@ -2,7 +2,7 @@ import Admin from "#models/Admin.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Account from "#models/Account.js";
-import mailClient from "#utils/axios.mail.js";
+import mailClient from "#utils/mailClient.js";
 import axios from "axios";
 import {
     validateEmail,
