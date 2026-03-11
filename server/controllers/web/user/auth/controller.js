@@ -2,6 +2,7 @@ import User from "#models/User.js";
 import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { formatUserDates } from "#helpers/data.reducer.js";
 import {
     validateEmail,
     validatePassword,
@@ -140,6 +141,6 @@ export const login = asyncHandler(
 
         return res.status(200).json({
             message: "Login Successful",
-            userDetails: userMetaDetails,
+            userDetails: formatUserDates(userMetaDetails),
         });
     }, "USER_AUTH_LOGIN_ERROR");

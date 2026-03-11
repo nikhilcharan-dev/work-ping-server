@@ -144,7 +144,9 @@ const getAllEmployeesByPageNumber = asyncHandler(
         aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
         panNumber: { $ifNull: ["$govtProof.panNumber", null] },
         passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
-        bankAccount: { $ifNull: ["$govtProof.bankAccount", null] }
+        bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
+        dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+        dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } }
       }
     });
     filter.push({

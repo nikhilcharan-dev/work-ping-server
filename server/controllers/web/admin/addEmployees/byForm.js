@@ -175,6 +175,19 @@ async (req, res) => {
     }
     console.log("Checkpoint 15");
 
+    // Validate dateOfJoining
+    const dojDate = new Date(dateOfJoining);
+    if (isNaN(dojDate.getTime())) {
+        return res.status(400).json({
+            error: "Invalid date of joining"
+        });
+    }
+    if (dojDate > new Date()) {
+        return res.status(400).json({
+            error: "Date of joining cannot be a future date"
+        });
+    }
+
     // Prepare user data
     const userData = {
         name,
@@ -182,7 +195,7 @@ async (req, res) => {
         phone,
         employeeId,
         organizationId: organization._id,
-        dateOfJoining: new Date(dateOfJoining)
+        dateOfJoining: new Date(dojDate.toISOString().split('T')[0])
     };
 
     if (gender) userData.gender = gender.toLowerCase();
@@ -213,7 +226,13 @@ async (req, res) => {
             });
         }
 
-        userData.dob = dobDate;
+        if (dobDate > new Date()) {
+            return res.status(400).json({
+                error: "Date of birth cannot be a future date"
+            });
+        }
+
+        userData.dob = new Date(dobDate.toISOString().split('T')[0]);
     }
     console.log("Checkpoint 17");
 

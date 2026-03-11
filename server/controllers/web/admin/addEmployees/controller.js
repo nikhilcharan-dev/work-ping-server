@@ -1,6 +1,57 @@
 import User from "#models/User.js";
+import GovtProof from "#models/GovtProof.js";
+import Organization from "#models/Organization.js";
 import mongoose from "mongoose";
 import {validateObjectId, validateEmail, validatePhone, validateName, validateEnum, validateDate, validateNumber} from "#utils/validators.js";
+
+const employeeLookupPipeline = [
+    {
+        $lookup: {
+            from: "organizations",
+            localField: "organizationId",
+            foreignField: "_id",
+            as: "organization"
+        }
+    },
+    { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+    {
+        $lookup: {
+            from: "teams",
+            localField: "teamId",
+            foreignField: "_id",
+            as: "team"
+        }
+    },
+    { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
+    {
+        $lookup: {
+            from: "govtproofs",
+            localField: "_id",
+            foreignField: "userId",
+            as: "govtProof"
+        }
+    },
+    { $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true } },
+    {
+        $addFields: {
+            organizationName: { $ifNull: ["$organization.name", null] },
+            departmentName: { $ifNull: ["$team.teamName", null] },
+            aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+            panNumber: { $ifNull: ["$govtProof.panNumber", null] },
+            passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
+            bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
+            dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+            dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } }
+        }
+    },
+    {
+        $project: {
+            organization: 0,
+            team: 0,
+            govtProof: 0
+        }
+    }
+];
 
 const getEmployee = asyncHandler( async (req,res)=>{
 
@@ -13,8 +64,10 @@ const getEmployee = asyncHandler( async (req,res)=>{
         return res.status(400).json({ error: idValidation.error });
     }
     
-    employeeId = new mongoose.Types.ObjectId(employeeId);
-    let Employee = await User.findById(employeeId).select("-password").populate("organizationId", "name").lean();
+    const [Employee] = await User.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(employeeId) } },
+        ...employeeLookupPipeline
+    ]);
     
     if(!Employee) {
         return res.status(404).json({error: "Employee Doesn't Exists"});
@@ -40,9 +93,10 @@ const updateEmployee = asyncHandler( async (req,res)=>{
         return res.status(404).json({ error: "Employee Doesn't Exist" });
     }
 
-    const { userName : name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId } = req.body;
+    const { userName : name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId } = req.body;
 
     const updates = {};
+    const govtUpdates = {};
 
     if (name && name !== employee.name) {
         const nameValidation = validateName(name);
@@ -103,7 +157,7 @@ const updateEmployee = asyncHandler( async (req,res)=>{
     }
 
     if (dateOfJoining) {
-        const dojValidation = validateDate(dateOfJoining, "Date of Joining");
+        const dojValidation = validateDate(dateOfJoining, "Date of Joining", { noFuture: true });
         if (!dojValidation.valid) return res.status(400).json({ error: dojValidation.error });
         updates.dateOfJoining = dojValidation.normalized;
     }
@@ -127,18 +181,69 @@ const updateEmployee = asyncHandler( async (req,res)=>{
         updates.teamId = new mongoose.Types.ObjectId(teamId);
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (organizationId) {
+        const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgIdValidation.valid) return res.status(400).json({ error: orgIdValidation.error });
+
+        const org = await Organization.findById(organizationId);
+        if (!org) return res.status(404).json({ error: "Organization not found" });
+
+        updates.organizationId = new mongoose.Types.ObjectId(organizationId);
+    }
+
+    // GovtProof fields
+    if (aadhaar) {
+        const aadhaarRegex = /^\d{12}$/;
+        if (!aadhaarRegex.test(String(aadhaar).trim())) {
+            return res.status(400).json({ error: "Invalid aadhaar format. Must be exactly 12 digits" });
+        }
+        govtUpdates.aadhaarNumber = String(aadhaar).trim();
+    }
+
+    if (pan) {
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+        if (!panRegex.test(String(pan).trim().toUpperCase())) {
+            return res.status(400).json({ error: "Invalid PAN format. Expected format: AAAAA9999A" });
+        }
+        govtUpdates.panNumber = String(pan).trim().toUpperCase();
+    }
+
+    if (passport) {
+        const passportRegex = /^[A-Z][1-9]\d{6}$/;
+        if (!passportRegex.test(String(passport).trim().toUpperCase())) {
+            return res.status(400).json({ error: "Invalid passport format. Expected format: A1234567" });
+        }
+        govtUpdates.passportNumber = String(passport).trim().toUpperCase();
+    }
+
+    if (bankId) {
+        govtUpdates.bankAccount = String(bankId).trim();
+    }
+
+    if (Object.keys(updates).length === 0 && Object.keys(govtUpdates).length === 0) {
         return res.status(200).json({ message: "No changes detected" });
     }
 
-    const updatedEmployee = await User.findByIdAndUpdate(employeeId, updates, { new: true, runValidators: true })
-        .select("-password")
-        .populate("organizationId", "name")
-        .lean();
+    if (Object.keys(updates).length > 0) {
+        await User.findByIdAndUpdate(employeeId, updates, { new: true, runValidators: true });
+    }
 
-    console.log("Updated Employee:", updatedEmployee);
+    if (Object.keys(govtUpdates).length > 0) {
+        await GovtProof.findOneAndUpdate(
+            { userId: employeeId },
+            { $set: govtUpdates },
+            { upsert: true, new: true, runValidators: true }
+        );
+    }
 
-    return res.status(200).json({ message: "Employee updated successfully", employee: updatedEmployee });
+    const [enrichedEmployee] = await User.aggregate([
+        { $match: { _id: employeeId } },
+        ...employeeLookupPipeline
+    ]);
+
+    console.log("Updated Employee:", enrichedEmployee);
+
+    return res.status(200).json({ message: "Employee updated successfully", employee: enrichedEmployee });
 
 }, "ADMIN_UPDATE_EMPLOYEE_ERROR" );
 

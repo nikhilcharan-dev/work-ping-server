@@ -2,6 +2,7 @@ import User from '#models/User.js';
 import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+import { formatUserDates } from "#helpers/data.reducer.js";
 import {
     validateEmail,
     validatePhone,
@@ -25,7 +26,7 @@ export const getProfile = asyncHandler(
             return res.status(404).json({ error: "User not found" });
         }
 
-        return res.status(200).json(user);
+        return res.status(200).json(formatUserDates(user));
     }, "USER_GET_PROFILE_ERROR"
 );
 
@@ -131,7 +132,7 @@ export const updateProfile = asyncHandler(
 
         return res.status(200).json({
             message: "Profile updated successfully",
-            userDetails: updatedUser
+            userDetails: formatUserDates(updatedUser)
         });
     }, "USER_UPDATE_PROFILE_ERROR"
 );
