@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 import User from "#models/User.js";
 import Account from "#models/Account.js";
 import GovtProof from "#models/GovtProof.js";
@@ -174,6 +175,19 @@ async (req, res) => {
     }
     console.log("Checkpoint 15");
 
+    // Validate dateOfJoining
+    const dojDate = new Date(dateOfJoining);
+    if (isNaN(dojDate.getTime())) {
+        return res.status(400).json({
+            error: "Invalid date of joining"
+        });
+    }
+    if (dojDate > new Date()) {
+        return res.status(400).json({
+            error: "Date of joining cannot be a future date"
+        });
+    }
+
     // Prepare user data
     const userData = {
         name,
@@ -181,7 +195,7 @@ async (req, res) => {
         phone,
         employeeId,
         organizationId: organization._id,
-        dateOfJoining: new Date(dateOfJoining)
+        dateOfJoining: new Date(dojDate.toISOString().split('T')[0])
     };
 
     if (gender) userData.gender = gender.toLowerCase();
@@ -212,7 +226,13 @@ async (req, res) => {
             });
         }
 
-        userData.dob = dobDate;
+        if (dobDate > new Date()) {
+            return res.status(400).json({
+                error: "Date of birth cannot be a future date"
+            });
+        }
+
+        userData.dob = new Date(dobDate.toISOString().split('T')[0]);
     }
     console.log("Checkpoint 17");
 
@@ -220,11 +240,14 @@ async (req, res) => {
     if (team) userData.teamId = team._id;
     if (isActive !== undefined) userData.isActive = isActive;
 
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
 
         // Create user
         console.log("newUse" ,userData)
-        const newUser = await User.create(userData);
+        const [newUser] = await User.create([userData], { session });
         // Create account
         const password = process.env.USER_DEFAULT_PASSWORD || "WorkPing@123";
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -240,8 +263,8 @@ async (req, res) => {
         }
         console.log(accountData)
 
-        try { await Account.create(accountData); } 
-        catch(err) { console.error("Error creating account:", err); throw err; }
+        await Account.create([accountData], { session });
+
         // Create govt proof
         if (pan !== "" && bankId !== "") {
 
@@ -256,8 +279,10 @@ async (req, res) => {
                 govtProofData.passportNumber = String(passport).trim().toUpperCase();
             }
 
-            await GovtProof.create(govtProofData);
+            await GovtProof.create([govtProofData], { session });
         }
+
+        await session.commitTransaction();
 
         return res.status(201).json({
             message: "Employee added successfully",
@@ -276,9 +301,12 @@ async (req, res) => {
         });
 
     } catch (error) {
+        await session.abortTransaction();
         console.error("Error inserting employee by form");
         throw error;
 
+    } finally {
+        session.endSession();
     }
 
 }, "INSERT_BY_FORM_ERROR");

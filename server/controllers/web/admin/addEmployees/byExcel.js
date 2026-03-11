@@ -125,12 +125,39 @@ const insertByExcel = asyncHandler(
                 }
             }
 
+            // Validate dateOfJoining is not a future date
+            const dojDate = new Date(row.dateOfJoining);
+            if (isNaN(dojDate.getTime())) {
+                failedRecords.push({
+                    error: "Invalid date of joining",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+            if (dojDate > new Date()) {
+                failedRecords.push({
+                    error: "Date of joining cannot be a future date",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
             // Validate date of birth if provided
             if (row.dob) {
                 const dobDate = new Date(row.dob);
                 if (isNaN(dobDate.getTime())) {
                     failedRecords.push({
                         error: "Invalid date of birth",
+                        rowNumber,
+                        rowData: row
+                    });
+                    continue;
+                }
+                if (dobDate > new Date()) {
+                    failedRecords.push({
+                        error: "Date of birth cannot be a future date",
                         rowNumber,
                         rowData: row
                     });
@@ -218,7 +245,7 @@ const insertByExcel = asyncHandler(
                     phone: String(row.phone).trim(),
                     employeeId: String(row.employeeId).trim(),
                     organizationId: row.organizationId,
-                    dateOfJoining: new Date(row.dateOfJoining)
+                    dateOfJoining: new Date(dojDate.toISOString().split('T')[0])
                 };
 
                 // Add optional user fields
@@ -226,7 +253,10 @@ const insertByExcel = asyncHandler(
                 if (row.salary !== undefined && row.salary !== null && row.salary !== "") {
                     userData.salary = Number(row.salary);
                 }
-                if (row.dob) userData.dob = new Date(row.dob);
+                if (row.dob) {
+                    const dobOnly = new Date(new Date(row.dob).toISOString().split('T')[0]);
+                    userData.dob = dobOnly;
+                }
                 if (row.address) userData.address = String(row.address).trim();
                 if (row.teamId) userData.teamId = row.teamId;
                 if (row.roleInTeam) userData.roleInTeam = row.roleInTeam;

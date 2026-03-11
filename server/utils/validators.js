@@ -144,7 +144,9 @@ export const validateDate = (date, fieldName = "Date", options = {}) => {
         }
     }
     
-    return { valid: true, normalized: dateObj };
+    // Strip time, keep date only
+    const dateOnly = new Date(dateObj.toISOString().split('T')[0]);
+    return { valid: true, normalized: dateOnly };
 };
 
 // Enum validation

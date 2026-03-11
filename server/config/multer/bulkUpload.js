@@ -1,9 +1,15 @@
+import fs from "fs";
 import multer from "multer";
+
+const uploadDir = "uploads/spreadsheets";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/spreadsheets"); // temp folder
+    cb(null, uploadDir); // temp folder
   },
   filename: (req, file, cb) => {
     const uniqueName =
