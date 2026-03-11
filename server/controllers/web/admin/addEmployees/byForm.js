@@ -140,19 +140,19 @@ async (req, res) => {
     }
     console.log("Checkpoint 11");
 
-    // Check existing user
+    // Check existing user (email/phone globally, employeeId within org)
     const existingUser = await User.findOne({
         $or: [
             { email: email },
             { phone: phone },
-            { employeeId: employeeId }
+            { employeeId: employeeId, organizationId: organization._id }
         ]
     });
     console.log("Checkpoint 12");
 
     if (existingUser) {
         return res.status(409).json({
-            error: "User already exists with this email, phone, or employeeId"
+            error: "User already exists with this email, phone, or employeeId in this organization"
         });
     }
 

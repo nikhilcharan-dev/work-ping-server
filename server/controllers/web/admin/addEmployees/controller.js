@@ -2,7 +2,7 @@ import User from "#models/User.js";
 import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import mongoose from "mongoose";
-import {validateObjectId, validateEmail, validatePhone, validateName, validateEnum, validateDate, validateNumber} from "#utils/validators.js";
+import {validateObjectId, validateEmail, validatePhone, validateName, validateEnum, validateDate, validateNumber, validateEmployeeId} from "#utils/validators.js";
 
 const employeeLookupPipeline = [
     {
@@ -100,6 +100,7 @@ const updateEmployee = asyncHandler( async (req,res)=>{
 
     if (name && name !== employee.name) {
         const nameValidation = validateName(name);
+        console.log("H1");
         if (!nameValidation.valid) return res.status(400).json({ error: nameValidation.error });
         updates.name = nameValidation.normalized;
     }
@@ -125,8 +126,9 @@ const updateEmployee = asyncHandler( async (req,res)=>{
     }
 
     if(userId && userId !== employee.employeeId) {
-        const userIdValidation = validateName(userId, "Employee ID");
+        const userIdValidation = validateEmployeeId(userId);
         if (!userIdValidation.valid) return res.status(400).json({ error: userIdValidation.error });
+        console.log("H2");
 
         const existing = await User.findOne({ employeeId: userIdValidation.normalized, _id: { $ne: employeeId } });
         if (existing) return res.status(409).json({ error: "Employee ID already in use by another employee" });
