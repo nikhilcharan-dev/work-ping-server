@@ -8,6 +8,8 @@ import Team from "#models/Team.js";
 const insertByForm = asyncHandler(
 async (req, res) => {
 
+    console.log("Checkpoint 1");
+
     // Extract fields
     const {
         userName: name,
@@ -32,21 +34,22 @@ async (req, res) => {
         bankId
     } = req.body;
 
+    console.log("Checkpoint 2");
     // Mandatory validation
-    if (!name || !email || !phone || !employeeId || !dateOfJoining || !role || !aadhaar) {
+    if (!name || !email || !phone || !employeeId || !dateOfJoining || !aadhaar) {
         return res.status(400).json({
             error: "Mandatory fields are missing (name, email, phone, userId, doj, role, aadhaar)"
         });
     }
-
+    console.log("Checkpoint 3");
     // Validate role
-    const validRoles = ["manager", "teamLead", "member"];
-    if (!validRoles.includes(role)) {
+    const validRoles = ["manager", "teamLead", "employee"];
+    if (role && !validRoles.includes(role)) {
         return res.status(400).json({
             error: `Invalid role. Must be one of: ${validRoles.join(", ")}`
         });
     }
-
+    console.log("Checkpoint 4");
     // Validate gender
     if (gender) {
         const validGenders = ["male", "female", "other"];
@@ -56,6 +59,7 @@ async (req, res) => {
             });
         }
     }
+    console.log("Checkpoint 5");
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,6 +68,7 @@ async (req, res) => {
             error: "Invalid email format"
         });
     }
+    console.log("Checkpoint 6");
 
     // Aadhaar validation
     const aadhaarRegex = /^\d{12}$/;
@@ -72,6 +77,7 @@ async (req, res) => {
             error: "Invalid aadhaar format. Must be exactly 12 digits"
         });
     }
+    console.log("Checkpoint 7");
 
     // PAN validation
     if (pan) {
@@ -82,6 +88,7 @@ async (req, res) => {
             });
         }
     }
+    console.log("Checkpoint 8");
 
     // Passport validation
     if (passport) {
@@ -92,6 +99,7 @@ async (req, res) => {
             });
         }
     }
+    console.log("Checkpoint 9");
 
     // Find organization
     let organization;
@@ -111,6 +119,7 @@ async (req, res) => {
             error: "organizationName is required"
         });
     }
+    console.log("Checkpoint 10");
 
     // Find team
     let team = null;
@@ -128,6 +137,7 @@ async (req, res) => {
             });
         }
     }
+    console.log("Checkpoint 11");
 
     // Check existing user
     const existingUser = await User.findOne({
@@ -137,6 +147,7 @@ async (req, res) => {
             { employeeId: employeeId }
         ]
     });
+    console.log("Checkpoint 12");
 
     if (existingUser) {
         return res.status(409).json({
@@ -146,12 +157,14 @@ async (req, res) => {
 
     // Check existing account
     const existingAccount = await Account.findOne({ email: email });
-
+    console.log("Checkpoint 13");
     if (existingAccount) {
         return res.status(409).json({
             error: "Account already exists with this email"
         });
     }
+
+    console.log("Checkpoint 14");
 
     // PAN + bank validation
     if ((pan && !bankId) || (!pan && bankId)) {
@@ -159,6 +172,7 @@ async (req, res) => {
             error: "pan and bankId must be provided together"
         });
     }
+    console.log("Checkpoint 15");
 
     // Prepare user data
     const userData = {
@@ -167,11 +181,12 @@ async (req, res) => {
         phone,
         employeeId,
         organizationId: organization._id,
-        dateOfJoining: new Date(dateOfJoining),
-        role: role.toLowerCase()
+        dateOfJoining: new Date(dateOfJoining)
     };
 
     if (gender) userData.gender = gender.toLowerCase();
+
+    if(role) userData.role = role.toLowerCase();
 
     if (salary) {
 
@@ -185,6 +200,7 @@ async (req, res) => {
 
         userData.salary = salaryNum;
     }
+    console.log("Checkpoint 16");
 
     if (dob) {
 
@@ -198,6 +214,7 @@ async (req, res) => {
 
         userData.dob = dobDate;
     }
+    console.log("Checkpoint 17");
 
     if (address) userData.address = address;
     if (team) userData.teamId = team._id;
@@ -213,16 +230,20 @@ async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const accountData = {
-            role: role.toLowerCase(),
             email: email,
             password: hashedPassword,
             emailVerified: false
         };
-        console.log(accountData)
-        await Account.create(accountData);
 
+        if(role) {
+            accountData.role = role.toLowerCase();
+        }
+        console.log(accountData)
+
+        try { await Account.create(accountData); } 
+        catch(err) { console.error("Error creating account:", err); throw err; }
         // Create govt proof
-        if (pan && bankId) {
+        if (pan !== "" && bankId !== "") {
 
             const govtProofData = {
                 aadhaarNumber: String(aadhaar).trim(),
@@ -255,7 +276,9 @@ async (req, res) => {
         });
 
     } catch (error) {
+        console.error("Error inserting employee by form");
         throw error;
+
     }
 
 }, "INSERT_BY_FORM_ERROR");
