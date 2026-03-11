@@ -15,10 +15,10 @@ router.get('/get-teams-filter', getTeamsPagination);
 
 // Team Member routes
 
-router.post('/add-team-member', addTeamMemberToTeam);
+router.get('/add-team-member', addTeamMemberToTeam);
 router.post('/remove-team-member', removeTeamMemberFromTeam);
-router.post('/get-team-members', getTeamMembers);
-router.post('/get-user-teams', getUserTeams);
+router.get('/get-team-members', getTeamMembers);
+router.get('/get-user-teams', getUserTeams);
 
 export default router;
 

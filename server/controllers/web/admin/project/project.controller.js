@@ -2,6 +2,7 @@ import Project, { requiredProjectFields, optionalProjectFields  } from "#models/
 import { pick } from "#helpers/data.reducer.js";
 import Pagination from "#helpers/pagination.js";
 import OrgAdmin from "#models/Admin.Org.js"
+import mongoose from "mongoose";
 import {
     validateObjectId,
     validateString,
@@ -216,34 +217,41 @@ export const updateProject = asyncHandler(
         });
     },
     "UPDATE_PROJECT_ERROR");
-
 export const deleteProject = asyncHandler(
-    async (req, res) => {
-        const { id } = req.params;
-        
-        // Validate project ID
-        const idValidation = validateObjectId(id, "Project ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({
-                status: "error",
-                error: idValidation.error
-            });
-        }
+  async (req, res) => {
+    const { data : ids } = req.body; // expecting array of ids
 
-        const project = await Project.findById(id);
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        status: "error",
+        error: "ids must be a non-empty array",
+      });
+    }
 
-        if (!project) {
-            return res.status(404).json({
-                status: "error",
-                error: "Project not found"
-            });
-        }
-
-        await Project.findByIdAndDelete(id);
-
-        return res.status(200).json({
-            status: "success",
-            message: "Project deleted successfully"
+    // Validate all IDs
+    for (const id of ids) {
+      const idValidation = validateObjectId(id, "Project ID");
+      if (!idValidation.valid) {
+        return res.status(400).json({
+          status: "error",
+          error: idValidation.error,
         });
-    },
-    "DELETE_PROJECT_ERROR");
+      }
+    }
+
+    // Convert to ObjectId if needed
+    const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+
+    // Delete projects
+    const result = await Project.deleteMany({
+      _id: { $in: objectIds },
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Projects deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  },
+  "DELETE_PROJECT_ERROR"
+);
