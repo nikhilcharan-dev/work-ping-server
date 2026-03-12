@@ -1,6 +1,7 @@
 import User from "#models/User.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateString
@@ -18,7 +19,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
         maxLength: 100
       });
       if (!searchValidation.valid) {
-        return res.status(400).json({ error: searchValidation.error });
+        return errorResponse(res, searchValidation.error);
       }
     }
     
@@ -26,7 +27,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     if (organizationId) {
       const orgIdValidation = validateObjectId(organizationId, "Organization ID");
       if (!orgIdValidation.valid) {
-        return res.status(400).json({ error: orgIdValidation.error });
+        return errorResponse(res, orgIdValidation.error);
       }
     }
     
@@ -34,7 +35,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     if (teamId) {
       const teamIdValidation = validateObjectId(teamId, "Team ID");
       if (!teamIdValidation.valid) {
-        return res.status(400).json({ error: teamIdValidation.error });
+        return errorResponse(res, teamIdValidation.error);
       }
     }
 
@@ -161,7 +162,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
 
     console.log("pagination result ", pagination.documents[0]);
 
-    res.status(200).json({
+    return successResponse(res, "Employees fetched", {
       totalPages: pagination.totalPages,
       totalRecords: pagination.totalRecords,
       data: pagination.documents

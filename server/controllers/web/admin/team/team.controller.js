@@ -4,6 +4,7 @@ import Team from "#models/Team.js";
 import AdminOrg from "#models/Admin.Org.js";
 import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateString,
@@ -12,7 +13,6 @@ import {
 
 export const createTeam = asyncHandler(
 async (req, res) => {
-
     const {
         teamName,
         teamManagerId: managerId,
@@ -21,262 +21,258 @@ async (req, res) => {
         organizationId
     } = req.body;
 
-    // Validate required fields
     const requiredCheck = validateRequiredFields(
         { teamName, organizationId },
         ['teamName', 'organizationId']
     );
+    if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
-    if (!requiredCheck.valid) {
-        return res.status(400).json({ error: requiredCheck.error });
-    }
-
-    // Validate team name
     const nameValidation = validateString(teamName, "Team name", {
         minLength: 2,
         maxLength: 100
     });
+    if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
 
-    if (!nameValidation.valid) {
-        return res.status(400).json({ error: nameValidation.error });
-    }
-
-    // Validate organizationId
     const orgValidation = validateObjectId(organizationId, "Organization ID");
+    if (!orgValidation.valid) return errorResponse(res, orgValidation.error);
 
-    if (!orgValidation.valid) {
-        return res.status(400).json({ error: orgValidation.error });
-    }
-
-    // Validate managerId if provided
     if (managerId) {
         const managerValidation = validateObjectId(managerId, "Manager ID");
-
-        if (!managerValidation.valid) {
-            return res.status(400).json({ error: managerValidation.error });
-        }
+        if (!managerValidation.valid) return errorResponse(res, managerValidation.error);
     }
 
     let cleanedLeaderIds = [];
-
-    // Validate leaderIds if provided
     if (leaderIds) {
-
         if (!Array.isArray(leaderIds)) {
-            return res.status(400).json({
-                error: "teamLeaderIds must be an array"
-            });
+            return errorResponse(res, "teamLeaderIds must be an array");
         }
-
         for (const leaderId of leaderIds) {
             const leaderValidation = validateObjectId(leaderId, "Leader ID");
-
-            if (!leaderValidation.valid) {
-                return res.status(400).json({ error: leaderValidation.error });
-            }
+            if (!leaderValidation.valid) return errorResponse(res, leaderValidation.error);
         }
-
-        // Remove duplicate leaderIds
         cleanedLeaderIds = [...new Set(leaderIds)];
-
-        // Prevent manager being a leader
         if (managerId && cleanedLeaderIds.includes(managerId)) {
-            return res.status(400).json({
-                error: "Team manager cannot be added as a team leader"
-            });
+            return errorResponse(res, "Team manager cannot be added as a team leader");
         }
     }
 
-    // Check if team already exists in organization
     const teamExists = await Team.findOne({
-        teamName,
+        teamName: nameValidation.normalized,
         organizationId
     });
-
-    if (teamExists) {
-        return res.status(400).json({
-            error: "Team name already exists in this organization",
-            filledDetails: req.body
-        });
-    }
+    if (teamExists) return errorResponse(res, "Team name already exists in this organization", 409);
 
     const detailObject = {
-        teamName,
+        teamName: nameValidation.normalized,
         managerId: managerId || null,
         leaderIds: cleanedLeaderIds,
         organizationId
     };
 
-    // Validate description
     if (description !== undefined && description !== null) {
-
-        const descValidation = validateString(description, "Description", {
-            maxLength: 500
-        });
-
-        if (!descValidation.valid) {
-            return res.status(400).json({ error: descValidation.error });
-        }
-
-        detailObject.description = description;
+        const descValidation = validateString(description, "Description", { maxLength: 500 });
+        if (!descValidation.valid) return errorResponse(res, descValidation.error);
+        detailObject.description = descValidation.normalized;
     }
 
-    // Create team
     const createdTeam = await Team.create(detailObject);
-
-    return res.status(201).json({
-        success: "Team added successfully",
-        teamDetails: {
-            ...detailObject,
-            teamId: createdTeam._id
-        }
-    });
+    return successResponse(res, "Team added successfully", {
+        ...detailObject,
+        teamId: createdTeam._id
+    }, 201);
 
 }, "ADMIN_CREATE_TEAM_ERROR");
 
 export const getTeam = asyncHandler(
-    async(req, res) => {
-        const {id : teamId} = req.params;
+    async (req, res) => {
+        const { id: teamId } = req.params;
 
-        // Validate team ID
         const idValidation = validateObjectId(teamId, "Team ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ error: idValidation.error });
-        }
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
-        const finder = await Team.findById(teamId).populate({path: "managerId", select: "employeeId name email"}).populate({path: "leaderIds" , select: "employeeId name email"});
+        const [team] = await Team.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(teamId) } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "managerId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    as: "manager"
+                }
+            },
+            { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "leaderIds",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    as: "leaders"
+                }
+            }
+        ]);
 
-        console.log("jjm",finder)
-
-        if(finder === null) return res.status(400).json({error: "Team does not exist with given id"});
-
-        return res.status(200).json(finder);
-
+        if (!team) return errorResponse(res, "Team does not exist with given id", 404);
+        return successResponse(res, "Team fetched", team);
     }, "ADMIN_GET_TEAM_ERROR");
 
-export const getAllTeams =  asyncHandler(
-    async(req, res) => {
-        const {organizationId} = req.body;
+export const getAllTeams = asyncHandler(
+    async (req, res) => {
+        const { organizationId } = req.body;
 
-        // Validate organization ID
         const idValidation = validateObjectId(organizationId, "Organization ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ error: idValidation.error });
-        }
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
-        const teamList = await Team.find({organizationId: organizationId}).populate({path: "managerId", select: "employeeId name email"}).populate({path: "leaderIds" , select: "employeeId name email"});
+        const teamList = await Team.aggregate([
+            { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "managerId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    as: "manager"
+                }
+            },
+            { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "leaderIds",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    as: "leaders"
+                }
+            }
+        ]);
 
-        return res.status(200).json(teamList);
-
+        return successResponse(res, "Teams fetched", teamList);
     }, "ADMIN_GET_TEAMS_ERROR");
 
 export const getTeamsPagination = asyncHandler(
-    async(req, res) => {
-        const {organizationId, page = 1, limit = 10, search = ""} = req.query;
+    async (req, res) => {
+        const { organizationId, page = 1, limit = 10, search = "" } = req.query;
 
         const adminId = req.user.userId;
-
         const thefilter = [];
+        const orgList = [];
 
-        const orgList = []
-
-        if(organizationId){
-
+        if (organizationId) {
+            const orgValidation = validateObjectId(organizationId, "Organization ID");
+            if (!orgValidation.valid) return errorResponse(res, orgValidation.error);
             orgList.push(new mongoose.Types.ObjectId(organizationId));
-
-
         } else {
-            const orgs = await AdminOrg.find({primaryAdmin: adminId}).select("organizationId");
+            const orgs = await AdminOrg.find({ primaryAdmin: adminId }).select("organizationId");
             orgList.push(...orgs.map(org => org.organizationId));
         }
 
-        thefilter.push({
-            $match: {
-                organizationId: { $in: orgList.map(org => org) }
-            }
-        })
+        thefilter.push({ $match: { organizationId: { $in: orgList } } });
 
-        if(search.trim() !== "") {
+        if (search.trim() !== "") {
             thefilter.push({
                 $match: {
-                    teamName: { $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: "i" }
+                    teamName: {
+                        $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                        $options: "i"
+                    }
                 }
-            })
+            });
         }
 
-        // console.log("checkpoint", thefilter)
+        thefilter.push({
+            $lookup: {
+                from: "users",
+                localField: "managerId",
+                foreignField: "_id",
+                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                as: "manager"
+            }
+        });
+        thefilter.push({ $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } });
+        thefilter.push({
+            $lookup: {
+                from: "users",
+                localField: "leaderIds",
+                foreignField: "_id",
+                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                as: "leaders"
+            }
+        });
 
-        const results = await pagination(Team, page, limit, thefilter)
-
-        // console.log("checkpoint2", results.documents);
-
-
-        // Replace managerId and leaderIds ObjectIds with employeeId
-        const teamListWithEmployeeIds = await Promise.all(
-            results.documents.map(async (team) => {
-                let managerEmployeeId = null;
-                if (team.managerId) {
-                    const manager = await User.findById(team.managerId).select("employeeId");
-                    managerEmployeeId = manager ? manager.employeeId : null;
-                }
-                let leaderEmployeeIds = [];
-                if (Array.isArray(team.leaderIds) && team.leaderIds.length > 0) {
-                    const leaders = await User.find({ _id: { $in: team.leaderIds } }).select("employeeId");
-                    leaderEmployeeIds = leaders.map(l => l.employeeId);
-                }
-                return {
-                    ...team,
-                    managerId: managerEmployeeId,
-                    leaderIds: leaderEmployeeIds
-                };
-            })
-        );
-
-        return res.status(200).json({teamList: teamListWithEmployeeIds, totalRecords: results.totalRecords, totalPages: results.totalPages});
+        const results = await pagination(Team, page, limit, thefilter);
+        return successResponse(res, "Teams fetched", {
+            teamList: results.documents,
+            totalRecords: results.totalRecords,
+            totalPages: results.totalPages
+        });
     }, "GET_TEAMS_PAGINATION_ERROR");
 
 export const updateTeam = asyncHandler(
-    async(req, res) => {
-        const {teamId, ...updatableDetails} = req.body;
-        if(!teamId || !mongoose.Types.ObjectId.isValid(teamId)) {
-            return res.status(400).json({error: "Invalid teamId"});
+    async (req, res) => {
+        const { teamId, teamName, description, managerId, leaderIds } = req.body;
+
+        const idValidation = validateObjectId(teamId, "Team ID");
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+        const team = await Team.findById(teamId);
+        if (!team) return errorResponse(res, "Team not found", 404);
+
+        const updateData = {};
+
+        if (teamName !== undefined) {
+            const nameValidation = validateString(teamName, "Team name", { minLength: 2, maxLength: 100 });
+            if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
+            updateData.teamName = nameValidation.normalized;
         }
 
-        const updater = await Team.findByIdAndUpdate(teamId ,updatableDetails, { new: true, runValidators: true });
+        if (description !== undefined) {
+            const descValidation = validateString(description, "Description", { maxLength: 500 });
+            if (!descValidation.valid) return errorResponse(res, descValidation.error);
+            updateData.description = descValidation.normalized;
+        }
 
-        return res.status(200).json({success: "Team Details updated.", updatedDetails: updater})
+        if (managerId !== undefined) {
+            if (managerId !== null) {
+                const managerValidation = validateObjectId(managerId, "Manager ID");
+                if (!managerValidation.valid) return errorResponse(res, managerValidation.error);
+            }
+            updateData.managerId = managerId;
+        }
 
+        if (leaderIds !== undefined) {
+            if (!Array.isArray(leaderIds)) return errorResponse(res, "leaderIds must be an array");
+            for (const id of leaderIds) {
+                const v = validateObjectId(id, "Leader ID");
+                if (!v.valid) return errorResponse(res, v.error);
+            }
+            updateData.leaderIds = [...new Set(leaderIds)];
+        }
+
+        if (Object.keys(updateData).length === 0) return errorResponse(res, "No valid fields to update");
+
+        const updater = await Team.findByIdAndUpdate(teamId, updateData, { new: true, runValidators: true });
+        return successResponse(res, "Team details updated", updater);
     }, "ADMIN_UPDATE_TEAM_ERROR");
 
 export const deleteTeam = asyncHandler(
-  async (req, res) => {
-    const { data : teamIds } = req.body;
+    async (req, res) => {
+        const { data: teamIds } = req.body;
 
-    // Check if array exists
-    if (!Array.isArray(teamIds) || teamIds.length === 0) {
-      return res.status(400).json({ error: "teamIds must be a non-empty array" });
-    }
+        if (!Array.isArray(teamIds) || teamIds.length === 0) {
+            return errorResponse(res, "teamIds must be a non-empty array");
+        }
 
-    // Validate all IDs
-    for (const teamId of teamIds) {
-      const idValidation = validateObjectId(teamId, "Team ID");
-      if (!idValidation.valid) {
-        return res.status(400).json({ error: idValidation.error });
-      }
-    }
+        for (const teamId of teamIds) {
+            const idValidation = validateObjectId(teamId, "Team ID");
+            if (!idValidation.valid) return errorResponse(res, idValidation.error);
+        }
 
-    // Delete teams
-    const result = await Team.deleteMany({
-      _id: { $in: teamIds }
-    });
+        const result = await Team.deleteMany({ _id: { $in: teamIds } });
 
-    if (result.deletedCount === 0) {
-      return res.status(400).json({ error: "Deletion failed, Teams don't exist" });
-    }
+        if (result.deletedCount === 0) return errorResponse(res, "No matching teams found to delete", 404);
 
-    return res.status(200).json({
-      success: `${result.deletedCount} team(s) deleted`
-    });
-  },
-  "ADMIN_DELETE_TEAM_ERROR"
+        return successResponse(res, `${result.deletedCount} team(s) deleted`, { deletedCount: result.deletedCount });
+    },
+    "ADMIN_DELETE_TEAM_ERROR"
 );

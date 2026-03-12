@@ -1,6 +1,7 @@
 import Account from "#models/Account.js";
 import { sendEmailOTP, verifyEmailOTP } from "#services/mailer/mail.service.js";
 import bcrypt from "bcrypt";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateEmail,
     validatePassword,
@@ -12,115 +13,77 @@ export const send_otp = asyncHandler(
     async (req, res) => {
         const { email } = req.body;
 
-        // Validate email
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ error: emailValidation.error });
-        }
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-        const findAdmin = await Account.findOne({ email: email.trim() });
+        const findAdmin = await Account.findOne({ email: emailValidation.normalized });
 
         if (!findAdmin) {
-            return res.status(200).json({
-                message: "If admin exists with this email, OTP will be sent to the email address",
-            })
+            // Intentionally vague for security
+            return successResponse(res, "If an admin exists with this email, an OTP will be sent");
         }
 
         try {
-            await sendEmailOTP(email);
+            await sendEmailOTP(emailValidation.normalized);
         } catch (err) {
-            return res.status(500).json({
-                error: "Something went wrong",
-            })
+            return errorResponse(res, "Something went wrong sending OTP", 500);
         }
 
-        return res.status(200).json({
-            message: "If admin exists with this email, OTP will be sent to the email address",
-        })
+        return successResponse(res, "If an admin exists with this email, an OTP will be sent");
     }, "FORGOT_PASSWORD_SEND_OTP_ERROR");
 
 export const verify_otp = asyncHandler(
     async (req, res) => {
         const { email, otp } = req.body;
 
-        // Validate required fields
         const requiredCheck = validateRequiredFields({ email, otp }, ['email', 'otp']);
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ error: requiredCheck.error });
-        }
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
-        // Validate email format
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ error: emailValidation.error });
-        }
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-        // Validate OTP format
         const otpValidation = validateOTP(otp);
-        if (!otpValidation.valid) {
-            return res.status(400).json({ error: otpValidation.error });
-        }
+        if (!otpValidation.valid) return errorResponse(res, otpValidation.error);
 
-        const findAdmin = await Account.findOne({ email: email.trim() });
-
-        if (!findAdmin) {
-            return res.status(401).json({
-                message: "Verification failed.",
-            })
-        }
+        const findAdmin = await Account.findOne({ email: emailValidation.normalized });
+        if (!findAdmin) return errorResponse(res, "Verification failed", 401);
 
         try {
-            await verifyEmailOTP(email, otp);
+            await verifyEmailOTP(emailValidation.normalized, otp);
         } catch (err) {
-            return res.status(401).json({
-                message: "Invalid OTP",
-            })
+            return errorResponse(res, "Invalid OTP", 401);
         }
 
-        res.status(200).json({
-            "message": "OTP Verification Successful",
-        })
-
-    }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR" );
+        return successResponse(res, "OTP Verification Successful");
+    }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR");
 
 export const verify_otp_and_change_password = asyncHandler(
     async (req, res) => {
         const { email, otp, newPassword } = req.body;
 
-        if (!email || !otp || !newPassword) {
-            return res.status(400).json({
-                message: "Email, OTP, and new password are required",
-            })
-        }
+        const requiredCheck = validateRequiredFields({ email, otp, newPassword }, ['email', 'otp', 'newPassword']);
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
-        const account = await Account.findOne({ email: emailValidation.normalized });
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-        if (!account || account.role !== "admin") {
-            return res.status(401).json({ message: "Admin does not exist" });
-        }
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
+
+        const account = await Account.findOne({ email: emailValidation.normalized, role: "admin" });
+        if (!account) return errorResponse(res, "Admin does not exist", 401);
 
         try {
-            await verifyEmailOTP(email, otp);
+            await verifyEmailOTP(emailValidation.normalized, otp);
         } catch (err) {
-            return res.status(401).json({
-                message: "Password change failed. Invalid OTP.",
-            })
+            return errorResponse(res, "Password change failed. Invalid OTP.", 401);
         }
 
-        const isMatch = await bcrypt.compare(
-            newPassword,
-            account.password
-        );
+        const isMatch = await bcrypt.compare(newPassword, account.password);
+        if (isMatch) return errorResponse(res, "New password cannot be the same as current password");
 
-        if (isMatch) {
-            return res.status(401).json({ message: "Password already used, Use new password" });
-        }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        account.password = hashedPassword;
+        account.password = await bcrypt.hash(newPassword, 10);
         await account.save();
 
-        res.status(200).json({
-            message: "Password changed successfully",
-        })
+        return successResponse(res, "Password changed successfully");
     }, "CHANGE_PASSWORD_ERROR");

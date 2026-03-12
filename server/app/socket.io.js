@@ -20,14 +20,24 @@ export default function socket(server) {
         }
     });
 
+    console.log("Gateway Socket listening");
+
     io.on("connection", socket => {
-        console.log("Gateway Socket listening");
         socket.on("payment:join", async ({ userId }) => {
+            if (!userId || typeof userId !== "string") {
+                return socket.emit("payment:error", "Invalid userId");
+            }
+
             socket.join(`payment:${userId}`);
 
-            const data = await redis.get(`payment:${userId}`);
-
-            socket.emit("payment:status", !data ? "Expired" : data);
-        })
+            try {
+                const raw = await redis.get(`payment:${userId}`);
+                const data = raw ? JSON.parse(raw) : null;
+                socket.emit("payment:status", !data ? "Expired" : data);
+            } catch (err) {
+                console.error("[Socket] redis.get error:", err.message);
+                socket.emit("payment:error", "Failed to fetch payment status");
+            }
+        });
     });
 }

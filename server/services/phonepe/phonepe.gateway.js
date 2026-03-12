@@ -32,26 +32,27 @@ const phonepeGateway = asyncHandler(
             date: Date.now(),
         });
 
-        const phonepeRes =  axios.post(`${PHONEPE_URI}/api/payments/initiate-payment`, {
-            orderId : newOrder._id,
+        // const phonepeRes = axios.post(...).data  — was missing await, planId.amount wrong, .data.redirectUrl wrong
+        const phonepeRes = (await axios.post(`${PHONEPE_URI}/api/payments/initiate-payment`, {
+            orderId: newOrder._id,
             userId,
-            amount: planId.amount
-        }).data; // {orderId, state, expireAt : TimeStamp, redirectUrl}
+            amount: plan.amount  // was: planId.amount (planId is a string, not the plan object)
+        })).data; // {orderId, state, expireAt : TimeStamp, redirectUrl}
 
         newOrder.phonepeOrderId = phonepeRes.orderId;
 
         await newOrder.save();
 
-        await redis.set(`payment:${userId}`, {
+        // was: redis.set with plain object — Redis only stores strings
+        await redis.set(`payment:${userId}`, JSON.stringify({
             expireAt: phonepeRes.expireAt,
             status: "Pending"
-        });
-
+        }));
 
         return res.status(200).json({
             success: true,
-            redirectUrl: phonepeRes.data.redirectUrl
-        });     
+            redirectUrl: phonepeRes.redirectUrl  // was: phonepeRes.data.redirectUrl (not nested under .data)
+        });
 
     }, "PHONEPE_GATEWAY_ERROR"
 )

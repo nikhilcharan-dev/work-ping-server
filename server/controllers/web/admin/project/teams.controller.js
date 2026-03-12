@@ -1,6 +1,7 @@
 import ProjectMember from "#models/ProjectMember.js";
 import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateRequiredFields
@@ -16,52 +17,33 @@ export const addProjectMember = asyncHandler(
             { projectId, userId, organizationId },
             ["projectId", "userId", "organizationId"]
         );
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ status: "error", error: requiredCheck.error });
-        }
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
         for (const [field, value] of [["Project ID", projectId], ["User ID", userId], ["Organization ID", organizationId]]) {
             const v = validateObjectId(value, field);
-            if (!v.valid) return res.status(400).json({ status: "error", error: v.error });
+            if (!v.valid) return errorResponse(res, v.error);
         }
 
         if (!VALID_ROLES.includes(role)) {
-            return res.status(400).json({
-                status: "error",
-                error: `role must be one of: ${VALID_ROLES.join(", ")}`
-            });
+            return errorResponse(res, `role must be one of: ${VALID_ROLES.join(", ")}`);
         }
 
         const existing = await ProjectMember.findOne({ projectId, userId });
-        if (existing) {
-            return res.status(400).json({
-                status: "error",
-                error: "User is already a member of this project"
-            });
-        }
+        if (existing) return errorResponse(res, "User is already a member of this project", 409);
 
         const member = await ProjectMember.create({ projectId, userId, organizationId, role });
-
-        return res.status(201).json({
-            status: "success",
-            data: member
-        });
+        return successResponse(res, "Member added to project", member, 201);
     },
-    "ADD_PROJECT_MEMBER_ERROR"
-);
+    "ADD_PROJECT_MEMBER_ERROR");
 
 export const getProjectMembers = asyncHandler(
     async (req, res) => {
         const { projectId, page = 1, limit = 10, search = "", role } = req.query;
 
-        if (!projectId) {
-            return res.status(400).json({ status: "error", error: "projectId is required" });
-        }
+        if (!projectId) return errorResponse(res, "projectId is required");
 
         const idValidation = validateObjectId(projectId, "Project ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ status: "error", error: idValidation.error });
-        }
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
         const filter = [
             { $match: { projectId: new mongoose.Types.ObjectId(projectId) } }
@@ -72,17 +54,9 @@ export const getProjectMembers = asyncHandler(
         }
 
         filter.push({
-            $lookup: {
-                from: "users",
-                localField: "userId",
-                foreignField: "_id",
-                as: "user"
-            }
+            $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" }
         });
-
-        filter.push({
-            $unwind: { path: "$user", preserveNullAndEmptyArrays: true }
-        });
+        filter.push({ $unwind: { path: "$user", preserveNullAndEmptyArrays: true } });
 
         if (search.trim()) {
             filter.push({
@@ -102,45 +76,62 @@ export const getProjectMembers = asyncHandler(
                 employeeId: "$user.employeeId"
             }
         });
-
-        filter.push({
-            $project: { user: 0 }
-        });
+        filter.push({ $project: { user: 0 } });
 
         const results = await pagination(ProjectMember, page, limit, filter);
-
-        return res.status(200).json({
-            status: "success",
+        return successResponse(res, "Project members fetched", {
             members: results.documents,
             totalRecords: results.totalRecords,
             totalPages: results.totalPages
         });
     },
-    "GET_PROJECT_MEMBERS_ERROR"
-);
+    "GET_PROJECT_MEMBERS_ERROR");
 
 export const getProjectMember = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
 
         const idValidation = validateObjectId(id, "Member ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ status: "error", error: idValidation.error });
-        }
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
-        const member = await ProjectMember.findById(id)
-            .populate({ path: "userId", select: "name email employeeId" })
-            .populate({ path: "projectId", select: "name status" })
-            .populate({ path: "organizationId", select: "name" });
+        const [member] = await ProjectMember.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(id) } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1 } }],
+                    as: "user"
+                }
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "projects",
+                    localField: "projectId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, status: 1 } }],
+                    as: "project"
+                }
+            },
+            { $unwind: { path: "$project", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1 } }],
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } }
+        ]);
 
-        if (!member) {
-            return res.status(404).json({ status: "error", error: "Project member not found" });
-        }
-
-        return res.status(200).json({ status: "success", data: member });
+        if (!member) return errorResponse(res, "Project member not found", 404);
+        return successResponse(res, "Project member fetched", member);
     },
-    "GET_PROJECT_MEMBER_ERROR"
-);
+    "GET_PROJECT_MEMBER_ERROR");
 
 export const updateProjectMember = asyncHandler(
     async (req, res) => {
@@ -148,73 +139,50 @@ export const updateProjectMember = asyncHandler(
         const { role, isActive } = req.body;
 
         const idValidation = validateObjectId(id, "Member ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ status: "error", error: idValidation.error });
-        }
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
         const member = await ProjectMember.findById(id);
-        if (!member) {
-            return res.status(404).json({ status: "error", error: "Project member not found" });
-        }
+        if (!member) return errorResponse(res, "Project member not found", 404);
 
         const updateData = {};
 
         if (role !== undefined) {
             if (!VALID_ROLES.includes(role)) {
-                return res.status(400).json({
-                    status: "error",
-                    error: `role must be one of: ${VALID_ROLES.join(", ")}`
-                });
+                return errorResponse(res, `role must be one of: ${VALID_ROLES.join(", ")}`);
             }
             updateData.role = role;
         }
 
         if (isActive !== undefined) {
-            if (typeof isActive !== "boolean") {
-                return res.status(400).json({ status: "error", error: "isActive must be a boolean" });
-            }
+            if (typeof isActive !== "boolean") return errorResponse(res, "isActive must be a boolean");
             updateData.isActive = isActive;
         }
 
-        if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({ status: "error", error: "No valid fields to update" });
-        }
+        if (Object.keys(updateData).length === 0) return errorResponse(res, "No valid fields to update");
 
-        const updated = await ProjectMember.findByIdAndUpdate(id, updateData, {
-            new: true,
-            runValidators: true
-        });
-
-        return res.status(200).json({ status: "success", data: updated });
+        const updated = await ProjectMember.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        return successResponse(res, "Project member updated", updated);
     },
-    "UPDATE_PROJECT_MEMBER_ERROR"
-);
+    "UPDATE_PROJECT_MEMBER_ERROR");
 
 export const removeProjectMembers = asyncHandler(
     async (req, res) => {
         const { data: ids } = req.body;
 
         if (!Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ status: "error", error: "ids must be a non-empty array" });
+            return errorResponse(res, "ids must be a non-empty array");
         }
 
         for (const id of ids) {
             const v = validateObjectId(id, "Member ID");
-            if (!v.valid) return res.status(400).json({ status: "error", error: v.error });
+            if (!v.valid) return errorResponse(res, v.error);
         }
 
         const result = await ProjectMember.deleteMany({
             _id: { $in: ids.map(id => new mongoose.Types.ObjectId(id)) }
         });
 
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ status: "error", error: "No matching members found to delete" });
-        }
-
-        return res.status(200).json({
-            status: "success",
-            message: `${result.deletedCount} member(s) removed successfully`
-        });
+        if (result.deletedCount === 0) return errorResponse(res, "No matching members found to delete", 404);
+        return successResponse(res, `${result.deletedCount} member(s) removed successfully`, { deletedCount: result.deletedCount });
     },
-    "REMOVE_PROJECT_MEMBERS_ERROR"
-);
+    "REMOVE_PROJECT_MEMBERS_ERROR");

@@ -1,51 +1,40 @@
 import Admin from "#models/Admin.js";
 import { sendEmailOTP, verifyEmailOTP } from "#services/mailer/mail.service.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { validateEmail, validateRequiredFields } from "#utils/validators.js";
 
 export const send_email_otp = asyncHandler(async (req, res) => {
     const { email } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-    }
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-    const user = await Admin.findOne({ email });
-    if (user) {
-        return res.status(400).json({
-            message: "Email already exists",
-        });
-    }
+    const user = await Admin.findOne({ email: emailValidation.normalized });
+    if (user) return errorResponse(res, "Email already exists", 409);
 
-    await sendEmailOTP(email);
+    await sendEmailOTP(emailValidation.normalized);
 
-    return res.status(201).json({
-        message: "Email sent successfully",
-    });
+    return successResponse(res, "Email sent successfully", null, 201);
 }, "AUTH_EMAIL_OTP_ERROR");
 
 export const send_phone_otp = asyncHandler(async (req, res) => {
-    return res.status(200).json({
-        status: "success",
-    });
+    return successResponse(res, "Phone OTP sent");
 }, "AUTH_PHONE_OTP_ERROR");
 
 export const verify_email_otp = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
 
-    if (!email || !otp) {
-        return res.status(400).json({
-            message: "Email and OTP are required",
-        });
-    }
+    const requiredCheck = validateRequiredFields({ email, otp }, ['email', 'otp']);
+    if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
-    await verifyEmailOTP(email, otp);
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-    return res.status(200).json({
-        message: "Email verified",
-    });
+    await verifyEmailOTP(emailValidation.normalized, otp);
+
+    return successResponse(res, "Email verified");
 }, "AUTH_VERIFY_EMAIL_OTP_ERROR");
 
 export const verify_phone_otp = asyncHandler(async (req, res) => {
-    return res.status(200).json({
-        status: "success",
-    });
+    return successResponse(res, "Phone OTP verified");
 }, "AUTH_VERIFY_PHONE_OTP_ERROR");

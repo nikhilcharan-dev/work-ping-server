@@ -7,13 +7,16 @@ import projectRoutes from "#webRoutes/user/projects/router.js";
 import attendanceHistoryRoutes from "#webRoutes/user/attendance/history.router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
+import requireRole from "#middleware/requireRole.js";
+
+const userOnly = [validateCookie, requireRole("user", "manager", "teamlead", "employee")];
 
 export default function userRoutesSetup(app) {
     app.use("/api/auth", authRoutes);
-    app.use("/api/user", validateCookie, userRoutes);
-    app.use("/api/user/leaves", validateCookie, leaveRoutes);
-    app.use("/api/user/organisation", validateCookie, organisationRoutes);
-    app.use("/api/user/payroll", validateCookie, payrollRoutes);
-    app.use("/api/user/projects", validateCookie, projectRoutes);
-    app.use("/api/user/attendance", validateCookie, attendanceHistoryRoutes);
+    app.use("/api/user", ...userOnly, userRoutes);
+    app.use("/api/user/leaves", ...userOnly, leaveRoutes);
+    app.use("/api/user/organisation", ...userOnly, organisationRoutes);
+    app.use("/api/user/payroll", ...userOnly, payrollRoutes);
+    app.use("/api/user/projects", ...userOnly, projectRoutes);
+    app.use("/api/user/attendance", ...userOnly, attendanceHistoryRoutes);
 }

@@ -2,6 +2,7 @@ import User from "#models/User.js";
 import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import mongoose from "mongoose";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {validateObjectId, validateEmail, validatePhone, validateName, validateEnum, validateDate, validateNumber, validateEmployeeId} from "#utils/validators.js";
 
 const employeeLookupPipeline = [
@@ -53,152 +54,129 @@ const employeeLookupPipeline = [
     }
 ];
 
-const getEmployee = asyncHandler( async (req,res)=>{
+const getEmployee = asyncHandler(async (req, res) => {
+    const { id: employeeId } = req.params;
 
-    
-    let { id : employeeId } = req.params;
-    
-    // Validate employee ID
     const idValidation = validateObjectId(employeeId, "Employee ID");
-    if (!idValidation.valid) {
-        return res.status(400).json({ error: idValidation.error });
-    }
-    
-    const [Employee] = await User.aggregate([
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+    const [employee] = await User.aggregate([
         { $match: { _id: new mongoose.Types.ObjectId(employeeId) } },
         ...employeeLookupPipeline
     ]);
-    
-    if(!Employee) {
-        return res.status(404).json({error: "Employee Doesn't Exists"});
-    }
-    return res.status(200).json(Employee);
-}, "ADMIN_GET_EMPLOYEE_ERROR" );
 
-const updateEmployee = asyncHandler( async (req,res)=>{
+    if (!employee) return errorResponse(res, "Employee doesn't exist", 404);
+    return successResponse(res, "Employee fetched", employee);
+}, "ADMIN_GET_EMPLOYEE_ERROR");
 
-    console.log(req.body);
+const updateEmployee = asyncHandler(async (req, res) => {
     let { employeeId } = req.body;
 
-    // Validate employee ID
     const idValidation = validateObjectId(employeeId, "Employee ID");
-    if (!idValidation.valid) {
-        return res.status(400).json({ error: idValidation.error });
-    }
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
     employeeId = new mongoose.Types.ObjectId(employeeId);
     const employee = await User.findById(employeeId);
+    if (!employee) return errorResponse(res, "Employee doesn't exist", 404);
 
-    if (!employee) {
-        return res.status(404).json({ error: "Employee Doesn't Exist" });
-    }
-
-    const { userName : name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId, workType } = req.body;
+    const { userName: name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId, workType } = req.body;
 
     const updates = {};
     const govtUpdates = {};
 
     if (name && name !== employee.name) {
         const nameValidation = validateName(name);
-        console.log("H1");
-        if (!nameValidation.valid) return res.status(400).json({ error: nameValidation.error });
+        if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
         updates.name = nameValidation.normalized;
     }
 
     if (email && email !== employee.email) {
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) return res.status(400).json({ error: emailValidation.error });
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-        const existing = await User.findOne({ email: emailValidation.normalized, _id: { $ne: employeeId } });
-        if (existing) return res.status(409).json({ error: "Email already in use by another employee" });
+        const existingEmail = await User.findOne({ email: emailValidation.normalized, _id: { $ne: employeeId } });
+        if (existingEmail) return errorResponse(res, "Email already in use by another employee", 409);
 
         updates.email = emailValidation.normalized;
     }
 
-    if(workType && workType !== employee.workType) {
+    if (workType && workType !== employee.workType) {
         const validWorkTypes = ["remote", "onsite", "hybrid"];
         if (!validWorkTypes.includes(workType.toLowerCase())) {
-            return res.status(400).json({
-                error: `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`
-            });
+            return errorResponse(res, `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`);
         }
         updates.workType = workType.toLowerCase();
     }
 
     if (phone && phone !== employee.phone) {
         const phoneValidation = validatePhone(phone);
-        if (!phoneValidation.valid) return res.status(400).json({ error: phoneValidation.error });
+        if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
 
-        const existing = await User.findOne({ phone: phoneValidation.normalized, _id: { $ne: employeeId } });
-        if (existing) return res.status(409).json({ error: "Phone number already in use by another employee" });
+        const existingPhone = await User.findOne({ phone: phoneValidation.normalized, _id: { $ne: employeeId } });
+        if (existingPhone) return errorResponse(res, "Phone number already in use by another employee", 409);
 
         updates.phone = phoneValidation.normalized;
     }
 
-    if(userId && userId !== employee.employeeId) {
+    if (userId && userId !== employee.employeeId) {
         const userIdValidation = validateEmployeeId(userId);
-        if (!userIdValidation.valid) return res.status(400).json({ error: userIdValidation.error });
-        console.log("H2");
+        if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
 
-        const existing = await User.findOne({ employeeId: userIdValidation.normalized, _id: { $ne: employeeId } });
-        if (existing) return res.status(409).json({ error: "Employee ID already in use by another employee" });
+        const existingEmpId = await User.findOne({ employeeId: userIdValidation.normalized, _id: { $ne: employeeId } });
+        if (existingEmpId) return errorResponse(res, "Employee ID already in use by another employee", 409);
 
         updates.employeeId = userIdValidation.normalized;
     }
 
     if (gender && gender !== employee.gender) {
         const genderValidation = validateEnum(gender, ["male", "female", "other"], "Gender");
-        if (!genderValidation.valid) return res.status(400).json({ error: genderValidation.error });
+        if (!genderValidation.valid) return errorResponse(res, genderValidation.error);
         updates.gender = genderValidation.normalized;
     }
 
     if (salary !== undefined && salary !== employee.salary) {
         const salaryValidation = validateNumber(salary, "Salary", { min: 0 });
-        if (!salaryValidation.valid) return res.status(400).json({ error: salaryValidation.error });
+        if (!salaryValidation.valid) return errorResponse(res, salaryValidation.error);
         updates.salary = salaryValidation.normalized;
     }
 
     if (dob) {
         const dobValidation = validateDate(dob, "Date of Birth", { noFuture: true });
-        if (!dobValidation.valid) return res.status(400).json({ error: dobValidation.error });
+        if (!dobValidation.valid) return errorResponse(res, dobValidation.error);
         updates.dob = dobValidation.normalized;
     }
 
-    if (address) {
-        updates.address = String(address).trim();
-    }
+    if (address) updates.address = String(address).trim();
 
     if (dateOfJoining) {
         const dojValidation = validateDate(dateOfJoining, "Date of Joining", { noFuture: true });
-        if (!dojValidation.valid) return res.status(400).json({ error: dojValidation.error });
+        if (!dojValidation.valid) return errorResponse(res, dojValidation.error);
         updates.dateOfJoining = dojValidation.normalized;
     }
 
     if (role && role !== employee.role) {
         const roleValidation = validateEnum(role, ["manager", "teamLead", "employee"], "Role");
-        if (!roleValidation.valid) return res.status(400).json({ error: roleValidation.error });
+        if (!roleValidation.valid) return errorResponse(res, roleValidation.error);
         updates.role = roleValidation.normalized;
     }
 
     if (isActive !== undefined && isActive !== employee.isActive) {
-        if (typeof isActive !== "boolean") {
-            return res.status(400).json({ error: "isActive must be a boolean" });
-        }
+        if (typeof isActive !== "boolean") return errorResponse(res, "isActive must be a boolean");
         updates.isActive = isActive;
     }
 
     if (teamId) {
         const teamIdValidation = validateObjectId(teamId, "Team ID");
-        if (!teamIdValidation.valid) return res.status(400).json({ error: teamIdValidation.error });
+        if (!teamIdValidation.valid) return errorResponse(res, teamIdValidation.error);
         updates.teamId = new mongoose.Types.ObjectId(teamId);
     }
 
     if (organizationId) {
         const orgIdValidation = validateObjectId(organizationId, "Organization ID");
-        if (!orgIdValidation.valid) return res.status(400).json({ error: orgIdValidation.error });
+        if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
 
         const org = await Organization.findById(organizationId);
-        if (!org) return res.status(404).json({ error: "Organization not found" });
+        if (!org) return errorResponse(res, "Organization not found", 404);
 
         updates.organizationId = new mongoose.Types.ObjectId(organizationId);
     }
@@ -207,7 +185,7 @@ const updateEmployee = asyncHandler( async (req,res)=>{
     if (aadhaar) {
         const aadhaarRegex = /^\d{12}$/;
         if (!aadhaarRegex.test(String(aadhaar).trim())) {
-            return res.status(400).json({ error: "Invalid aadhaar format. Must be exactly 12 digits" });
+            return errorResponse(res, "Invalid aadhaar format. Must be exactly 12 digits");
         }
         govtUpdates.aadhaarNumber = String(aadhaar).trim();
     }
@@ -215,7 +193,7 @@ const updateEmployee = asyncHandler( async (req,res)=>{
     if (pan) {
         const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
         if (!panRegex.test(String(pan).trim().toUpperCase())) {
-            return res.status(400).json({ error: "Invalid PAN format. Expected format: AAAAA9999A" });
+            return errorResponse(res, "Invalid PAN format. Expected format: AAAAA9999A");
         }
         govtUpdates.panNumber = String(pan).trim().toUpperCase();
     }
@@ -223,17 +201,15 @@ const updateEmployee = asyncHandler( async (req,res)=>{
     if (passport) {
         const passportRegex = /^[A-Z][1-9]\d{6}$/;
         if (!passportRegex.test(String(passport).trim().toUpperCase())) {
-            return res.status(400).json({ error: "Invalid passport format. Expected format: A1234567" });
+            return errorResponse(res, "Invalid passport format. Expected format: A1234567");
         }
         govtUpdates.passportNumber = String(passport).trim().toUpperCase();
     }
 
-    if (bankId) {
-        govtUpdates.bankAccount = String(bankId).trim();
-    }
+    if (bankId) govtUpdates.bankAccount = String(bankId).trim();
 
     if (Object.keys(updates).length === 0 && Object.keys(govtUpdates).length === 0) {
-        return res.status(200).json({ message: "No changes detected" });
+        return successResponse(res, "No changes detected");
     }
 
     if (Object.keys(updates).length > 0) {
@@ -253,10 +229,7 @@ const updateEmployee = asyncHandler( async (req,res)=>{
         ...employeeLookupPipeline
     ]);
 
-    console.log("Updated Employee:", enrichedEmployee);
-
-    return res.status(200).json({ message: "Employee updated successfully", employee: enrichedEmployee });
-
-}, "ADMIN_UPDATE_EMPLOYEE_ERROR" );
+    return successResponse(res, "Employee updated successfully", enrichedEmployee);
+}, "ADMIN_UPDATE_EMPLOYEE_ERROR");
 
 export { getEmployee, updateEmployee };

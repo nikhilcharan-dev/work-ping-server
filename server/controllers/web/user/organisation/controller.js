@@ -3,22 +3,19 @@ import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import TeamMembership from "#models/TeamMembership.js";
 import mongoose from "mongoose";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 
 export const getMyOrganization = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
 
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
         const organization = await Organization.findById(user.organizationId);
-        if (!organization) {
-            return res.status(404).json({ error: "Organization not found" });
-        }
+        if (!organization) return errorResponse(res, "Organization not found", 404);
 
-        return res.status(200).json(organization);
+        return successResponse(res, "Organization fetched", organization);
     }, "USER_GET_MY_ORG_ERROR"
 );
 
@@ -27,23 +24,36 @@ export const getMyTeam = asyncHandler(
         const { userId } = req.user;
 
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
-        if (!user.teamId) {
-            return res.status(404).json({ error: "You are not assigned to any team" });
-        }
+        if (!user.teamId) return errorResponse(res, "You are not assigned to any team", 404);
 
-        const team = await Team.findById(user.teamId)
-            .populate({ path: "managerId", select: "name email" })
-            .populate({ path: "leaderIds", select: "name email" });
+        const [team] = await Team.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(String(user.teamId)) } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "managerId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    as: "manager"
+                }
+            },
+            { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "leaderIds",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    as: "leaders"
+                }
+            }
+        ]);
 
-        if (!team) {
-            return res.status(404).json({ error: "Team not found" });
-        }
+        if (!team) return errorResponse(res, "Team not found", 404);
 
-        return res.status(200).json(team);
+        return successResponse(res, "Team fetched", team);
     }, "USER_GET_MY_TEAM_ERROR"
 );
 
@@ -52,20 +62,25 @@ export const getMyTeamMembers = asyncHandler(
         const { userId } = req.user;
 
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
-        if (!user.teamId) {
-            return res.status(404).json({ error: "You are not assigned to any team" });
-        }
+        if (!user.teamId) return errorResponse(res, "You are not assigned to any team", 404);
 
-        const members = await TeamMembership.find({
-            teamId: user.teamId,
-            isActive: true
-        }).populate({ path: "userId", select: "name email phone roleInTeam profileImage" });
+        const members = await TeamMembership.aggregate([
+            { $match: { teamId: new mongoose.Types.ObjectId(String(user.teamId)), isActive: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, roleInTeam: 1, profileImage: 1 } }],
+                    as: "user"
+                }
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
+        ]);
 
-        return res.status(200).json(members);
+        return successResponse(res, "Team members fetched", members);
     }, "USER_GET_MY_TEAM_MEMBERS_ERROR"
 );
 
@@ -73,17 +88,30 @@ export const getAllMyTeams = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
 
-        const memberships = await TeamMembership.find({
-            userId,
-            isActive: true
-        }).populate({
-            path: "teamId",
-            select: "teamName description organizationId"
-        }).populate({
-            path: "organizationId",
-            select: "name"
-        });
+        const memberships = await TeamMembership.aggregate([
+            { $match: { userId: new mongoose.Types.ObjectId(userId), isActive: true } },
+            {
+                $lookup: {
+                    from: "teams",
+                    localField: "teamId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { teamName: 1, description: 1, organizationId: 1 } }],
+                    as: "team"
+                }
+            },
+            { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1 } }],
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } }
+        ]);
 
-        return res.status(200).json(memberships);
+        return successResponse(res, "Teams fetched", memberships);
     }, "USER_GET_ALL_MY_TEAMS_ERROR"
 );

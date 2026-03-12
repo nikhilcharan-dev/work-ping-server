@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import Account from "#models/Account.js";
 import Admin from "#models/Admin.js";
 import User from "#models/User.js";
+import { setAuthCookie } from "#utils/cookie.helper.js";
 
 const router = Router();
 
@@ -127,20 +128,20 @@ router.get("/callback", async (req, res) => {
 
         // Issue JWT with same payload structure as normal auth
         const token = jwt.sign(
-            { userId: profileId },
+            { userId: profileId, role: account.role },
             process.env.SECRET_KEY,
             { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
         );
 
         // Set httpOnly cookie (same as normal login)
-        const isLive = process.env.MODE === "production";
-
-        res.cookie("accessToken", token, {
-            httpOnly: true,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 24
-        });
+        // const isLive = process.env.MODE === "production";
+        // res.cookie("accessToken", token, {
+        //     httpOnly: true,
+        //     secure: isLive,
+        //     sameSite: isLive ? "none" : "lax",
+        //     maxAge: 1000 * 60 * 60 * 24
+        // });
+        setAuthCookie(res, req, token);
 
         if (isMobile) {
             // Mobile: redirect to app deep link with token

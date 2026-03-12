@@ -159,9 +159,7 @@ const ROUTES = [
   {group:"Admin Organization",method:"GET",path:"/api/admin/organization/get-organizations",auth:true,body:[],query:[
     {key:"search",type:"string",req:false},{key:"page",type:"number",req:false,hint:"default: 1"},{key:"limit",type:"number",req:false,hint:"default: 10"}
   ],params:[],desc:"Get paginated organizations for admin"},
-  {group:"Admin Organization",method:"POST",path:"/api/admin/organization/get-organization-by-id",auth:true,body:[
-    {key:"organizationId",type:"ObjectId",req:true}
-  ],query:[],params:[],desc:"Get single organization by ID"},
+  {group:"Admin Organization",method:"GET",path:"/api/admin/organization/get-organization-by-id/:id",auth:true,body:[],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Get single organization by ID"},
   {group:"Admin Organization",method:"GET",path:"/api/admin/organization/get-all-organization-ids",auth:true,body:[],query:[],params:[],desc:"Get all org IDs with names"},
   {group:"Admin Organization",method:"POST",path:"/api/admin/organization/add-organization",auth:true,body:[
     {key:"name",type:"string",req:true},{key:"type",type:"string",req:false},{key:"description",type:"string",req:false},{key:"clDays",type:"number",req:false,hint:"default: 12"},{key:"foundedAt",type:"date",req:false}
@@ -169,51 +167,77 @@ const ROUTES = [
   {group:"Admin Organization",method:"POST",path:"/api/admin/organization/update-organization",auth:true,body:[
     {key:"_id",type:"ObjectId",req:true},{key:"name",type:"string",req:false},{key:"type",type:"string",req:false},{key:"description",type:"string",req:false}
   ],query:[],params:[],desc:"Update organization details"},
-  {group:"Admin Organization",method:"DELETE",path:"/api/admin/organization/delete-organization",auth:true,body:[
-    {key:"organizationId",type:"ObjectId",req:true},{key:"passKey",type:"string",req:true}
-  ],query:[],params:[],desc:"Delete organization (requires passKey)"},
+  {group:"Admin Organization",method:"POST",path:"/api/admin/organization/delete-organizations",auth:true,body:[
+    {key:"data",type:"array",req:true,hint:'["orgId1","orgId2"]'}
+  ],query:[],params:[],desc:"Delete organization(s) — pass array of IDs in data field"},
 
   // ── ADMIN TEAM ──
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/create-team",auth:false,body:[
+  {group:"Admin Team",method:"POST",path:"/api/admin/team/create-team",auth:true,body:[
     {key:"teamName",type:"string",req:true},{key:"organizationId",type:"ObjectId",req:true},{key:"teamManagerId",type:"ObjectId",req:false},{key:"description",type:"string",req:false},{key:"teamLeaderIds",type:"array",req:false,hint:"Array of User ObjectIds"}
   ],query:[],params:[],desc:"Create a new team"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/get-team",auth:false,body:[{key:"teamId",type:"ObjectId",req:true}],query:[],params:[],desc:"Get single team details"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/get-all-teams",auth:false,body:[{key:"organizationId",type:"ObjectId",req:true}],query:[],params:[],desc:"Get all teams in organization"},
-  {group:"Admin Team",method:"GET",path:"/api/admin/team/get-teams-filter",auth:false,body:[],query:[
+  {group:"Admin Team",method:"GET",path:"/api/admin/team/get-team/:id",auth:true,body:[],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Get single team details"},
+  {group:"Admin Team",method:"POST",path:"/api/admin/team/get-all-teams",auth:true,body:[{key:"organizationId",type:"ObjectId",req:true}],query:[],params:[],desc:"Get all teams in organization"},
+  {group:"Admin Team",method:"GET",path:"/api/admin/team/get-teams-filter",auth:true,body:[],query:[
     {key:"organizationId",type:"ObjectId",req:false},{key:"page",type:"number",req:false},{key:"limit",type:"number",req:false},{key:"search",type:"string",req:false}
   ],params:[],desc:"Get teams with pagination and search"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/update-team",auth:false,body:[
+  {group:"Admin Team",method:"POST",path:"/api/admin/team/update-team",auth:true,body:[
     {key:"teamId",type:"ObjectId",req:true},{key:"teamName",type:"string",req:false},{key:"description",type:"string",req:false}
   ],query:[],params:[],desc:"Update team details"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/delete-team",auth:false,body:[{key:"teamId",type:"ObjectId",req:true}],query:[],params:[],desc:"Delete a team"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/add-team-member",auth:false,body:[
-    {key:"userId",type:"ObjectId",req:true},{key:"teamId",type:"ObjectId",req:true},{key:"organizationId",type:"ObjectId",req:true},{key:"roleInTeam",type:"string",req:false,hint:"manager|teamLead|member"}
-  ],query:[],params:[],desc:"Add a member to a team"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/remove-team-member",auth:false,body:[{key:"membershipId",type:"ObjectId",req:true}],query:[],params:[],desc:"Remove member from team"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/get-team-members",auth:false,body:[{key:"teamId",type:"ObjectId",req:true}],query:[],params:[],desc:"Get all members of a team"},
-  {group:"Admin Team",method:"POST",path:"/api/admin/team/get-user-teams",auth:false,body:[{key:"userId",type:"ObjectId",req:true}],query:[],params:[],desc:"Get all teams for a user"},
+  {group:"Admin Team",method:"POST",path:"/api/admin/team/delete-team",auth:true,body:[{key:"teamId",type:"ObjectId",req:true}],query:[],params:[],desc:"Delete a team"},
+  {group:"Admin Team",method:"POST",path:"/api/admin/team/add-team-member",auth:true,body:[
+    {key:"userIds",type:"array",req:true,hint:'["userId1","userId2"]'},{key:"teamId",type:"ObjectId",req:true},{key:"organizationId",type:"ObjectId",req:true},{key:"roleInTeam",type:"string",req:false,hint:"manager|teamLead|member"}
+  ],query:[],params:[],desc:"Add member(s) to a team — pass array of userIds"},
+  {group:"Admin Team",method:"POST",path:"/api/admin/team/remove-team-member",auth:true,body:[{key:"membershipIds",type:"array",req:true,hint:'["membershipId1","membershipId2"]'}],query:[],params:[],desc:"Remove member(s) from team — pass array of membership IDs"},
+  {group:"Admin Team",method:"GET",path:"/api/admin/team/get-team-members",auth:true,body:[],query:[{key:"teamId",type:"ObjectId",req:true}],params:[],desc:"Get all members of a team"},
+  {group:"Admin Team",method:"GET",path:"/api/admin/team/get-user-teams",auth:true,body:[],query:[{key:"userId",type:"ObjectId",req:true}],params:[],desc:"Get all teams for a user"},
 
   // ── ADMIN EMPLOYEES ──
-  {group:"Admin Employees",method:"GET",path:"/api/admin/get-all-employees/get-all-employees-by-page-number",auth:false,body:[],query:[
+  {group:"Admin Employees",method:"GET",path:"/api/admin/get-all-employees/get-all-employees-by-page-number",auth:true,body:[],query:[
     {key:"search",type:"string",req:false},{key:"organizationId",type:"ObjectId",req:false},{key:"teamId",type:"ObjectId",req:false},{key:"page",type:"number",req:false},{key:"limit",type:"number",req:false}
   ],params:[],desc:"Search and paginate employees"},
   {group:"Admin Employees",method:"GET",path:"/api/admin/get-all-employees/get-organization-info",auth:true,body:[],query:[],params:[],desc:"Get org structure with teams"},
-  {group:"Admin Employees",method:"POST",path:"/api/admin/add-employees/by-form",auth:false,body:[
+  {group:"Admin Employees",method:"POST",path:"/api/admin/add-employees/by-form",auth:true,body:[
     {key:"userName",type:"string",req:true},{key:"email",type:"string",req:true},{key:"phone",type:"string",req:true},{key:"userId",type:"string",req:true,hint:"Employee ID"},{key:"organizationId",type:"ObjectId",req:true},{key:"doj",type:"date",req:true,hint:"Date of joining"},{key:"gender",type:"string",req:false,hint:"male|female|other"},{key:"salary",type:"number",req:false},{key:"dob",type:"date",req:false},{key:"address",type:"string",req:false},{key:"teamId",type:"ObjectId",req:false},{key:"roleInTeam",type:"string",req:false}
   ],query:[],params:[],desc:"Add single employee via form"},
+  {group:"Admin Employees",method:"POST",path:"/api/admin/add-employees/by-excel",auth:true,body:[],query:[],params:[],desc:"Upload employees via Excel file (multipart/form-data, field: file)"},
+  {group:"Admin Employees",method:"GET",path:"/api/admin/employee/get-employee/:id",auth:true,body:[],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Get single employee details by ID"},
+  {group:"Admin Employees",method:"POST",path:"/api/admin/employee/update",auth:true,body:[
+    {key:"employeeId",type:"ObjectId",req:true},{key:"userName",type:"string",req:false},{key:"email",type:"string",req:false},{key:"phone",type:"string",req:false},{key:"userId",type:"string",req:false,hint:"Employee ID"},{key:"gender",type:"string",req:false,hint:"male|female|other"},{key:"salary",type:"number",req:false},{key:"dob",type:"date",req:false},{key:"address",type:"string",req:false},{key:"dateOfJoining",type:"date",req:false},{key:"role",type:"string",req:false,hint:"manager|teamLead|employee"},{key:"isActive",type:"boolean",req:false},{key:"teamId",type:"ObjectId",req:false},{key:"organizationId",type:"ObjectId",req:false},{key:"aadhaar",type:"string",req:false,hint:"12 digits"},{key:"pan",type:"string",req:false,hint:"AAAAA9999A"},{key:"passport",type:"string",req:false,hint:"A1234567"},{key:"bankId",type:"string",req:false}
+  ],query:[],params:[],desc:"Update employee details and govt proof fields"},
+  {group:"Admin Employees",method:"POST",path:"/api/admin/employees",auth:true,body:[
+    {key:"data",type:"array",req:true,hint:'["userId1","userId2"]'}
+  ],query:[],params:[],desc:"Delete employee(s) — pass array of user IDs in data field"},
 
   // ── ADMIN PROJECT ──
-  {group:"Admin Project",method:"POST",path:"/api/project/create-project",auth:false,body:[
+  {group:"Admin Project",method:"POST",path:"/api/admin/project/create-project",auth:true,body:[
     {key:"name",type:"string",req:true},{key:"organizationId",type:"ObjectId",req:true},{key:"projectManager",type:"ObjectId",req:true},{key:"description",type:"string",req:false},{key:"dueDate",type:"date",req:false},{key:"contractedBy",type:"string",req:false}
   ],query:[],params:[],desc:"Create a new project"},
-  {group:"Admin Project",method:"GET",path:"/api/project/projects",auth:false,body:[],query:[
-    {key:"organizationId",type:"ObjectId",req:false},{key:"page",type:"number",req:false},{key:"limit",type:"number",req:false}
-  ],params:[],desc:"Get all projects with pagination"},
-  {group:"Admin Project",method:"GET",path:"/api/project/project/:id",auth:false,body:[],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Get single project"},
-  {group:"Admin Project",method:"PUT",path:"/api/project/project/:id",auth:false,body:[
-    {key:"name",type:"string",req:false},{key:"description",type:"string",req:false},{key:"status",type:"string",req:false,hint:"active|completed|onHold"},{key:"dueDate",type:"date",req:false}
-  ],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Update a project"},
-  {group:"Admin Project",method:"DELETE",path:"/api/project/project/:id",auth:false,body:[],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Delete a project"},
+  {group:"Admin Project",method:"GET",path:"/api/admin/project/get-projects",auth:true,body:[],query:[
+    {key:"organizationId",type:"ObjectId",req:false},{key:"search",type:"string",req:false},{key:"page",type:"number",req:false},{key:"limit",type:"number",req:false}
+  ],params:[],desc:"Get all projects with pagination and search"},
+  {group:"Admin Project",method:"GET",path:"/api/admin/project/get-project",auth:true,body:[],query:[{key:"projectId",type:"ObjectId",req:true}],params:[],desc:"Get single project by ID"},
+  {group:"Admin Project",method:"POST",path:"/api/admin/project/update-project",auth:true,body:[
+    {key:"id",type:"ObjectId",req:true},{key:"name",type:"string",req:false},{key:"description",type:"string",req:false},{key:"status",type:"string",req:false,hint:"active|completed|onHold"},{key:"dueDate",type:"date",req:false}
+  ],query:[],params:[],desc:"Update a project"},
+  {group:"Admin Project",method:"POST",path:"/api/admin/project/delete-projects",auth:true,body:[
+    {key:"data",type:"array",req:true,hint:'["projectId1","projectId2"]'}
+  ],query:[],params:[],desc:"Delete project(s) — pass array of project IDs in data field"},
+  {group:"Admin Project",method:"POST",path:"/api/admin/project/add-member",auth:true,body:[
+    {key:"projectId",type:"ObjectId",req:true},{key:"userId",type:"ObjectId",req:true},{key:"organizationId",type:"ObjectId",req:true},{key:"role",type:"string",req:false,hint:"manager|developer|tester"}
+  ],query:[],params:[],desc:"Add a member to a project"},
+  {group:"Admin Project",method:"GET",path:"/api/admin/project/get-members",auth:true,body:[],query:[
+    {key:"projectId",type:"ObjectId",req:true},{key:"page",type:"number",req:false},{key:"limit",type:"number",req:false},{key:"search",type:"string",req:false},{key:"role",type:"string",req:false,hint:"manager|developer|tester"}
+  ],params:[],desc:"Get project members with pagination"},
+  {group:"Admin Project",method:"GET",path:"/api/admin/project/get-member/:id",auth:true,body:[],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Get single project member by membership ID"},
+  {group:"Admin Project",method:"PUT",path:"/api/admin/project/update-member/:id",auth:true,body:[
+    {key:"role",type:"string",req:false,hint:"manager|developer|tester"},{key:"isActive",type:"boolean",req:false}
+  ],query:[],params:[{key:"id",type:"ObjectId",req:true}],desc:"Update project member role or active status"},
+  {group:"Admin Project",method:"POST",path:"/api/admin/project/remove-members",auth:true,body:[
+    {key:"data",type:"array",req:true,hint:'["membershipId1","membershipId2"]'}
+  ],query:[],params:[],desc:"Remove project member(s) — pass array of membership IDs in data field"},
+
+  // ── ATTENDANCE ──
+  {group:"Attendance",method:"POST",path:"/api/attendance/verify-mark-attendance",auth:true,body:[],query:[],params:[],desc:"Mark attendance with face recognition (multipart/form-data, field: frames[] — up to 5 image files)"},
 
   // ── USER AUTH ──
   {group:"User Auth",method:"POST",path:"/api/auth/register",auth:false,body:[

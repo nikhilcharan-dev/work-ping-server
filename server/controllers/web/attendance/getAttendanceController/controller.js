@@ -2,7 +2,9 @@ import express from "express";
 import Attendance from "#models/Attendance.js";
 import Organization from "#models/Organization.js";
 import User from "#models/User.js";
-import Team from "#models/Team.js"
+import Team from "#models/Team.js";
+import mongoose from "mongoose";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateDate,
@@ -11,99 +13,70 @@ import {
 
 const getAttendanceByUserId = asyncHandler(
   async (req, res) => {
-    // console.log("request reached");
-
     const { userId, date } = req.body;
-    
-    // Validate required fields
-    const requiredCheck = validateRequiredFields(
-        { userId, date },
-        ['userId', 'date']
-    );
-    if (!requiredCheck.valid) {
-        return res.status(400).json({ error: requiredCheck.error });
-    }
-    
-    // Validate user ID
-    const userIdValidation = validateObjectId(userId, "User ID");
-    if (!userIdValidation.valid) {
-        return res.status(400).json({ error: userIdValidation.error });
-    }
-    
-    // Validate date
-    const dateValidation = validateDate(date, "Date");
-    if (!dateValidation.valid) {
-        return res.status(400).json({ error: dateValidation.error });
-    }
 
-    const attendanceRecord = await Attendance.findOne({
-      userId,
-      date,
-    });
+    const requiredCheck = validateRequiredFields({ userId, date }, ['userId', 'date']);
+    if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
+    const userIdValidation = validateObjectId(userId, "User ID");
+    if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
+
+    const dateValidation = validateDate(date, "Date");
+    if (!dateValidation.valid) return errorResponse(res, dateValidation.error);
+
+    const attendanceRecord = await Attendance.findOne({ userId, date });
 
     if (!attendanceRecord) {
-      return res.status(200).json({
-        status: "Attendance Not Captured Yet",
-      });
+      return successResponse(res, "Attendance Not Captured Yet");
     }
 
-    return res.status(200).json(attendanceRecord);
+    return successResponse(res, "Attendance fetched", attendanceRecord);
   },
-  "GET_ATTENDANCE_BY_USER_ID");
+  "GET_ATTENDANCE_BY_USER_ID"
+);
 
 const getAttendanceByTeamId = asyncHandler(
   async (req, res) => {
     const { teamId, date } = req.body;
-    
-    // Validate required fields
-    const requiredCheck = validateRequiredFields(
-        { teamId, date },
-        ['teamId', 'date']
-    );
-    if (!requiredCheck.valid) {
-        return res.status(400).json({ error: requiredCheck.error });
-    }
-    
-    // Validate team ID
-    const teamIdValidation = validateObjectId(teamId, "Team ID");
-    if (!teamIdValidation.valid) {
-        return res.status(400).json({ error: teamIdValidation.error });
-    }
-    
-    // Validate date
-    const dateValidation = validateDate(date, "Date");
-    if (!dateValidation.valid) {
-        return res.status(400).json({ error: dateValidation.error });
-    }
-    
-    const existingTeam = await Team.findById(teamId)
-    if(!existingTeam) {
-        return res.status(404).json({
-            error: "Team Doesn't Exists"
-        });
-    } 
-    const teamMembers = await User.find({ teamId }).select("_id name email");
 
+    const requiredCheck = validateRequiredFields({ teamId, date }, ['teamId', 'date']);
+    if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
+    const teamIdValidation = validateObjectId(teamId, "Team ID");
+    if (!teamIdValidation.valid) return errorResponse(res, teamIdValidation.error);
+
+    const dateValidation = validateDate(date, "Date");
+    if (!dateValidation.valid) return errorResponse(res, dateValidation.error);
+
+    const existingTeam = await Team.findById(teamId);
+    if (!existingTeam) return errorResponse(res, "Team Doesn't Exist", 404);
+
+    const teamMembers = await User.find({ teamId }).select("_id name email");
     if (!teamMembers || teamMembers.length === 0) {
-      return res.status(404).json({
-        error: "Organization Has No Users",
-      });
+      return errorResponse(res, "Team Has No Users", 404);
     }
 
     const userIds = teamMembers.map((user) => user._id);
 
-    const teamAttendance = await Attendance.find({
-      userId: { $in: userIds },
-      date,
-    }).populate("userId", "name email");
+    const teamAttendance = await Attendance.aggregate([
+      { $match: { userId: { $in: userIds }, date } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          pipeline: [{ $project: { name: 1, email: 1 } }],
+          as: "user"
+        }
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
+    ]);
 
     if (!teamAttendance || teamAttendance.length === 0) {
-      return res.status(200).json({
-        status: "No Attendance Recorded For This Team",
-      });
+      return successResponse(res, "No Attendance Recorded For This Team");
     }
 
-    return res.status(200).json({
+    return successResponse(res, "Team attendance fetched", {
       teamId,
       date,
       totalMembers: teamMembers.length,
@@ -111,62 +84,51 @@ const getAttendanceByTeamId = asyncHandler(
       records: teamAttendance,
     });
   },
-  "GET_ATTENDANCE_BY_TEAM_ID");
+  "GET_ATTENDANCE_BY_TEAM_ID"
+);
 
 const getAttendanceByOrganizationId = asyncHandler(
   async (req, res) => {
     const { organizationId, date } = req.body;
-    
-    // Validate required fields
-    const requiredCheck = validateRequiredFields(
-        { organizationId, date },
-        ['organizationId', 'date']
-    );
-    if (!requiredCheck.valid) {
-        return res.status(400).json({ error: requiredCheck.error });
-    }
-    
-    // Validate organization ID
+
+    const requiredCheck = validateRequiredFields({ organizationId, date }, ['organizationId', 'date']);
+    if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
     const orgIdValidation = validateObjectId(organizationId, "Organization ID");
-    if (!orgIdValidation.valid) {
-        return res.status(400).json({ error: orgIdValidation.error });
-    }
-    
-    // Validate date
+    if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
+
     const dateValidation = validateDate(date, "Date");
-    if (!dateValidation.valid) {
-        return res.status(400).json({ error: dateValidation.error });
-    }
-    
-    const existingOrganization = await Organization.findById(organizationId)
-    if(!existingOrganization) {
-        return res.status(404).json({
-            error:  "Organization Doesn't Exists"
-        });
-    } 
+    if (!dateValidation.valid) return errorResponse(res, dateValidation.error);
+
+    const existingOrganization = await Organization.findById(organizationId);
+    if (!existingOrganization) return errorResponse(res, "Organization Doesn't Exist", 404);
 
     const users = await User.find({ organizationId }).select("_id name email");
-
     if (!users || users.length === 0) {
-      return res.status(404).json({
-        error: "Organization Has No Users",
-      });
+      return errorResponse(res, "Organization Has No Users", 404);
     }
 
     const userIds = users.map((user) => user._id);
 
-    const organizationAttendance = await Attendance.find({
-      userId: { $in: userIds },
-      date,
-    }).populate("userId", "name email");
+    const organizationAttendance = await Attendance.aggregate([
+      { $match: { userId: { $in: userIds }, date } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          pipeline: [{ $project: { name: 1, email: 1 } }],
+          as: "user"
+        }
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
+    ]);
 
     if (!organizationAttendance || organizationAttendance.length === 0) {
-      return res.status(200).json({
-        status: "No Attendance Recorded For This Organization",
-      });
+      return successResponse(res, "No Attendance Recorded For This Organization");
     }
 
-    return res.status(200).json({
+    return successResponse(res, "Organization attendance fetched", {
       organizationId,
       date,
       totalUsers: users.length,
@@ -174,7 +136,8 @@ const getAttendanceByOrganizationId = asyncHandler(
       records: organizationAttendance,
     });
   },
-  "GET_ATTENDANCE_BY_ORGANIZATION_ID");
+  "GET_ATTENDANCE_BY_ORGANIZATION_ID"
+);
 
 export {
   getAttendanceByUserId,

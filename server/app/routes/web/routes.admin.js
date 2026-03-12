@@ -3,8 +3,8 @@ import otpRoutes from "#webRoutes/admin/otp/router.js";
 import organizationRouter from "#webRoutes/admin/organization/router.js"
 import teamRoutes from "#webRoutes/admin/team/routes.js";
 import validateCookie from "#middleware/jwtBearer.js";
+import requireRole from "#middleware/requireRole.js";
 import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
-import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 // import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
 import getEmployee from "#webRoutes/admin/employee/router.js";
@@ -13,23 +13,24 @@ import getEmployee from "#webRoutes/admin/employee/router.js";
 import projectRoutes from "#webRoutes/admin/project/router.js"
 import deleteEmployeesById from "#webController/admin/deleteEmployees/deleteEmployeesByid.js";
 
+const adminOnly = [validateCookie, requireRole("admin")];
+
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
-    app.use("/api/admin/organization", validateCookie ,organizationRouter);
+    app.use("/api/admin/organization", ...adminOnly, organizationRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);
 
     // Forgot Password
-    
 
     //create-team
-    app.use("/api/admin/employee", validateCookie, getEmployee);
-    app.use("/api/admin/get-all-employees", validateCookie, getAllEmployeesRouter);
-    app.use("/api/admin/employees",validateCookie, deleteEmployeesById)
-    app.use("/api/admin/team", validateCookie, teamRoutes);
-    app.use("/api/admin/add-employees", validateCookie, addEmployeesRouter );
+    app.use("/api/admin/employee", ...adminOnly, getEmployee);
+    app.use("/api/admin/get-all-employees", ...adminOnly, getAllEmployeesRouter);
+    app.use("/api/admin/employees", ...adminOnly, deleteEmployeesById);
+    app.use("/api/admin/team", ...adminOnly, teamRoutes);
+    app.use("/api/admin/add-employees", ...adminOnly, addEmployeesRouter);
 
     // Project
-    app.use("/api/admin/project", validateCookie, projectRoutes);
+    app.use("/api/admin/project", ...adminOnly, projectRoutes);
 
 }

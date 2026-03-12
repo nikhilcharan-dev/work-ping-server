@@ -5,6 +5,8 @@ import Account from "#models/Account.js";
 import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { validateEmail } from "#utils/validators.js";
 
 const insertByForm = asyncHandler(
 async (req, res) => {
@@ -39,53 +41,42 @@ async (req, res) => {
     console.log("Checkpoint 2");
     // Mandatory validation
     if (!name || !email || !phone || !employeeId || !dateOfJoining || !aadhaar || !workType) {
-        return res.status(400).json({
-            error: "Mandatory fields are missing (name, email, phone, userId, doj, role, aadhaar, workType)"
-        });
+        return errorResponse(res, "Mandatory fields are missing (name, email, phone, userId, doj, aadhaar, workType)");
     }
+
+    // Sanitize and validate email via shared validator
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+    const normalizedEmail = emailValidation.normalized;
     console.log("Checkpoint 3");
     // Validate role
     const validRoles = ["manager", "teamLead", "employee"];
     if (role && !validRoles.includes(role)) {
-        return res.status(400).json({
-            error: `Invalid role. Must be one of: ${validRoles.join(", ")}`
-        });
+        return errorResponse(res, `Invalid role. Must be one of: ${validRoles.join(", ")}`);
     }
-    console.log("Checkpoint 4");
+
     // Validate gender
     if (gender) {
         const validGenders = ["male", "female", "other"];
         if (!validGenders.includes(gender.toLowerCase())) {
-            return res.status(400).json({
-                error: `Invalid gender. Must be one of: ${validGenders.join(", ")}`
-            });
+            return errorResponse(res, `Invalid gender. Must be one of: ${validGenders.join(", ")}`);
         }
     }
     console.log("Checkpoint 5");
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({
-            error: "Invalid email format"
-        });
-    }
+    // Email already validated above via validateEmail()
     console.log("Checkpoint 6");
 
     const validWorkTypes = ["remote", "onsite", "hybrid"];
     if (!validWorkTypes.includes(workType.toLowerCase())) {
-        return res.status(400).json({
-            error: `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`
-        });
+        return errorResponse(res, `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`);
     }
     console.log("Checkpoint 6.1");
 
     // Aadhaar validation
     const aadhaarRegex = /^\d{12}$/;
     if (!aadhaarRegex.test(String(aadhaar).trim())) {
-        return res.status(400).json({
-            error: "Invalid aadhaar format. Must be exactly 12 digits"
-        });
+        return errorResponse(res, "Invalid aadhaar format. Must be exactly 12 digits");
     }
     console.log("Checkpoint 7");
 
@@ -93,116 +84,63 @@ async (req, res) => {
     if (pan) {
         const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
         if (!panRegex.test(String(pan).trim().toUpperCase())) {
-            return res.status(400).json({
-                error: "Invalid PAN format. Expected format: AAAAA9999A"
-            });
+            return errorResponse(res, "Invalid PAN format. Expected format: AAAAA9999A");
         }
     }
-    console.log("Checkpoint 8");
 
     // Passport validation
     if (passport) {
         const passportRegex = /^[A-Z][1-9]\d{6}$/;
         if (!passportRegex.test(String(passport).trim().toUpperCase())) {
-            return res.status(400).json({
-                error: "Invalid passport format. Expected format: A1234567"
-            });
+            return errorResponse(res, "Invalid passport format. Expected format: A1234567");
         }
     }
     console.log("Checkpoint 9");
 
     // Find organization
-    let organization;
-
-    if (organizationName) {
-
-        organization = await Organization.findOne({ name: organizationName });
-
-        if (!organization) {
-            return res.status(404).json({
-                error: `Organization '${organizationName}' not found`
-            });
-        }
-
-    } else {
-        return res.status(400).json({
-            error: "organizationName is required"
-        });
-    }
+    if (!organizationName) return errorResponse(res, "organizationName is required");
+    const organization = await Organization.findOne({ name: String(organizationName).trim() });
+    if (!organization) return errorResponse(res, `Organization '${organizationName}' not found`, 404);
     console.log("Checkpoint 10");
 
     // Find team
     let team = null;
-
     if (teamName) {
-
-        team = await Team.findOne({
-            teamName: teamName,
-            organizationId: organization._id
-        });
-
-        if (!team) {
-            return res.status(404).json({
-                error: `Team '${teamName}' not found in organization '${organizationName}'`
-            });
-        }
+        team = await Team.findOne({ teamName: String(teamName).trim(), organizationId: organization._id });
+        if (!team) return errorResponse(res, `Team '${teamName}' not found in organization '${organizationName}'`, 404);
     }
     console.log("Checkpoint 11");
 
     // Check existing user (email/phone globally, employeeId within org)
     const existingUser = await User.findOne({
         $or: [
-            { email: email },
-            { phone: phone },
-            { employeeId: employeeId, organizationId: organization._id }
+            { email: normalizedEmail },
+            { phone: String(phone).trim() },
+            { employeeId: String(employeeId).trim(), organizationId: organization._id }
         ]
     });
-    console.log("Checkpoint 12");
+    if (existingUser) return errorResponse(res, "User already exists with this email, phone, or employeeId in this organization", 409);
 
-    if (existingUser) {
-        return res.status(409).json({
-            error: "User already exists with this email, phone, or employeeId in this organization"
-        });
-    }
-
-    // Check existing account
-    const existingAccount = await Account.findOne({ email: email });
-    console.log("Checkpoint 13");
-    if (existingAccount) {
-        return res.status(409).json({
-            error: "Account already exists with this email"
-        });
-    }
-
-    console.log("Checkpoint 14");
+    const existingAccount = await Account.findOne({ email: normalizedEmail });
+    if (existingAccount) return errorResponse(res, "Account already exists with this email", 409);
 
     // PAN + bank validation
     if ((pan && !bankId) || (!pan && bankId)) {
-        return res.status(400).json({
-            error: "pan and bankId must be provided together"
-        });
+        return errorResponse(res, "pan and bankId must be provided together");
     }
     console.log("Checkpoint 15");
 
     // Validate dateOfJoining
     const dojDate = new Date(dateOfJoining);
-    if (isNaN(dojDate.getTime())) {
-        return res.status(400).json({
-            error: "Invalid date of joining"
-        });
-    }
-    if (dojDate > new Date()) {
-        return res.status(400).json({
-            error: "Date of joining cannot be a future date"
-        });
-    }
+    if (isNaN(dojDate.getTime())) return errorResponse(res, "Invalid date of joining");
+    if (dojDate > new Date()) return errorResponse(res, "Date of joining cannot be a future date");
 
     // Prepare user data
     const userData = {
-        name,
-        email,
-        phone,
-        employeeId,
+        name: String(name).trim(),
+        email: normalizedEmail,
+        phone: String(phone).trim(),
+        employeeId: String(employeeId).trim(),
         organizationId: organization._id,
         dateOfJoining: new Date(dojDate.toISOString().split('T')[0])
     };
@@ -212,35 +150,16 @@ async (req, res) => {
     if(role) userData.role = role.toLowerCase();
 
     if (salary) {
-
         const salaryNum = Number(salary);
-
-        if (isNaN(salaryNum) || salaryNum < 0) {
-            return res.status(400).json({
-                error: "Invalid salary value"
-            });
-        }
-
+        if (isNaN(salaryNum) || salaryNum < 0) return errorResponse(res, "Invalid salary value");
         userData.salary = salaryNum;
     }
     console.log("Checkpoint 16");
 
     if (dob) {
-
         const dobDate = new Date(dob);
-
-        if (isNaN(dobDate.getTime())) {
-            return res.status(400).json({
-                error: "Invalid date of birth"
-            });
-        }
-
-        if (dobDate > new Date()) {
-            return res.status(400).json({
-                error: "Date of birth cannot be a future date"
-            });
-        }
-
+        if (isNaN(dobDate.getTime())) return errorResponse(res, "Invalid date of birth");
+        if (dobDate > new Date()) return errorResponse(res, "Date of birth cannot be a future date");
         userData.dob = new Date(dobDate.toISOString().split('T')[0]);
     }
     console.log("Checkpoint 17");
@@ -262,7 +181,7 @@ async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const accountData = {
-            email: email,
+            email: normalizedEmail,
             password: hashedPassword,
             emailVerified: false
         };
@@ -293,21 +212,18 @@ async (req, res) => {
 
         await session.commitTransaction();
 
-        return res.status(201).json({
-            message: "Employee added successfully",
-            employeeData: {
-                _id: newUser._id,
-                name: newUser.name,
-                email: newUser.email,
-                phone: newUser.phone,
-                employeeId: newUser.employeeId,
-                role,
-                organizationId: organization._id,
-                organizationName: organization.name,
-                teamId: team?._id,
-                teamName: team?.teamName
-            }
-        });
+        return successResponse(res, "Employee added successfully", {
+            _id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            phone: newUser.phone,
+            employeeId: newUser.employeeId,
+            role,
+            organizationId: organization._id,
+            organizationName: organization.name,
+            teamId: team?._id,
+            teamName: team?.teamName
+        }, 201);
 
     } catch (error) {
         await session.abortTransaction();

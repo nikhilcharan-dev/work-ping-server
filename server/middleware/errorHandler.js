@@ -24,7 +24,7 @@ export default function errorHandler(err, req, res, next) {
 
     
     res.status(status).json({
-        error: message,
-        code: err.statusCode,
+        type: "error",
+        message,
     });
 }

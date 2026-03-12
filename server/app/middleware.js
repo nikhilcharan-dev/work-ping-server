@@ -29,13 +29,13 @@ export default function middlewares(app) {
     app.set("trust proxy", 1);
 
     app.use(cors(corsOptions));
-    app.options(/.*/, cors(corsOptions));
+    // app.options(/.*/, cors(corsOptions)); // redundant: app.use(cors()) already handles OPTIONS preflight
 
 
     app.use(morgan("dev"));
 
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
+    app.use(express.json({ limit: '10kb' }));
+    app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
     app.use(cookieParser());
 

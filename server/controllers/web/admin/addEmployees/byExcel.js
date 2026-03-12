@@ -7,11 +7,12 @@ import Account from "#models/Account.js";
 import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 
 const insertByExcel = asyncHandler(
     async (req, res) => {
         if (!req.file) {
-            return res.status(400).json({ message: "No file uploaded" });
+            return errorResponse(res, "No file uploaded");
         }
 
         const filePath = req.file.path;
@@ -356,27 +357,17 @@ const insertByExcel = asyncHandler(
         const totalCount = jsonData.length;
 
         if (failedCount === 0) {
-            return res.status(201).json({
-                message: "All employees added successfully",
-                count: {
-                    total: totalCount,
-                    successful: successCount,
-                    failed: failedCount
-                },
+            return successResponse(res, "All employees added successfully", {
+                count: { total: totalCount, successful: successCount, failed: failedCount },
                 successfulRecords
-            });
+            }, 201);
         }
 
-        return res.status(207).json({
-            message: `Processed ${totalCount} records: ${successCount} successful, ${failedCount} failed`,
-            count: {
-                total: totalCount,
-                successful: successCount,
-                failed: failedCount
-            },
+        return successResponse(res, `Processed ${totalCount} records: ${successCount} successful, ${failedCount} failed`, {
+            count: { total: totalCount, successful: successCount, failed: failedCount },
             successfulRecords,
             failedRecords
-        });
+        }, 207);
     }, "ERROR_PROCESSING_EXCEL_FILE");
 
 export default insertByExcel;  

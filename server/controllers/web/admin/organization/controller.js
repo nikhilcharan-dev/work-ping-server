@@ -4,6 +4,7 @@ import OrgAdmin from '#models/Admin.Org.js';
 import Admin from '#models/Admin.js'
 import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateString,
@@ -11,88 +12,72 @@ import {
     validatePagination
 } from "#utils/validators.js";
 
-const existingOrganizationOfAdminWithSameName = async (userId , organizationName)=>{
-    let existingOrg = await OrgAdmin.find({
-        primaryAdmin : userId
-    }).populate({
-        path : "organizationId",
-        match : { name : organizationName }
-    }).lean()
-    return existingOrg.filter(
-        doc => doc.organizationId !== null
-    );
-}
+const existingOrganizationOfAdminWithSameName = async (userId, organizationName) => {
+    const results = await OrgAdmin.aggregate([
+        { $match: { primaryAdmin: userId } },
+        {
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                pipeline: [{ $match: { name: organizationName } }],
+                as: "org"
+            }
+        },
+        { $match: { "org.0": { $exists: true } } }
+    ]);
+    return results;
+};
 
-const addOrganization = asyncHandler( async (req,res)=>{
+const addOrganization = asyncHandler(async (req, res) => {
+    let { name } = req.body;
 
-    const session = await mongoose.startSession();
-    // console.log("entered")
-    try{
-        session.startTransaction();
-        let { name } = req.body;
-        
-        // Validate organization name
-        const nameValidation = validateString(name, "Organization name", {
-            required: true,
-            minLength: 2,
-            maxLength: 100
-        });
-        if (!nameValidation.valid) {
-            return res.status(400).json({ error: nameValidation.error });
-        }
-        
-        let { userId } =  req.user;
-        userId = new mongoose.Types.ObjectId(userId);
-        let adminOrganisationsWithSameName =await existingOrganizationOfAdminWithSameName(userId,name)
-        if(adminOrganisationsWithSameName.length) {
-            return res.status(409).json({ "error" : "Organization already exits" });
-        }
-        const newOrganization =  await Organization.create(req.body, { session });
-
-        let check = await OrgAdmin.create({
-            organizationId : newOrganization._id,
-            primaryAdmin : userId,
-            
-
-        }, { session })
-
-        console.log(check);
-    
-        await session.commitTransaction();
-        session.endSession();
-    } catch (err){
-        await session.abortTransaction();
-        session.endSession();
-        console.log("Transaction failed:", err);
-        return res.status(500).json({err : "Error adding the data"});
-    }
-    
-    return res.status(201).json(newOrganization);
-}, "ADMIN_ADD_ORG_ERROR" );
-
-const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
+    const nameValidation = validateString(name, "Organization name", {
+        required: true,
+        minLength: 2,
+        maxLength: 100
+    });
+    if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
 
     let { userId } = req.user;
     userId = new mongoose.Types.ObjectId(userId);
 
-    let existingAdmin = await Admin.findById(userId);
-    if (!existingAdmin) {
-        return res.status(404).json({
-            error: "Admin Doesn't Exist"
-        });
+    const duplicate = await existingOrganizationOfAdminWithSameName(userId, nameValidation.normalized);
+    if (duplicate.length) return errorResponse(res, "Organization already exists", 409);
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    let newOrganization;
+    try {
+        ([newOrganization] = await Organization.create([{ name: nameValidation.normalized }], { session }));
+        await OrgAdmin.create([{
+            organizationId: newOrganization._id,
+            primaryAdmin: userId,
+        }], { session });
+        await session.commitTransaction();
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
     }
 
-    let { search = "", page = 1 ,limit = 10 } = req.query;
+    return successResponse(res, "Organization created successfully", newOrganization, 201);
+}, "ADMIN_ADD_ORG_ERROR");
 
-    search = search.trim();
+const getOrganizationsOfAdmin = asyncHandler(async (req, res) => {
+    let { userId } = req.user;
+    userId = new mongoose.Types.ObjectId(userId);
+
+    const existingAdmin = await Admin.findById(userId);
+    if (!existingAdmin) return errorResponse(res, "Admin doesn't exist", 404);
+
+    let { search = "", page = 1, limit = 10 } = req.query;
+    search = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     page = Number(page);
 
-    const skip = (page - 1) * limit;
-
     const filter = [
-        {
-            $match: { primaryAdmin: userId }
-        },
+        { $match: { primaryAdmin: userId } },
         {
             $lookup: {
                 from: "organizations",
@@ -104,152 +89,126 @@ const getOrganizationsOfAdmin = asyncHandler(async (req , res) => {
         { $unwind: "$organization" },
         {
             $match: {
-                "organization.name": {
-                    $regex: search,
-                    $options: "i"
-                }
+                "organization.name": { $regex: search, $options: "i" }
             }
         },
         { $sort: { "organization.name": 1 } },
     ];
-    
-    const pagination = await Pagination(AdminOrg,page,limit,filter);
 
-    const adminOrganisations = pagination.documents
-    
-    const organizations = []
-    adminOrganisations.forEach(item => (
-        organizations.push(item.organization)
-    ));
+    const pagination = await Pagination(AdminOrg, page, limit, filter);
+    const organizations = pagination.documents.map(item => item.organization);
 
-    console.log(organizations)
-    
-    return res.status(200).json({
+    return successResponse(res, "Organizations fetched", {
         totalRecords: pagination.totalRecords,
         totalPages: pagination.totalPages,
         organizations
     });
-
 }, "ADMIN_GET_ORG_ERROR");
 
-const updateOrganization = asyncHandler(async (req,res)=>{
-    const updateOrganizationTo = req.body;
-    
-    // Validate organization ID
-    const idValidation = validateObjectId(updateOrganizationTo._id, "Organization ID");
-    if (!idValidation.valid) {
-        return res.status(400).json({ error: idValidation.error });
+const updateOrganization = asyncHandler(async (req, res) => {
+    const { _id } = req.body;
+
+    const idValidation = validateObjectId(_id, "Organization ID");
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+    const updates = {};
+
+    if (req.body.name !== undefined) {
+        const nameValidation = validateString(req.body.name, "Organization name", { minLength: 2, maxLength: 100 });
+        if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
+        updates.name = nameValidation.normalized;
     }
-    
-    // Validate name if being updated
-    if (updateOrganizationTo.name) {
-        const nameValidation = validateString(updateOrganizationTo.name, "Organization name", {
-            minLength: 2,
-            maxLength: 100
-        });
-        if (!nameValidation.valid) {
-            return res.status(400).json({ error: nameValidation.error });
-        }
+
+    if (req.body.clDays !== undefined) {
+        const clDaysValidation = validateNumber(req.body.clDays, "CL Days", { min: 0, max: 365, integer: true });
+        if (!clDaysValidation.valid) return errorResponse(res, clDaysValidation.error);
+        updates.clDays = clDaysValidation.normalized;
     }
-    
-    // Validate clDays if being updated
-    if (updateOrganizationTo.clDays !== undefined) {
-        const clDaysValidation = validateNumber(updateOrganizationTo.clDays, "CL Days", {
-            min: 0,
-            max: 365,
-            integer: true
-        });
-        if (!clDaysValidation.valid) {
-            return res.status(400).json({ error: clDaysValidation.error });
-        }
-    }
-    
-    let existingOrganization = await Organization.findById(updateOrganizationTo._id);
-    if(!existingOrganization) {
-        return res.status(404).json({error: "Organizaton Doesn't Exists"});
-    }
-    return res.status(200).json( await Organization.findByIdAndUpdate(
-        updateOrganizationTo._id,
-        updateOrganizationTo,
-        {new : true, runValidators: true}
-    ).lean());
+
+    if (req.body.description !== undefined) updates.description = String(req.body.description).trim();
+    if (req.body.type !== undefined) updates.type = String(req.body.type).trim();
+
+    const existingOrganization = await Organization.findById(_id);
+    if (!existingOrganization) return errorResponse(res, "Organization doesn't exist", 404);
+
+    const updated = await Organization.findByIdAndUpdate(_id, updates, { new: true, runValidators: true }).lean();
+    return successResponse(res, "Organization updated successfully", updated);
 }, "ADMIN_UPDATE_ORG_ERROR");
 
-const getOrganizationById = asyncHandler( async (req,res)=>{
-    let { id : organizationId } = req.params;
-    
-    // Validate organization ID
+const getOrganizationById = asyncHandler(async (req, res) => {
+    const { id: organizationId } = req.params;
+
     const idValidation = validateObjectId(organizationId, "Organization ID");
-    if (!idValidation.valid) {
-        return res.status(400).json({ error: idValidation.error });
-    }
-    
-    organizationId = new mongoose.Types.ObjectId(organizationId)
-    let existingOrganization = await Organization.findById(organizationId);
-    if(!existingOrganization) {
-        return res.status(404).json({error: "Organizaton Doesn't Exists"});
-    }
-    return res.status(200).json(existingOrganization)
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+    const existingOrganization = await Organization.findById(organizationId).lean();
+    if (!existingOrganization) return errorResponse(res, "Organization doesn't exist", 404);
+
+    return successResponse(res, "Organization fetched", existingOrganization);
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
-const deleteOrganization = asyncHandler(async (req,res)=>{
-    
-    let { data : organizationIds } = req.body;
+const deleteOrganization = asyncHandler(async (req, res) => {
+    const { data: organizationIds } = req.body;
 
     if (!Array.isArray(organizationIds) || organizationIds.length === 0) {
-        return res.status(400).json({ error: "organizationIds must be a non-empty array" });
+        return errorResponse(res, "organizationIds must be a non-empty array");
     }
 
-    // Validate all IDs
     for (const organizationId of organizationIds) {
         const idValidation = validateObjectId(organizationId, "Organization ID");
-        if (!idValidation.valid) {
-            return res.status(400).json({ error: idValidation.error });
-        }
+        if (!idValidation.valid) return errorResponse(res, idValidation.error);
     }
 
-    const objectIds = organizationIds.map(
-        id => new mongoose.Types.ObjectId(id)
-    );
+    const objectIds = organizationIds.map(id => new mongoose.Types.ObjectId(id));
 
-    // Check if organizations exist
-    const existingOrganizations = await Organization.find({
-        _id: { $in: objectIds }
-    }).lean();
+    const existingOrganizations = await Organization.find({ _id: { $in: objectIds } }).lean();
+    if (existingOrganizations.length === 0) return errorResponse(res, "Organizations don't exist", 404);
 
-    if (existingOrganizations.length === 0) {
-        return res.status(404).json({ error: "Organizations don't exist" });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        await OrgAdmin.deleteMany({ organizationId: { $in: objectIds } }, { session });
+        await Organization.deleteMany({ _id: { $in: objectIds } }, { session });
+        await session.commitTransaction();
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
     }
 
-    // Delete related admin records
-    await OrgAdmin.deleteMany({
-        organizationId: { $in: objectIds }
-    });
-
-    // Delete organizations
-    await Organization.deleteMany({
-        _id: { $in: objectIds }
-    });
-
-    return res.status(200).json({
-        message: "Organizations deleted successfully",
-        deletedCount: existingOrganizations.length
-    });
-
+    return successResponse(res, "Organizations deleted successfully", { deletedCount: existingOrganizations.length });
 }, "ADMIN_DELETE_ORG_ERROR");
 
-const getOrganizationIDsOfAdmin = asyncHandler(async (req,res)=>{
+const getOrganizationIDsOfAdmin = asyncHandler(async (req, res) => {
     let { userId } = req.user;
     userId = new mongoose.Types.ObjectId(userId);
-    let existingAdmin = await Admin.findById(userId);
-    if (!existingAdmin) {
-        return res.status(404).json({
-            error: "Admin Doesn't Exist"
-        });
-    }
-    let organizationIds = await OrgAdmin.find({primaryAdmin : userId}).populate({path: "organizationId", select: "_id name"}).lean();
-    organizationIds = organizationIds.map(doc => ({organizationId: doc.organizationId._id, name: doc.organizationId.name}));
-    return res.status(200).json(organizationIds);
+
+    const existingAdmin = await Admin.findById(userId);
+    if (!existingAdmin) return errorResponse(res, "Admin doesn't exist", 404);
+
+    const organizationIds = await OrgAdmin.aggregate([
+        { $match: { primaryAdmin: userId } },
+        {
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                pipeline: [{ $project: { _id: 1, name: 1 } }],
+                as: "org"
+            }
+        },
+        { $unwind: "$org" },
+        {
+            $project: {
+                _id: 0,
+                organizationId: "$org._id",
+                name: "$org.name"
+            }
+        }
+    ]);
+
+    return successResponse(res, "Organization IDs fetched", organizationIds);
 }, "ADMIN_GET_ORG_IDS_ERROR");
 
 
