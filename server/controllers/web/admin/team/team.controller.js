@@ -11,71 +11,128 @@ import {
 } from "#utils/validators.js";
 
 export const createTeam = asyncHandler(
-    async(req, res) => {
-        // console.log(req.cookies);
-        const {teamName, teamManagerId: managerId, description, teamLeaderIds: leaderIds, organizationId} = req.body;
+async (req, res) => {
 
-        // Validate required fields
-        const requiredCheck = validateRequiredFields(
-            { teamName, organizationId },
-            ['teamName', 'organizationId']
-        );
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ error: requiredCheck.error });
+    const {
+        teamName,
+        teamManagerId: managerId,
+        description,
+        teamLeaderIds: leaderIds,
+        organizationId
+    } = req.body;
+
+    // Validate required fields
+    const requiredCheck = validateRequiredFields(
+        { teamName, organizationId },
+        ['teamName', 'organizationId']
+    );
+
+    if (!requiredCheck.valid) {
+        return res.status(400).json({ error: requiredCheck.error });
+    }
+
+    // Validate team name
+    const nameValidation = validateString(teamName, "Team name", {
+        minLength: 2,
+        maxLength: 100
+    });
+
+    if (!nameValidation.valid) {
+        return res.status(400).json({ error: nameValidation.error });
+    }
+
+    // Validate organizationId
+    const orgValidation = validateObjectId(organizationId, "Organization ID");
+
+    if (!orgValidation.valid) {
+        return res.status(400).json({ error: orgValidation.error });
+    }
+
+    // Validate managerId if provided
+    if (managerId) {
+        const managerValidation = validateObjectId(managerId, "Manager ID");
+
+        if (!managerValidation.valid) {
+            return res.status(400).json({ error: managerValidation.error });
         }
-        
-        // Validate team name
-        const nameValidation = validateString(teamName, "Team name", {
-            minLength: 2,
-            maxLength: 100
-        });
-        if (!nameValidation.valid) {
-            return res.status(400).json({ error: nameValidation.error });
+    }
+
+    let cleanedLeaderIds = [];
+
+    // Validate leaderIds if provided
+    if (leaderIds) {
+
+        if (!Array.isArray(leaderIds)) {
+            return res.status(400).json({
+                error: "teamLeaderIds must be an array"
+            });
         }
-        
-        // Validate organization ID
-        const orgIdValidation = validateObjectId(organizationId, "Organization ID");
-        if (!orgIdValidation.valid) {
-            return res.status(400).json({ error: orgIdValidation.error });
-        }
-        
-        // Validate manager ID if provided
-        if (managerId) {
-            const managerIdValidation = validateObjectId(managerId, "Manager ID");
-            if (!managerIdValidation.valid) {
-                return res.status(400).json({ error: managerIdValidation.error });
+
+        for (const leaderId of leaderIds) {
+            const leaderValidation = validateObjectId(leaderId, "Leader ID");
+
+            if (!leaderValidation.valid) {
+                return res.status(400).json({ error: leaderValidation.error });
             }
         }
 
-        const teamExists = await Team.findOne({teamName, organizationId}) !== null ? true : false;
+        // Remove duplicate leaderIds
+        cleanedLeaderIds = [...new Set(leaderIds)];
 
-        if(teamExists) return res.status(400).json({
-            error: "teamName already in use",
+        // Prevent manager being a leader
+        if (managerId && cleanedLeaderIds.includes(managerId)) {
+            return res.status(400).json({
+                error: "Team manager cannot be added as a team leader"
+            });
+        }
+    }
+
+    // Check if team already exists in organization
+    const teamExists = await Team.findOne({
+        teamName,
+        organizationId
+    });
+
+    if (teamExists) {
+        return res.status(400).json({
+            error: "Team name already exists in this organization",
             filledDetails: req.body
         });
+    }
 
-        const detailObject = {teamName, managerId : managerId || null, leaderIds : leaderIds || [], organizationId}
+    const detailObject = {
+        teamName,
+        managerId: managerId || null,
+        leaderIds: cleanedLeaderIds,
+        organizationId
+    };
 
-        if(description !== undefined && description !== null) {
-            const descValidation = validateString(description, "Description", {
-                maxLength: 500
-            });
-            if (!descValidation.valid) {
-                return res.status(400).json({ error: descValidation.error });
-            }
-            detailObject.description = description;
+    // Validate description
+    if (description !== undefined && description !== null) {
+
+        const descValidation = validateString(description, "Description", {
+            maxLength: 500
+        });
+
+        if (!descValidation.valid) {
+            return res.status(400).json({ error: descValidation.error });
         }
 
-        const addTeam = await Team.create(detailObject);
+        detailObject.description = description;
+    }
 
-        detailObject.teamId = addTeam._id;
+    // Create team
+    const createdTeam = await Team.create(detailObject);
 
-        return res.status(200).json({
-            success: "Team added successfully",
-            teamDetails: detailObject
-        })
+    return res.status(201).json({
+        success: "Team added successfully",
+        teamDetails: {
+            ...detailObject,
+            teamId: createdTeam._id
+        }
+    });
 
-    }, "ADMIN_CREATE_TEAM_ERROR");
+}, "ADMIN_CREATE_TEAM_ERROR");
 
 export const getTeam = asyncHandler(
     async(req, res) => {

@@ -14,7 +14,7 @@ import {
 export const register = asyncHandler(
     async (req, res) => {
         const { name, userEmail, password, organizationId, role } = req.body;
-        
+
         // Validate required fields
         const requiredCheck = validateRequiredFields(
             { name, userEmail, password, organizationId, role },
@@ -23,31 +23,31 @@ export const register = asyncHandler(
         if (!requiredCheck.valid) {
             return res.status(400).json({ message: requiredCheck.error });
         }
-        
+
         // Validate name
         const nameValidation = validateName(name);
         if (!nameValidation.valid) {
             return res.status(400).json({ message: nameValidation.error });
         }
-        
+
         // Validate email
         const emailValidation = validateEmail(userEmail);
         if (!emailValidation.valid) {
             return res.status(400).json({ message: emailValidation.error });
         }
-        
+
         // Validate password
         const passwordValidation = validatePassword(password);
         if (!passwordValidation.valid) {
             return res.status(400).json({ message: passwordValidation.error });
         }
-        
+
         // Validate organization ID
         const orgIdValidation = validateObjectId(organizationId, "Organization ID");
         if (!orgIdValidation.valid) {
             return res.status(400).json({ message: orgIdValidation.error });
         }
-        
+
         const existingUser = await Account.findOne({ email: emailValidation.normalized });
 
         if (existingUser) {
@@ -101,28 +101,36 @@ export const login = asyncHandler(
         if (!requiredCheck.valid) {
             return res.status(400).json({ message: requiredCheck.error });
         }
-        
+
         // Validate email format
         const emailValidation = validateEmail(userEmail);
         if (!emailValidation.valid) {
             return res.status(400).json({ message: emailValidation.error });
         }
 
-        const user = await Account.findOne({ email: emailValidation.normalized });
-        if (!user) {
+        const account = await Account.findOne({ email: emailValidation.normalized });
+        if (!account) {
             return res.status(401).json({ message: "User does not exist" });
         }
 
         const isMatch = await bcrypt.compare(
             password,
-            user.password
+            account.password
         );
 
         if (!isMatch) {
             return res.status(401).json({ message: "Invalid credentials" });
         }
 
-        const token = await jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {
+        const userMetaDetails = await User.findOne({
+            email: emailValidation.normalized
+        })
+
+        if (!userMetaDetails) {
+            return res.status(401).json({ message: "User profile does not exist" });
+        }
+
+        const token = await jwt.sign({ userId: userMetaDetails._id }, process.env.SECRET_KEY, {
             expiresIn: process.env.JWT_EXPIRES_IN,
         })
 
@@ -135,12 +143,9 @@ export const login = asyncHandler(
             maxAge: 1000 * 60 * 60 * 24
         })
 
-        const userMetaDetails = await User.findOne({
-            email: emailValidation.normalized
-        })
-
         return res.status(200).json({
             message: "Login Successful",
             userDetails: formatUserDates(userMetaDetails),
+            token: token,
         });
     }, "USER_AUTH_LOGIN_ERROR");

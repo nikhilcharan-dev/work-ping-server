@@ -11,7 +11,7 @@ export const insertEmployees = async (data) => {
                 user.email,
                 user.name,
                 user.organizationId?.toString() ?? "WorkPing",
-                user.roleInTeam ?? "Team Member"
+                user.roleInTeam ?? "Employee"
             );
         } catch (err) {
             // Log but don't block — employee creation shouldn't fail if mail service is down

@@ -18,15 +18,20 @@ const SCOPE = [
 ].join(" ");
 
 router.get('/start', (req, res) => {
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent`;
+    const { platform } = req.query;
+    const state = platform === 'mobile' ? 'mobile' : 'web';
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent&state=${state}`;
     res.redirect(url);
 });
 
 router.get("/callback", async (req, res) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
+    const isMobile = state === "mobile";
 
     if (!code) {
-        return res.status(400).send("Authorization code missing");
+        return isMobile
+            ? res.status(400).json({ error: "Authorization code missing" })
+            : res.status(400).send("Authorization code missing");
     }
 
     try {
@@ -137,7 +142,12 @@ router.get("/callback", async (req, res) => {
             maxAge: 1000 * 60 * 60 * 24
         });
 
-        // Send back to frontend via postMessage
+        if (isMobile) {
+            // Mobile: redirect to app deep link with token
+            return res.redirect(`reback://auth?token=${encodeURIComponent(token)}&role=${account.role}`);
+        }
+
+        // Web: send back to frontend via postMessage
         const safeToken = JSON.stringify(token);
         const targetOrigin = JSON.stringify(CLIENT_URL);
         res.status(200).send(`
@@ -156,6 +166,9 @@ router.get("/callback", async (req, res) => {
             "Google OAuth error:",
             error.response?.data || error.message
         );
+        if (isMobile) {
+            return res.redirect(`reback://auth?error=${encodeURIComponent("Google OAuth failed")}`);
+        }
         res.status(500).send("OAuth Error");
     }
 });
