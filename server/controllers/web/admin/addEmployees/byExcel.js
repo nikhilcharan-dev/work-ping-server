@@ -33,12 +33,14 @@ const insertByExcel = asyncHandler(
             "aadhaar",
             "gender",
             "dob",
-            "address"
+            "address",
+            "workType"
         ];
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const validRoles = ["manager", "teamLead", "employee"];
         const validGenders = ["male", "female", "other"];
+        const validWorkTypes = ["onsite", "remote", "hybrid"];
 
         const failedRecords = [];
         const successfulRecords = [];
@@ -112,6 +114,16 @@ const insertByExcel = asyncHandler(
                 });
                 continue;
             }
+
+            if (!validWorkTypes.includes(String(row.workType).toLowerCase())) {
+                failedRecords.push({
+                    error: `Invalid work type. Must be one of: ${validWorkTypes.join(", ")}`,
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
 
             // Validate PAN format if provided
             if (row.pan) {
@@ -268,7 +280,8 @@ const insertByExcel = asyncHandler(
                     phone: String(row.phone).trim(),
                     employeeId: String(row.employeeId).trim(),
                     organizationId: organization._id,
-                    dateOfJoining: new Date(dojDate.toISOString().split('T')[0])
+                    dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),
+                    workType: String(row.workType).trim().toLowerCase()
                 };
 
                 // Add optional user fields

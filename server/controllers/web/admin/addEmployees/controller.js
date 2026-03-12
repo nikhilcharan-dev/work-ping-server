@@ -93,7 +93,7 @@ const updateEmployee = asyncHandler( async (req,res)=>{
         return res.status(404).json({ error: "Employee Doesn't Exist" });
     }
 
-    const { userName : name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId } = req.body;
+    const { userName : name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId, workType } = req.body;
 
     const updates = {};
     const govtUpdates = {};
@@ -113,6 +113,16 @@ const updateEmployee = asyncHandler( async (req,res)=>{
         if (existing) return res.status(409).json({ error: "Email already in use by another employee" });
 
         updates.email = emailValidation.normalized;
+    }
+
+    if(workType && workType !== employee.workType) {
+        const validWorkTypes = ["remote", "onsite", "hybrid"];
+        if (!validWorkTypes.includes(workType.toLowerCase())) {
+            return res.status(400).json({
+                error: `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`
+            });
+        }
+        updates.workType = workType.toLowerCase();
     }
 
     if (phone && phone !== employee.phone) {

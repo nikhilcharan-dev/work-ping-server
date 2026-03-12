@@ -20,7 +20,8 @@ async (req, res) => {
         organizationName,
         teamName,
         doj: dateOfJoining,
-        role
+        role,
+        workType
     } = req.body;
 
     const {
@@ -37,9 +38,9 @@ async (req, res) => {
 
     console.log("Checkpoint 2");
     // Mandatory validation
-    if (!name || !email || !phone || !employeeId || !dateOfJoining || !aadhaar) {
+    if (!name || !email || !phone || !employeeId || !dateOfJoining || !aadhaar || !workType) {
         return res.status(400).json({
-            error: "Mandatory fields are missing (name, email, phone, userId, doj, role, aadhaar)"
+            error: "Mandatory fields are missing (name, email, phone, userId, doj, role, aadhaar, workType)"
         });
     }
     console.log("Checkpoint 3");
@@ -70,6 +71,14 @@ async (req, res) => {
         });
     }
     console.log("Checkpoint 6");
+
+    const validWorkTypes = ["remote", "onsite", "hybrid"];
+    if (!validWorkTypes.includes(workType.toLowerCase())) {
+        return res.status(400).json({
+            error: `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`
+        });
+    }
+    console.log("Checkpoint 6.1");
 
     // Aadhaar validation
     const aadhaarRegex = /^\d{12}$/;

@@ -11,7 +11,7 @@ export default function twoFactorRoutes(app) {
             const user = await Admin.findById(userId);
             await Account.findOneAndUpdate({email: user.email}, {
                 twoFactorSecret: secret,
-                twoFactorEnabled: true,
+                twoFactorEnabled: false,
             });
         },
 
@@ -25,7 +25,15 @@ export default function twoFactorRoutes(app) {
         // For JWT-based apps (no session)
         isVerified: (req) => {
             return req.user?.twoFactorEnabled === true;
-        }
+        },
+
+        enable2FA: async (userId) => {
+            const user = await Admin.findById(userId);
+            await Account.findOneAndUpdate({email: user.email}, {
+                twoFactorEnabled: true,
+            });
+        },
+
     });
     console.log("[2FA] Initialised")
     return router;
