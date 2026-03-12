@@ -24,32 +24,49 @@ const existingOrganizationOfAdminWithSameName = async (userId , organizationName
 }
 
 const addOrganization = asyncHandler( async (req,res)=>{
-    // console.log("entered")
-    let { name } = req.body;
-    
-    // Validate organization name
-    const nameValidation = validateString(name, "Organization name", {
-        required: true,
-        minLength: 2,
-        maxLength: 100
-    });
-    if (!nameValidation.valid) {
-        return res.status(400).json({ error: nameValidation.error });
-    }
-    
-    let { userId } =  req.user;
-    userId = new mongoose.Types.ObjectId(userId);
-    let adminOrganisationsWithSameName =await existingOrganizationOfAdminWithSameName(userId,name)
-    if(adminOrganisationsWithSameName.length) {
-        return res.status(409).json({ "error" : "Organization already exits" });
-    }
-    const newOrganization =  await Organization.create(req.body);
 
-    let check = await OrgAdmin.create({
-        organizationId : newOrganization._id,
-        primaryAdmin : userId
-    })
-    // console.log(check)
+    const session = await mongoose.startSession();
+    // console.log("entered")
+    try{
+        session.startTransaction();
+        let { name } = req.body;
+        
+        // Validate organization name
+        const nameValidation = validateString(name, "Organization name", {
+            required: true,
+            minLength: 2,
+            maxLength: 100
+        });
+        if (!nameValidation.valid) {
+            return res.status(400).json({ error: nameValidation.error });
+        }
+        
+        let { userId } =  req.user;
+        userId = new mongoose.Types.ObjectId(userId);
+        let adminOrganisationsWithSameName =await existingOrganizationOfAdminWithSameName(userId,name)
+        if(adminOrganisationsWithSameName.length) {
+            return res.status(409).json({ "error" : "Organization already exits" });
+        }
+        const newOrganization =  await Organization.create(req.body, { session });
+
+        let check = await OrgAdmin.create({
+            organizationId : newOrganization._id,
+            primaryAdmin : userId,
+            
+
+        }, { session })
+
+        console.log(check);
+    
+        await session.commitTransaction();
+        session.endSession();
+    } catch (err){
+        await session.abortTransaction();
+        session.endSession();
+        console.log("Transaction failed:", err);
+        return res.status(500).json({err : "Error adding the data"});
+    }
+    
     return res.status(201).json(newOrganization);
 }, "ADMIN_ADD_ORG_ERROR" );
 

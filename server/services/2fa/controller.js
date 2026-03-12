@@ -7,7 +7,7 @@ export const createController = (config) => {
         throw new Error('2FA Service requires "saveSecret" and "getSecret" async functions in config.');
     }
 
-    const { saveSecret, getSecret, isVerified, appName = 'MyApp' } = config;
+    const { saveSecret, getSecret, isVerified, enable2FA, appName = 'MyApp' } = config;
 
     return {
         async setup(req, res) {
@@ -68,7 +68,7 @@ export const createController = (config) => {
                 if (verified) {
                     // Optional: Mark 2FA as enabled in DB if it was pending
                     if (config.enable2FA && typeof config.enable2FA === 'function') {
-                        await config.enable2FA(id);
+                        enable2FA(id);
                     }
 
                     res.json({ verified: true, message: '2FA verified successfully' });

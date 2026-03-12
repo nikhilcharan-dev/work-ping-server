@@ -54,7 +54,13 @@ const userSchema = new mongoose.Schema(
             index: true
         },
 
-        isActive: { type: Boolean, default: true, index: true }
+        isActive: { type: Boolean, default: true, index: true },
+
+        workType:{
+            type: String,
+            enum:["remote", "onsite", "hybrid"],
+            required : true
+        }
 
     },
     { timestamps: true }
