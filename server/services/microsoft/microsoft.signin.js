@@ -21,23 +21,29 @@ const SCOPE = [
 
 
 router.get("/start", (req, res) => {
+    const { platform } = req.query;
+    const state = platform === 'mobile' ? 'mobile' : 'web';
     const authUrl =
         `https://login.microsoftonline.com/common/oauth2/v2.0/authorize` +
         `?client_id=${MS_CLIENT_ID}` +
         `&response_type=code` +
         `&redirect_uri=${encodeURIComponent(MS_REDIRECT_URI)}` +
         `&response_mode=query` +
-        `&scope=${encodeURIComponent(SCOPE)}`;
+        `&scope=${encodeURIComponent(SCOPE)}` +
+        `&state=${state}`;
 
     res.redirect(authUrl);
 });
 
 
 router.get("/callback", async (req, res) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
+    const isMobile = state === "mobile";
 
     if (!code) {
-        return res.status(400).send("Authorization code missing");
+        return isMobile
+            ? res.status(400).json({ error: "Authorization code missing" })
+            : res.status(400).send("Authorization code missing");
     }
 
     try {
@@ -150,7 +156,12 @@ router.get("/callback", async (req, res) => {
             maxAge: 1000 * 60 * 60 * 24
         });
 
-        // Send back to frontend via postMessage
+        if (isMobile) {
+            // Mobile: redirect to app deep link with token
+            return res.redirect(`reback://auth?token=${encodeURIComponent(appToken)}&role=${account.role}`);
+        }
+
+        // Web: send back to frontend via postMessage
         const safeToken = JSON.stringify(appToken);
         const targetOrigin = JSON.stringify(CLIENT_URL);
         res.status(200).send(`
@@ -170,6 +181,9 @@ router.get("/callback", async (req, res) => {
             "Microsoft OAuth Error:",
             err.response?.data || err.message
         );
+        if (isMobile) {
+            return res.redirect(`reback://auth?error=${encodeURIComponent("Microsoft OAuth failed")}`);
+        }
         res.status(500).json({ error: "Microsoft OAuth failed" });
     }
 });

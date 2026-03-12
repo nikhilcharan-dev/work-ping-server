@@ -4,3 +4,6 @@
 node_modules
 package*.json
 /.claude
+
+todo.txt
+workping-mobile
