@@ -10,7 +10,7 @@ import {
 export const addTeamMemberToTeam = asyncHandler(
   async (req, res) => {
     const { userIds, teamId, organizationId, roleInTeam } = req.body;
-
+    
     // Validate required fields
     const requiredCheck = validateRequiredFields(
       { userIds, teamId, organizationId },
