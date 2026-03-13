@@ -6,6 +6,14 @@ import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
+
+
+const formatOrg = (org) => {
+    if (!org) return org;
+    if (org.foundedAt) org.foundedAt = new Date(org.foundedAt).toISOString().split('T')[0];
+    return org;
+};
+
     validateObjectId,
     validateString,
     validateNumber,
@@ -111,7 +119,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req, res) => {
     ];
 
     const pagination = await Pagination(AdminOrg, page, limit, filter);
-    const organizations = pagination.documents.map(item => item.organization);
+    const organizations = pagination.documents.map(item => formatOrg(item.organization));
 
     return successResponse(res, "Organizations fetched", {
         totalRecords: pagination.totalRecords,
@@ -151,7 +159,7 @@ const updateOrganization = asyncHandler(async (req, res) => {
     if (!existingOrganization) return errorResponse(res, "Organization doesn't exist", 404);
 
     const updated = await Organization.findByIdAndUpdate(_id, updates, { new: true, runValidators: true }).lean();
-    return successResponse(res, "Organization updated successfully", updated);
+    return successResponse(res, "Organization updated successfully", formatOrg(updated));
 }, "ADMIN_UPDATE_ORG_ERROR");
 
 const getOrganizationById = asyncHandler(async (req, res) => {
@@ -163,7 +171,7 @@ const getOrganizationById = asyncHandler(async (req, res) => {
     const existingOrganization = await Organization.findById(organizationId).lean();
     if (!existingOrganization) return errorResponse(res, "Organization doesn't exist", 404);
 
-    return successResponse(res, "Organization fetched", existingOrganization);
+    return successResponse(res, "Organization fetched", formatOrg(existingOrganization));
 }, "ADMIN_GET_ORG_BY_ID_ERROR");
 
 const deleteOrganization = asyncHandler(async (req, res) => {

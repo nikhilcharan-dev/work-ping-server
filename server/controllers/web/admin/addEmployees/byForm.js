@@ -142,12 +142,13 @@ async (req, res) => {
         phone: String(phone).trim(),
         employeeId: String(employeeId).trim(),
         organizationId: organization._id,
-        dateOfJoining: new Date(dojDate.toISOString().split('T')[0])
+        dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),
+        workType: workType.toLowerCase()
     };
 
     if (gender) userData.gender = gender.toLowerCase();
 
-    if(role) userData.role = role.toLowerCase();
+    if (role) userData.role = role.toLowerCase();
 
     if (salary) {
         const salaryNum = Number(salary);
@@ -193,22 +194,17 @@ async (req, res) => {
 
         await Account.create([accountData], { session });
 
-        // Create govt proof
-        if (pan !== "" && bankId !== "") {
+        // Create govt proof — always created when aadhaar is provided
+        const govtProofData = {
+            aadhaarNumber: String(aadhaar).trim(),
+            userId: newUser._id
+        };
 
-            const govtProofData = {
-                aadhaarNumber: String(aadhaar).trim(),
-                panNumber: String(pan).trim().toUpperCase(),
-                bankAccount: bankId,
-                userId: newUser._id
-            };
+        if (pan) govtProofData.panNumber = String(pan).trim().toUpperCase();
+        if (bankId) govtProofData.bankAccount = String(bankId).trim();
+        if (passport) govtProofData.passportNumber = String(passport).trim().toUpperCase();
 
-            if (passport) {
-                govtProofData.passportNumber = String(passport).trim().toUpperCase();
-            }
-
-            await GovtProof.create([govtProofData], { session });
-        }
+        await GovtProof.create([govtProofData], { session });
 
         await session.commitTransaction();
 
