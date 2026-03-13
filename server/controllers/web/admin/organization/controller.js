@@ -30,7 +30,7 @@ const existingOrganizationOfAdminWithSameName = async (userId, organizationName)
 };
 
 const addOrganization = asyncHandler(async (req, res) => {
-    let { name } = req.body;
+    let { name, type, description, clDays, foundedAt, IPWhitelist } = req.body;
 
     const nameValidation = validateString(name, "Organization name", {
         required: true,
@@ -39,17 +39,32 @@ const addOrganization = asyncHandler(async (req, res) => {
     });
     if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
 
+    if (clDays !== undefined) {
+        const clDaysValidation = validateNumber(clDays, "CL Days", { min: 0, max: 365, integer: true });
+        if (!clDaysValidation.valid) return errorResponse(res, clDaysValidation.error);
+        clDays = clDaysValidation.normalized;
+    }
+
     let { userId } = req.user;
     userId = new mongoose.Types.ObjectId(userId);
 
     const duplicate = await existingOrganizationOfAdminWithSameName(userId, nameValidation.normalized);
     if (duplicate.length) return errorResponse(res, "Organization already exists", 409);
 
+    const orgData = { name: nameValidation.normalized };
+    if (type !== undefined) orgData.type = String(type).trim();
+    if (description !== undefined) orgData.description = String(description).trim();
+    if (clDays !== undefined) orgData.clDays = clDays;
+    if (foundedAt !== undefined) orgData.foundedAt = foundedAt;
+    if (IPWhitelist !== undefined) orgData.IPWhitelist = Array.isArray(IPWhitelist) ? IPWhitelist : [IPWhitelist];
+    if (req.body.coordinates !== undefined) orgData.coordinates = req.body.coordinates;
+    if (req.body.msl !== undefined) orgData.msl = String(req.body.msl).trim();
+
     const session = await mongoose.startSession();
     session.startTransaction();
     let newOrganization;
     try {
-        ([newOrganization] = await Organization.create([{ name: nameValidation.normalized }], { session }));
+        ([newOrganization] = await Organization.create([orgData], { session }));
         await OrgAdmin.create([{
             organizationId: newOrganization._id,
             primaryAdmin: userId,
@@ -127,6 +142,10 @@ const updateOrganization = asyncHandler(async (req, res) => {
 
     if (req.body.description !== undefined) updates.description = String(req.body.description).trim();
     if (req.body.type !== undefined) updates.type = String(req.body.type).trim();
+    if (req.body.foundedAt !== undefined) updates.foundedAt = req.body.foundedAt;
+    if (req.body.IPWhitelist !== undefined) updates.IPWhitelist = Array.isArray(req.body.IPWhitelist) ? req.body.IPWhitelist : [req.body.IPWhitelist];
+    if (req.body.coordinates !== undefined) updates.coordinates = req.body.coordinates;
+    if (req.body.msl !== undefined) updates.msl = String(req.body.msl).trim();
 
     const existingOrganization = await Organization.findById(_id);
     if (!existingOrganization) return errorResponse(res, "Organization doesn't exist", 404);

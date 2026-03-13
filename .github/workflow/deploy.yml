@@ -1,0 +1,51 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH Deploy & PM2 Restart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+
+            APP_DIR="${{ secrets.APP_DIR }}"
+
+            echo "--- Pulling latest code ---"
+            cd "$APP_DIR"
+            git pull origin main
+
+            echo "--- Installing dependencies ---"
+            cd "$APP_DIR/server"
+            npm ci --omit=dev
+
+            echo "--- Reloading PM2 process ---"
+            if pm2 list | grep -q "agentic-ai"; then
+              pm2 reload agentic-ai --update-env
+            else
+              pm2 start server.js \
+                --name agentic-ai \
+                --node-args="--experimental-vm-modules" \
+                --env production \
+                --max-memory-restart 512M \
+                --restart-delay 3000
+              pm2 save
+            fi
+
+            echo "--- PM2 status ---"
+            pm2 status agentic-ai

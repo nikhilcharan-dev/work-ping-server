@@ -4,11 +4,7 @@ const organizationSchema = new mongoose.Schema(
     {
         name: { type: String, required: true, index: true },
 
-        type: {
-            type: String,
-            enum: ["Private", "Public", "Government", "NGO", "Startup", "Enterprise"],
-            trim: true
-        },
+        type: { type: String, trim: true },
 
         clDays: { type: Number, default: 12 },
 
@@ -16,7 +12,11 @@ const organizationSchema = new mongoose.Schema(
 
         IPWhitelist: [{ type: String }],
 
-        foundedAt: { type: Date }
+        foundedAt: { type: Date },
+
+        coordinates: [{ type: Number }],
+
+        msl: { type: String }
     },
     { timestamps: true }
 );

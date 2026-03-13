@@ -8,6 +8,9 @@ const MODE = process.env.MODE;
 const allowedOrigins = [
     "http://localhost:63342",
     "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:4173",   // vite preview
+    "http://127.0.0.1:5173",
     "http://127.0.0.1:5501",
     "https://workping.live",
     "https://www.workping.live",
@@ -15,7 +18,7 @@ const allowedOrigins = [
     "https://whatsapp.workping.live",
     "https://glorious-couscous-97qgvw6xqj79hxj5g-5173.app.github.dev",
     process.env.CLIENT_URL,
-];
+].filter(Boolean);
 
 const corsOptions = {
     origin: (origin, cb) =>

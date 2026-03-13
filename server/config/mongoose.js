@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const mongooseConfig = async () => {
     try {
         mongoose.set('autoCreate', false);
-        await mongoose.connect( process.env.MONGODB_URI );
+        await mongoose.connect(process.env.MONGODB_URI, {});
         console.log("[MongoDB] Connected");
 
         // Clear stale MongoDB server-side validators left by previous autoCreate
@@ -13,9 +13,9 @@ const mongooseConfig = async () => {
             if (name.startsWith('system.')) continue;
             try {
                 await db.command({ collMod: name, validator: {} });
-            } catch(e) {}
+            } catch (e) { }
         }
-    } catch(err) {
+    } catch (err) {
         console.error("MongoDB connection error:", err);
     }
 }
