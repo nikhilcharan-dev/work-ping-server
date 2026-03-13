@@ -6,19 +6,17 @@ import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
-
+    validateObjectId,
+    validateString,
+    validateNumber,
+    validatePagination
+} from "#utils/validators.js";
 
 const formatOrg = (org) => {
     if (!org) return org;
     if (org.foundedAt) org.foundedAt = new Date(org.foundedAt).toISOString().split('T')[0];
     return org;
 };
-
-    validateObjectId,
-    validateString,
-    validateNumber,
-    validatePagination
-} from "#utils/validators.js";
 
 const existingOrganizationOfAdminWithSameName = async (userId, organizationName) => {
     const results = await OrgAdmin.aggregate([
