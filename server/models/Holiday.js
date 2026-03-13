@@ -9,20 +9,23 @@ const holidayInfoSchema = new mongoose.Schema(
             index: true
         },
 
-        type: {type: String, enum:["public", "organization"], required: true},
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        type: { type: String, enum: ["public", "organization"], required: true },
 
         date: { type: Date, required: true, index: true },
 
-        isWorkingDay: {type: Boolean, default: false},
+        isWorkingDay: { type: Boolean, default: false },
 
         description: String
     },
     { timestamps: true }
 );
 
-holidayInfoSchema.index(
-    { organizationId: 1, date: 1 },
-    { unique: true }
-);
+holidayInfoSchema.index({ organizationId: 1, date: 1 }, { unique: true });
 
 export default mongoose.model("Holiday", holidayInfoSchema);

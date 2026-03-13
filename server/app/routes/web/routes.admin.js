@@ -12,6 +12,9 @@ import getEmployee from "#webRoutes/admin/employee/router.js";
 
 import projectRoutes from "#webRoutes/admin/project/router.js"
 import deleteEmployeesById from "#webController/admin/deleteEmployees/deleteEmployeesByid.js";
+import paymentsRouter from "#webRoutes/admin/payments/router.js";
+import ordersRouter from "#webRoutes/admin/orders/router.js";
+import phonepeGatewayRouter from "#services/phonepe/phonepe.gateway.js";
 
 const adminOnly = [validateCookie, requireRole("admin")];
 
@@ -32,5 +35,12 @@ export default function adminRoutes(app) {
 
     // Project
     app.use("/api/admin/project", ...adminOnly, projectRoutes);
+
+    // Payments & Orders (read)
+    app.use("/api/admin/payments", ...adminOnly, paymentsRouter);
+    app.use("/api/admin/orders", ...adminOnly, ordersRouter);
+
+    // PhonePe — initiate payment (admin only)
+    app.use("/api/admin/phonepe", ...adminOnly, phonepeGatewayRouter);
 
 }

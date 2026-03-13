@@ -5,6 +5,7 @@ import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js
 
 import attendanceRoutes from "#webRoutes/user/attendance/router.js";
 import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
+import phonepeWebhookRouter from "#services/phonepe/phonepe.webhook.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import jwt from "jsonwebtoken";
@@ -66,4 +67,7 @@ export default function centralRoutes(app) {
 
     // Attendance
     app.use("/api/attendance", validateCookie, attendanceRoutes);
+
+    // PhonePe webhook — no auth (PhonePe calls this directly, verified by signature)
+    app.use("/api/phonepe", phonepeWebhookRouter);
 }

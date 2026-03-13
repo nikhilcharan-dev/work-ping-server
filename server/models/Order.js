@@ -2,43 +2,51 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
     {
-        userId : {
+        userId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Admin",
             required: true,
             index: true
         },
 
-        planId : {
+        planId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Plan",
             required: true,
             index: true
         },
 
-        amount : {type: Number, required: true},
+        amount: { type: Number, required: true },
 
-        date : {type: Date, required: true},
+        date: { type: Date, required: true },
 
         paymentMethod: {
-            type: String, 
-            enum: ["Credit Card", "Debit Card", "UPI", "Net Banking"],
+            type: String,
+            enum: ["Credit Card", "Debit Card", "UPI", "Net Banking", "Wallet", "Cash"],
             default: "UPI"
         },
 
         orderStatus: {
-            type: String, 
+            type: String,
             enum: ["Success", "Failed", "Pending"],
-            default: "Pending"
+            default: "Pending",
+            index: true
         },
 
-        phonepeOrderId:{
+        // PhonePe order ID returned on payment initiation
+        phonepeOrderId: {
             type: String,
             default: ""
+        },
+
+        // PhonePe transaction ID set by webhook on completion
+        transactionId: {
+            type: String,
+            unique: true,
+            sparse: true
         }
-        
     },
-    {timestamps: true}
+    { timestamps: true }
 );
 
 export default mongoose.model("Order", orderSchema);

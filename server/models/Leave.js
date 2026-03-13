@@ -16,7 +16,20 @@ const leaveSchema = new mongoose.Schema(
             index: true
         },
 
-        dates: [{ type: Date, required: true }],
+        leaveType: {
+            type: String,
+            enum: ["Sick", "Casual", "Earned", "Unpaid"],
+            required: true,
+            index: true
+        },
+
+        dates: {
+            type: [Date],
+            validate: {
+                validator: (v) => Array.isArray(v) && v.length > 0,
+                message: "At least one leave date is required"
+            }
+        },
 
         status: {
             type: String,

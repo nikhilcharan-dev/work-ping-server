@@ -4,19 +4,33 @@ const SubscriptionSchema = new mongoose.Schema(
 {
     adminId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true
+        ref: "Admin",          // was "User" — admins purchase subscriptions
+        required: true,
+        index: true
     },
 
     organizationId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Organization"
+        ref: "Organization",
+        index: true
     },
 
+    planId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Plan",
+        required: true
+    },
+
+    orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Order"
+    },
+
+    // Snapshot of plan name at time of subscription
     planName: {
         type: String,
-        enum: ["FREE", "BASIC", "PRO", "ENTERPRISE"],
-        required: true
+        required: true,
+        trim: true
     },
 
     price: {
@@ -33,7 +47,8 @@ const SubscriptionSchema = new mongoose.Schema(
     status: {
         type: String,
         enum: ["ACTIVE", "CANCELLED", "EXPIRED", "PAST_DUE"],
-        default: "ACTIVE"
+        default: "ACTIVE",
+        index: true
     },
 
     startDate: {

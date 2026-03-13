@@ -5,7 +5,8 @@ const PaymentSchema = new mongoose.Schema(
     adminId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Admin",
-        required: true
+        required: true,
+        index: true
     },
 
     organizationId: {
@@ -14,10 +15,14 @@ const PaymentSchema = new mongoose.Schema(
         required: true
     },
 
+    orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Order"
+    },
+
     subscriptionId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Organization",
-        required: true
+        ref: "Subscription"
     },
 
     amount: {
@@ -32,16 +37,17 @@ const PaymentSchema = new mongoose.Schema(
         uppercase: true
     },
 
+    // Unified enum matching Order.paymentMethod and webhook METHOD_MAP output
     paymentMethod: {
         type: String,
-        enum: ["UPI", "CARD", "NETBANKING", "WALLET", "CASH"],
+        enum: ["UPI", "Credit Card", "Debit Card", "Net Banking", "Wallet", "Cash"],
         required: true
     },
 
     paymentGateway: {
         type: String,
-        enum: ["RAZORPAY", "STRIPE", "PAYPAL", "MANUAL"],
-        default: "MANUAL"
+        enum: ["RAZORPAY", "STRIPE", "PAYPAL", "PHONEPE", "MANUAL"],
+        default: "PHONEPE"
     },
 
     transactionId: {
@@ -53,7 +59,8 @@ const PaymentSchema = new mongoose.Schema(
     status: {
         type: String,
         enum: ["PENDING", "SUCCESS", "FAILED", "REFUNDED"],
-        default: "PENDING"
+        default: "PENDING",
+        index: true
     },
 
     description: {
