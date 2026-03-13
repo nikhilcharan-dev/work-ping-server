@@ -2,6 +2,7 @@ import Organization from "#models/Organization.js";
 import User from "#models/User.js";
 import Team from "#models/Team.js";
 import AdminOrg from "#models/Admin.Org.js";
+import TeamMembership from "#models/TeamMembership.js";
 import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -76,9 +77,58 @@ async (req, res) => {
     }
 
     const createdTeam = await Team.create(detailObject);
+
+    // Process manager and leaders to add them to TeamMembership
+    const usersToProcess = [];
+    if (managerId) {
+        usersToProcess.push({ userId: managerId, roleInTeam: "manager" });
+    }
+    if (cleanedLeaderIds && cleanedLeaderIds.length > 0) {
+        for (const leaderId of cleanedLeaderIds) {
+            usersToProcess.push({ userId: leaderId, roleInTeam: "teamLead" });
+        }
+    }
+
+    const failedInsertions = [];
+    let successCount = 0;
+
+    if (usersToProcess.length > 0) {
+        const userIds = usersToProcess.map(u => u.userId);
+        const existingMemberships = await TeamMembership.find({ userId: { $in: userIds } });
+
+        const membershipsToInsert = [];
+
+        for (const user of usersToProcess) {
+            const userMemberships = existingMemberships.filter(m => m.userId.toString() === user.userId.toString());
+            const inOtherTeam = userMemberships.length > 0; // Since this team is new, any existing membership is in another team
+            
+            if (!inOtherTeam) {
+                membershipsToInsert.push({
+                    userId: user.userId,
+                    teamId: createdTeam._id,
+                    organizationId,
+                    roleInTeam: user.roleInTeam
+                });
+            } else {
+                failedInsertions.push({
+                    id: user.userId.toString(),
+                    error: "User is already assigned to another team"
+                });
+            }
+        }
+
+        if (membershipsToInsert.length > 0) {
+            await TeamMembership.insertMany(membershipsToInsert);
+            successCount = membershipsToInsert.length;
+        }
+    }
+
     return successResponse(res, "Team added successfully", {
         ...detailObject,
-        teamId: createdTeam._id
+        teamId: createdTeam._id,
+        successCount,
+        failedCount: failedInsertions.length,
+        failedInsertions
     }, 201);
 
 }, "ADMIN_CREATE_TEAM_ERROR");

@@ -43,31 +43,60 @@ export const addTeamMemberToTeam = asyncHandler(
     }
 
     const existingMemberships = await TeamMembership.find({
-      userId: { $in: userIds },
-      teamId,
-      organizationId
-    }).select("userId");
+      userId: { $in: userIds }
+    });
 
-    const existingUserIds = existingMemberships.map(m => m.userId.toString());
-    const newUserIds = userIds.filter(id => !existingUserIds.includes(id));
+    const membershipsToInsert = [];
+    const membershipsToUpdate = [];
+    const failedInsertions = [];
 
-    if (newUserIds.length === 0) {
-      return errorResponse(res, "All users are already members of the team");
+    for (const userId of userIds) {
+      const userMemberships = existingMemberships.filter(m => m.userId.toString() === userId.toString());
+      
+      const inOtherTeam = userMemberships.some(m => m.teamId.toString() !== teamId.toString());
+      const inCurrentTeam = userMemberships.find(m => m.teamId.toString() === teamId.toString());
+
+      if (inCurrentTeam) {
+        if (roleInTeam && inCurrentTeam.roleInTeam !== roleInTeam) {
+            membershipsToUpdate.push({
+                membershipId: inCurrentTeam._id,
+                roleInTeam
+            });
+        }
+      } else if (inOtherTeam) {
+        failedInsertions.push({
+            id: userId.toString(),
+            error: "User is already assigned to another team"
+        });
+      } else {
+        membershipsToInsert.push({
+          userId,
+          teamId,
+          organizationId,
+          ...(roleInTeam && { roleInTeam })
+        });
+      }
     }
 
-    const insertObjects = newUserIds.map(userId => ({
-      userId,
-      teamId,
-      organizationId,
-      ...(roleInTeam && { roleInTeam })
-    }));
+    let insertedMemberships = [];
+    if (membershipsToInsert.length > 0) {
+      insertedMemberships = await TeamMembership.insertMany(membershipsToInsert);
+    }
+    
+    for (const update of membershipsToUpdate) {
+      await TeamMembership.findByIdAndUpdate(update.membershipId, { roleInTeam: update.roleInTeam });
+    }
 
-    const memberships = await TeamMembership.insertMany(insertObjects);
+    const successCount = membershipsToInsert.length + membershipsToUpdate.length;
+    const failedCount = failedInsertions.length;
 
-    return successResponse(res, "Users added to team successfully", {
-      addedCount: memberships.length,
-      membershipIds: memberships.map(m => m._id),
-      skippedUsers: existingUserIds
+    return successResponse(res, "Team members processed successfully", {
+      successCount,
+      failedCount,
+      addedCount: membershipsToInsert.length,
+      updatedCount: membershipsToUpdate.length,
+      membershipIds: insertedMemberships.map(m => m._id),
+      failedInsertions
     });
   },
   "ADMIN_ADD_TEAM_MEMBER_ERROR"
@@ -117,7 +146,7 @@ export const getTeamMembers = asyncHandler(
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
         ]);
-
+        console.log(membersList)
         return successResponse(res, "Team members fetched", membersList);
     }, "ADMIN_GET_TEAM_MEMBERS_ERROR");
 
