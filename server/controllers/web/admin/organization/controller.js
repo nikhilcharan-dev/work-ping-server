@@ -105,6 +105,28 @@ const getOrganizationsOfAdmin = asyncHandler(async (req, res) => {
                 "organization.name": { $regex: search, $options: "i" }
             }
         },
+        {
+            $lookup: {
+                from: "users",
+                localField: "organizationId",
+                foreignField: "organizationId",
+                as: "employees"
+            }
+        },
+        {
+            $lookup: {
+                from: "teams",
+                localField: "organizationId",
+                foreignField: "organizationId",
+                as: "teams"
+            }
+        },
+        {
+            $addFields: {
+                "organization.employeeCount": { $size: "$employees" },
+                "organization.teamCount": { $size: "$teams" }
+            }
+        },
         { $sort: { "organization.name": 1 } },
     ];
 

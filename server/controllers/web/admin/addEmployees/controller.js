@@ -34,9 +34,26 @@ const employeeLookupPipeline = [
     },
     { $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true } },
     {
+        $lookup: {
+            from: "projectmembers",
+            localField: "_id",
+            foreignField: "userId",
+            as: "projectMemberships"
+        }
+    },
+    {
+        $lookup: {
+            from: "projects",
+            localField: "projectMemberships.projectId",
+            foreignField: "_id",
+            as: "assignedProjects"
+        }
+    },
+    {
         $addFields: {
             organizationName: { $ifNull: ["$organization.name", null] },
             departmentName: { $ifNull: ["$team.teamName", null] },
+            projects: { $ifNull: ["$assignedProjects.name", []] },
             aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
             panNumber: { $ifNull: ["$govtProof.panNumber", null] },
             passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
@@ -79,7 +96,31 @@ const updateEmployee = asyncHandler(async (req, res) => {
     const employee = await User.findById(employeeId);
     if (!employee) return errorResponse(res, "Employee doesn't exist", 404);
 
-    const { userName: name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId, workType } = req.body;
+    const { 
+        userName, 
+        name: bodyName, 
+        email, 
+        phone, 
+        gender, 
+        salary, 
+        dob, 
+        address, 
+        dateOfJoining, 
+        role, 
+        isActive, 
+        teamId, 
+        userId, 
+        employeeId: bodyEmployeeId, 
+        organizationId, 
+        aadhaar, 
+        pan, 
+        passport, 
+        bankId, 
+        workType 
+    } = req.body;
+
+    const name = userName || bodyName;
+    const userIdToUse = userId || bodyEmployeeId;
 
     const updates = {};
     const govtUpdates = {};
@@ -118,8 +159,8 @@ const updateEmployee = asyncHandler(async (req, res) => {
         updates.phone = phoneValidation.normalized;
     }
 
-    if (userId && userId !== employee.employeeId) {
-        const userIdValidation = validateEmployeeId(userId);
+    if (userIdToUse && userIdToUse !== employee.employeeId) {
+        const userIdValidation = validateEmployeeId(userIdToUse);
         if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
 
         const existingEmpId = await User.findOne({ employeeId: userIdValidation.normalized, organizationId: employee.organizationId, _id: { $ne: employeeId } });

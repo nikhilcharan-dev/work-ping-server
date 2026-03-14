@@ -16,6 +16,7 @@ import { Router } from "express";
 
 const router = Router();
 
+router.get("/", getProjects);
 router.post("/create-project", createProject);
 router.get("/get-projects", getProjects);
 router.get("/get-project", getProject);

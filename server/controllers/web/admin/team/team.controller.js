@@ -205,6 +205,24 @@ export const getAllTeams = asyncHandler(
                     pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
                     as: "leaders"
                 }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_id",
+                    foreignField: "teamId",
+                    as: "members"
+                }
+            },
+            {
+                $addFields: {
+                    memberCount: { $size: "$members" }
+                }
+            },
+            {
+                $project: {
+                    members: 0
+                }
             }
         ]);
 
@@ -258,6 +276,27 @@ export const getTeamsPagination = asyncHandler(
                 foreignField: "_id",
                 pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
                 as: "leaders"
+            }
+        });
+
+        thefilter.push({
+            $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "teamId",
+                as: "members"
+            }
+        });
+
+        thefilter.push({
+            $addFields: {
+                memberCount: { $size: "$members" }
+            }
+        });
+
+        thefilter.push({
+            $project: {
+                members: 0
             }
         });
 

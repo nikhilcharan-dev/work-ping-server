@@ -137,11 +137,30 @@ const getAllEmployeesByPageNumber = asyncHandler(
       $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true }
     });
 
+    // Lookup projects the employee belongs to
+    filter.push({
+      $lookup: {
+        from: "projectmembers",
+        localField: "_id",
+        foreignField: "userId",
+        as: "projectMemberships"
+      }
+    });
+    filter.push({
+      $lookup: {
+        from: "projects",
+        localField: "projectMemberships.projectId",
+        foreignField: "_id",
+        as: "assignedProjects"
+      }
+    });
+
     // Project fields: replace organizationId with organizationName, add department & govt proof fields
     filter.push({
       $addFields: {
         organizationName: { $ifNull: ["$organization.name", null] },
         departmentName: { $ifNull: ["$team.teamName", null] },
+        projects: { $ifNull: ["$assignedProjects.name", []] },
         aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
         panNumber: { $ifNull: ["$govtProof.panNumber", null] },
         passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },

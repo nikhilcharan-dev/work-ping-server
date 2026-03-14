@@ -2,6 +2,7 @@ import authRoutes from "#webRoutes/admin/auth/router.js";
 import otpRoutes from "#webRoutes/admin/otp/router.js";
 import organizationRouter from "#webRoutes/admin/organization/router.js"
 import teamRoutes from "#webRoutes/admin/team/routes.js";
+import profileRoutes from "#webRoutes/admin/profile/router.js";
 import validateCookie from "#middleware/jwtBearer.js";
 import requireRole from "#middleware/requireRole.js";
 import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
@@ -20,6 +21,7 @@ const adminOnly = [validateCookie, requireRole("admin")];
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
+    app.use("/api/admin", ...adminOnly, profileRoutes);
     app.use("/api/admin/organization", ...adminOnly, organizationRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);

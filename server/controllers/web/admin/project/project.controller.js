@@ -72,11 +72,16 @@ export const getProjects = asyncHandler(
             $lookup: { from: "users", localField: "projectManager", foreignField: "_id", as: "manager" }
         });
         filter.push({
+            $lookup: { from: "projectmembers", localField: "_id", foreignField: "projectId", as: "members" }
+        });
+        filter.push({
             $addFields: {
                 organizationName: { $arrayElemAt: ["$organization.name", 0] },
-                projectManagerName: { $arrayElemAt: ["$manager.name", 0] }
+                projectManagerName: { $arrayElemAt: ["$manager.name", 0] },
+                memberCount: { $size: "$members" }
             }
         });
+        filter.push({ $project: { members: 0, manager: 0, organization: 0 } });
 
         const pagination = await Pagination(Project, page, limit, filter);
         return successResponse(res, "Projects fetched", {

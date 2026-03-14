@@ -2,6 +2,7 @@ import {getOrganizationById,addOrganization,updateOrganization,deleteOrganizatio
 import express from "express"
 const Router = express.Router()
 
+Router.get("/", getOrganizationsOfAdmin);
 Router.get('/get-organizations',getOrganizationsOfAdmin)
 Router.get('/get-organization-by-id/:id',getOrganizationById);
 Router.get('/get-all-organization-ids',getOrganizationIDsOfAdmin);
