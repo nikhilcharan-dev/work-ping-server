@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: GitHub CI/CD
+    name: CI/CD Pipeline
     runs-on: ubuntu-latest
 
     steps:
