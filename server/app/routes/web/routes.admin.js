@@ -1,5 +1,7 @@
 import authRoutes from "#webRoutes/admin/auth/router.js";
 import otpRoutes from "#webRoutes/admin/otp/router.js";
+import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
+import mailRouter from "#webRoutes/admin/mail/router.js";
 import organizationRouter from "#webRoutes/admin/organization/router.js"
 import teamRoutes from "#webRoutes/admin/team/routes.js";
 import profileRoutes from "#webRoutes/admin/profile/router.js";
@@ -25,6 +27,8 @@ export default function adminRoutes(app) {
     app.use("/api/admin/organization", ...adminOnly, organizationRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);
+    app.use("/api/admin/forgot-password", forgotPasswordRouter);
+    app.use("/api/admin/mail", ...adminOnly, mailRouter);
 
     // Forgot Password
 

@@ -118,12 +118,17 @@ export const getTeamMembers = asyncHandler(
 
         const matchStage = {};
 
-        if (teamId) {
+        if (teamId) teamId = String(teamId).trim();
+        if (organizationId) organizationId = String(organizationId).trim();
+        if (projectId === 'null' || projectId === 'undefined' || projectId === '') projectId = undefined;
+        if (search === 'null' || search === 'undefined') search = "";
+
+        if (teamId && teamId !== 'undefined' && teamId !== 'null') {
             const idValidation = validateObjectId(teamId, "Team ID");
             if (!idValidation.valid) return errorResponse(res, idValidation.error);
             matchStage.teamId = new mongoose.Types.ObjectId(teamId);
         }
-        if (organizationId) {
+        if (organizationId && organizationId !== 'undefined' && organizationId !== 'null' && organizationId !== '') {
             const idValidation = validateObjectId(organizationId, "Organization ID");
             if (!idValidation.valid) return errorResponse(res, idValidation.error);
             matchStage.organizationId = new mongoose.Types.ObjectId(organizationId);
