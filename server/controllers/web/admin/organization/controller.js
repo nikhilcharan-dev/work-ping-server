@@ -14,7 +14,12 @@ import {
 
 const formatOrg = (org) => {
     if (!org) return org;
-    if (org.foundedAt) org.foundedAt = new Date(org.foundedAt).toISOString().split('T')[0];
+    if (org.foundedAt) {
+        const date = new Date(org.foundedAt);
+        if (!isNaN(date.getTime())) {
+            org.foundedAt = date.toISOString().split('T')[0];
+        }
+    }
     return org;
 };
 
