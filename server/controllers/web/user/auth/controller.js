@@ -16,11 +16,11 @@ import {
 
 export const register = asyncHandler(
     async (req, res) => {
-        const { name, userEmail, password, organizationId, role } = req.body;
+        const { name, userEmail, password, organizationId, role, phone, employeeId, workType, dateOfJoining } = req.body;
 
         const requiredCheck = validateRequiredFields(
-            { name, userEmail, password, organizationId, role },
-            ['name', 'userEmail', 'password', 'organizationId', 'role']
+            { name, userEmail, password, organizationId, role, phone, employeeId, workType, dateOfJoining },
+            ['name', 'userEmail', 'password', 'organizationId', 'role', 'phone', 'employeeId', 'workType', 'dateOfJoining']
         );
         if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
@@ -41,6 +41,25 @@ export const register = asyncHandler(
             return errorResponse(res, `Role must be one of: ${VALID_USER_ROLES.join(", ")}`);
         }
 
+        const validWorkTypes = ["remote", "onsite", "hybrid"];
+        if (!validWorkTypes.includes(workType.toLowerCase())) {
+            return errorResponse(res, `workType must be one of: ${validWorkTypes.join(", ")}`);
+        }
+
+        const dojDate = new Date(dateOfJoining);
+        if (isNaN(dojDate.getTime())) {
+            return errorResponse(res, "Invalid dateOfJoining");
+        }
+
+        // We assume valid phone uses regex like /^\d{10}$/ etc.
+        const phoneTrimmed = String(phone).trim();
+        const existingPhone = await User.findOne({ phone: phoneTrimmed });
+        if (existingPhone) return errorResponse(res, "Phone number already in use", 409);
+
+        const empIdTrimmed = String(employeeId).trim();
+        const existingEmpId = await User.findOne({ employeeId: empIdTrimmed, organizationId });
+        if (existingEmpId) return errorResponse(res, "Employee ID already exists in this organization", 409);
+
         const existingAccount = await Account.findOne({ email: emailValidation.normalized });
         if (existingAccount) return errorResponse(res, "User Already Exists", 409);
 
@@ -53,6 +72,10 @@ export const register = asyncHandler(
             ([user] = await User.create([{
                 name: nameValidation.normalized,
                 email: emailValidation.normalized,
+                phone: phoneTrimmed,
+                employeeId: empIdTrimmed,
+                workType: workType.toLowerCase(),
+                dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),
                 organizationId,
                 role,
             }], { session }));

@@ -18,21 +18,8 @@ const formatOrg = (org) => {
     return org;
 };
 
-const existingOrganizationOfAdminWithSameName = async (userId, organizationName) => {
-    const results = await OrgAdmin.aggregate([
-        { $match: { primaryAdmin: userId } },
-        {
-            $lookup: {
-                from: "organizations",
-                localField: "organizationId",
-                foreignField: "_id",
-                pipeline: [{ $match: { name: organizationName } }],
-                as: "org"
-            }
-        },
-        { $match: { "org.0": { $exists: true } } }
-    ]);
-    return results;
+const existingOrganizationWithSameName = async (organizationName) => {
+    return await Organization.findOne({ name: organizationName });
 };
 
 const addOrganization = asyncHandler(async (req, res) => {
@@ -54,8 +41,8 @@ const addOrganization = asyncHandler(async (req, res) => {
     let { userId } = req.user;
     userId = new mongoose.Types.ObjectId(userId);
 
-    const duplicate = await existingOrganizationOfAdminWithSameName(userId, nameValidation.normalized);
-    if (duplicate.length) return errorResponse(res, "Organization already exists", 409);
+    const duplicate = await existingOrganizationWithSameName(nameValidation.normalized);
+    if (duplicate) return errorResponse(res, "Organization Name is already taken", 409);
 
     const orgData = { name: nameValidation.normalized };
     if (type !== undefined) orgData.type = String(type).trim();
@@ -137,6 +124,12 @@ const updateOrganization = asyncHandler(async (req, res) => {
     if (req.body.name !== undefined) {
         const nameValidation = validateString(req.body.name, "Organization name", { minLength: 2, maxLength: 100 });
         if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
+        
+        const duplicate = await existingOrganizationWithSameName(nameValidation.normalized);
+        if (duplicate && duplicate._id.toString() !== _id.toString()) {
+            return errorResponse(res, "Organization Name is already taken", 409);
+        }
+        
         updates.name = nameValidation.normalized;
     }
 

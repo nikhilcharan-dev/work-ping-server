@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
 
         phone: { type: String, unique: true, required: true },
 
-        employeeId: { type: String, unique: true, required: true },
+        employeeId: { type: String, required: true },
 
         gender: {
             type: String,
@@ -62,5 +62,7 @@ const userSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+userSchema.index({ organizationId: 1, employeeId: 1 }, { unique: true });
 
 export default mongoose.model("User", userSchema);

@@ -122,7 +122,7 @@ const updateEmployee = asyncHandler(async (req, res) => {
         const userIdValidation = validateEmployeeId(userId);
         if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
 
-        const existingEmpId = await User.findOne({ employeeId: userIdValidation.normalized, _id: { $ne: employeeId } });
+        const existingEmpId = await User.findOne({ employeeId: userIdValidation.normalized, organizationId: employee.organizationId, _id: { $ne: employeeId } });
         if (existingEmpId) return errorResponse(res, "Employee ID already in use by another employee", 409);
 
         updates.employeeId = userIdValidation.normalized;
