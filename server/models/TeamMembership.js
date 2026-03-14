@@ -23,13 +23,6 @@ const teamMembershipSchema = new mongoose.Schema(
             index: true
         },
 
-        roleInTeam: {
-            type: String,
-            enum: ["manager", "teamLead", "member"],
-            default: "member",
-            index: true
-        },
-
         joinedAt: { type: Date, default: Date.now },
 
         leftAt: Date,

@@ -73,7 +73,7 @@ export const getMyTeamMembers = asyncHandler(
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, roleInTeam: 1, profileImage: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, role: 1, profileImage: 1 } }],
                     as: "user"
                 }
             },

@@ -1,4 +1,5 @@
 import ProjectMember from "#models/ProjectMember.js";
+import User from "#models/User.js";
 import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -7,38 +8,68 @@ import {
     validateRequiredFields
 } from "#utils/validators.js";
 
-const VALID_ROLES = ["manager", "developer", "tester"];
-
 export const addProjectMember = asyncHandler(
     async (req, res) => {
-        const { projectId, userId, organizationId, role = "developer" } = req.body;
+        const { projectId, employeeIds, organizationId } = req.body;
 
         const requiredCheck = validateRequiredFields(
-            { projectId, userId, organizationId },
-            ["projectId", "userId", "organizationId"]
+            { projectId, employeeIds, organizationId },
+            ["projectId", "employeeIds", "organizationId"]
         );
         if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
-        for (const [field, value] of [["Project ID", projectId], ["User ID", userId], ["Organization ID", organizationId]]) {
+        if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+            return errorResponse(res, "employeeIds must be a non-empty array");
+        }
+
+        for (const [field, value] of [["Project ID", projectId], ["Organization ID", organizationId]]) {
             const v = validateObjectId(value, field);
             if (!v.valid) return errorResponse(res, v.error);
         }
 
-        if (!VALID_ROLES.includes(role)) {
-            return errorResponse(res, `role must be one of: ${VALID_ROLES.join(", ")}`);
+        const users = await User.find({
+            organizationId,
+            $or: [
+                { _id: { $in: employeeIds.filter(id => mongoose.Types.ObjectId.isValid(id)) } },
+                { employeeId: { $in: employeeIds } }
+            ]
+        });
+
+        if (users.length === 0) {
+            return errorResponse(res, "No valid employees found");
         }
 
-        const existing = await ProjectMember.findOne({ projectId, userId });
-        if (existing) return errorResponse(res, "User is already a member of this project", 409);
+        const validUserIds = users.map(user => user._id);
+        
+        const existingMembers = await ProjectMember.find({ 
+            projectId, 
+            userId: { $in: validUserIds } 
+        });
+        
+        const existingUserIds = existingMembers.map(m => m.userId.toString());
+        const newMembersToInsert = validUserIds
+            .filter(id => !existingUserIds.includes(id.toString()))
+            .map(userId => ({
+                projectId,
+                userId,
+                organizationId
+            }));
 
-        const member = await ProjectMember.create({ projectId, userId, organizationId, role });
-        return successResponse(res, "Member added to project", member, 201);
+        if (newMembersToInsert.length === 0) {
+            return errorResponse(res, "All provided employees are already in the project", 409);
+        }
+
+        const members = await ProjectMember.insertMany(newMembersToInsert);
+        return successResponse(res, "Members added to project", { 
+            addedCount: members.length,
+            members 
+        }, 201);
     },
     "ADD_PROJECT_MEMBER_ERROR");
 
 export const getProjectMembers = asyncHandler(
     async (req, res) => {
-        const { projectId, page = 1, limit = 10, search = "", role } = req.query;
+        const { projectId, page = 1, limit = 10, search = "" } = req.query;
 
         if (!projectId) return errorResponse(res, "projectId is required");
 
@@ -48,10 +79,6 @@ export const getProjectMembers = asyncHandler(
         const filter = [
             { $match: { projectId: new mongoose.Types.ObjectId(projectId) } }
         ];
-
-        if (role && VALID_ROLES.includes(role)) {
-            filter.push({ $match: { role } });
-        }
 
         filter.push({
             $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" }
@@ -136,7 +163,7 @@ export const getProjectMember = asyncHandler(
 export const updateProjectMember = asyncHandler(
     async (req, res) => {
         const { id } = req.params;
-        const { role, isActive } = req.body;
+        const { isActive } = req.body;
 
         const idValidation = validateObjectId(id, "Member ID");
         if (!idValidation.valid) return errorResponse(res, idValidation.error);
@@ -145,13 +172,6 @@ export const updateProjectMember = asyncHandler(
         if (!member) return errorResponse(res, "Project member not found", 404);
 
         const updateData = {};
-
-        if (role !== undefined) {
-            if (!VALID_ROLES.includes(role)) {
-                return errorResponse(res, `role must be one of: ${VALID_ROLES.join(", ")}`);
-            }
-            updateData.role = role;
-        }
 
         if (isActive !== undefined) {
             if (typeof isActive !== "boolean") return errorResponse(res, "isActive must be a boolean");

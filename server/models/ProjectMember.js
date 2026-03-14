@@ -23,13 +23,6 @@ const projectMemberSchema = new mongoose.Schema(
             index: true
         },
 
-        role: {
-            type: String,
-            enum: ["manager", "developer", "tester"],
-            default: "developer",
-            index: true
-        },
-
         assignedDate: { type: Date, default: Date.now },
 
         isActive: { type: Boolean, default: true }

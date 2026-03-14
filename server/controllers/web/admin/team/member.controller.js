@@ -3,14 +3,13 @@ import mongoose from "mongoose";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
-    validateRequiredFields,
-    validateEnum
+    validateRequiredFields
 } from "#utils/validators.js";
 
 
 export const addTeamMemberToTeam = asyncHandler(
   async (req, res) => {
-    const { userIds, teamId, organizationId, roleInTeam } = req.body;
+    const { userIds, teamId, organizationId } = req.body;
 
     const requiredCheck = validateRequiredFields(
       { userIds, teamId, organizationId },
@@ -28,14 +27,7 @@ export const addTeamMemberToTeam = asyncHandler(
     const orgIdValidation = validateObjectId(organizationId, "Organization ID");
     if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
 
-    if (roleInTeam) {
-      const roleValidation = validateEnum(
-        roleInTeam,
-        ["manager", "teamLead", "member"],
-        "Role in team"
-      );
-      if (!roleValidation.valid) return errorResponse(res, roleValidation.error);
-    }
+
 
     for (const userId of userIds) {
       const userIdValidation = validateObjectId(userId, "User ID");
@@ -47,7 +39,6 @@ export const addTeamMemberToTeam = asyncHandler(
     });
 
     const membershipsToInsert = [];
-    const membershipsToUpdate = [];
     const failedInsertions = [];
 
     for (const userId of userIds) {
@@ -57,12 +48,7 @@ export const addTeamMemberToTeam = asyncHandler(
       const inCurrentTeam = userMemberships.find(m => m.teamId.toString() === teamId.toString());
 
       if (inCurrentTeam) {
-        if (roleInTeam && inCurrentTeam.roleInTeam !== roleInTeam) {
-            membershipsToUpdate.push({
-                membershipId: inCurrentTeam._id,
-                roleInTeam
-            });
-        }
+        // Do nothing, user is already in this team
       } else if (inOtherTeam) {
         failedInsertions.push({
             id: userId.toString(),
@@ -72,8 +58,7 @@ export const addTeamMemberToTeam = asyncHandler(
         membershipsToInsert.push({
           userId,
           teamId,
-          organizationId,
-          ...(roleInTeam && { roleInTeam })
+          organizationId
         });
       }
     }
@@ -82,19 +67,14 @@ export const addTeamMemberToTeam = asyncHandler(
     if (membershipsToInsert.length > 0) {
       insertedMemberships = await TeamMembership.insertMany(membershipsToInsert);
     }
-    
-    for (const update of membershipsToUpdate) {
-      await TeamMembership.findByIdAndUpdate(update.membershipId, { roleInTeam: update.roleInTeam });
-    }
 
-    const successCount = membershipsToInsert.length + membershipsToUpdate.length;
+    const successCount = membershipsToInsert.length;
     const failedCount = failedInsertions.length;
 
     return successResponse(res, "Team members processed successfully", {
       successCount,
       failedCount,
       addedCount: membershipsToInsert.length,
-      updatedCount: membershipsToUpdate.length,
       membershipIds: insertedMemberships.map(m => m._id),
       failedInsertions
     });
@@ -174,26 +154,3 @@ export const getUserTeams = asyncHandler(
         return successResponse(res, "User teams fetched", teamsList);
     }, "ADMIN_GET_USER_TEAMS_ERROR");
 
-export const updateTeamMemberRole = asyncHandler(
-    async (req, res) => {
-        const { membershipId, roleInTeam } = req.body;
-
-        const idValidation = validateObjectId(membershipId, "Membership ID");
-        if (!idValidation.valid) return errorResponse(res, idValidation.error);
-
-        const roleValidation = validateEnum(
-            roleInTeam,
-            ["manager", "teamLead", "member"],
-            "Role in team"
-        );
-        if (!roleValidation.valid) return errorResponse(res, roleValidation.error);
-
-        const updatedMembership = await TeamMembership.findByIdAndUpdate(
-            membershipId,
-            { roleInTeam },
-            { new: true, runValidators: true }
-        );
-        if (!updatedMembership) return errorResponse(res, "No team membership found with given id", 404);
-
-        return successResponse(res, "Team member's role updated successfully", updatedMembership);
-    }, "ADMIN_UPDATE_TEAM_MEMBER_ROLE_ERROR");

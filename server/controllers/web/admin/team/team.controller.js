@@ -81,11 +81,11 @@ async (req, res) => {
     // Process manager and leaders to add them to TeamMembership
     const usersToProcess = [];
     if (managerId) {
-        usersToProcess.push({ userId: managerId, roleInTeam: "manager" });
+        usersToProcess.push({ userId: managerId, role: "manager" });
     }
     if (cleanedLeaderIds && cleanedLeaderIds.length > 0) {
         for (const leaderId of cleanedLeaderIds) {
-            usersToProcess.push({ userId: leaderId, roleInTeam: "teamLead" });
+            usersToProcess.push({ userId: leaderId, role: "teamLead" });
         }
     }
 
@@ -97,6 +97,8 @@ async (req, res) => {
         const existingMemberships = await TeamMembership.find({ userId: { $in: userIds } });
 
         const membershipsToInsert = [];
+        const managerIdsToUpdate = [];
+        const teamLeadIdsToUpdate = [];
 
         for (const user of usersToProcess) {
             const userMemberships = existingMemberships.filter(m => m.userId.toString() === user.userId.toString());
@@ -106,9 +108,11 @@ async (req, res) => {
                 membershipsToInsert.push({
                     userId: user.userId,
                     teamId: createdTeam._id,
-                    organizationId,
-                    roleInTeam: user.roleInTeam
+                    organizationId
                 });
+
+                if (user.role === "manager") managerIdsToUpdate.push(user.userId);
+                else if (user.role === "teamLead") teamLeadIdsToUpdate.push(user.userId);
             } else {
                 failedInsertions.push({
                     id: user.userId.toString(),
@@ -120,6 +124,13 @@ async (req, res) => {
         if (membershipsToInsert.length > 0) {
             await TeamMembership.insertMany(membershipsToInsert);
             successCount = membershipsToInsert.length;
+
+            if (managerIdsToUpdate.length > 0) {
+                await User.updateMany({ _id: { $in: managerIdsToUpdate } }, { $set: { role: "manager" } });
+            }
+            if (teamLeadIdsToUpdate.length > 0) {
+                await User.updateMany({ _id: { $in: teamLeadIdsToUpdate } }, { $set: { role: "teamLead" } });
+            }
         }
     }
 
