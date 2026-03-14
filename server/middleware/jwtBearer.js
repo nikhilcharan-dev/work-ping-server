@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 
 const validateCookie = (req, res, next) => {
     try {
-        console.log("Headers: ", req.headers);
         let token = null;
 
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {

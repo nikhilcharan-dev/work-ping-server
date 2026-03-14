@@ -1,4 +1,6 @@
 import TeamMembership from "#models/TeamMembership.js";
+import Team from "#models/Team.js";
+import Pagination from "#helpers/pagination.js";
 import mongoose from "mongoose";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
@@ -9,25 +11,29 @@ import {
 
 export const addTeamMemberToTeam = asyncHandler(
   async (req, res) => {
-    const { userIds, teamId, organizationId } = req.body;
+    // Accept both `members` (frontend key) and `userIds` (legacy) for the employee list
+    // Accept both `orgId` (frontend key) and `organizationId` (legacy) for the org
+    const { userIds: rawUserIds, members, teamId, organizationId: rawOrgId, orgId } = req.body;
+    const userIds = rawUserIds || members;
 
-    const requiredCheck = validateRequiredFields(
-      { userIds, teamId, organizationId },
-      ["userIds", "teamId", "organizationId"]
-    );
-    if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
-
+    if (!teamId) return errorResponse(res, "teamId is required");
     if (!Array.isArray(userIds) || userIds.length === 0) {
-      return errorResponse(res, "userIds must be a non-empty array");
+      return errorResponse(res, "members/userIds must be a non-empty array");
     }
 
     const teamIdValidation = validateObjectId(teamId, "Team ID");
     if (!teamIdValidation.valid) return errorResponse(res, teamIdValidation.error);
 
+    // organizationId is optional — derive from team if not supplied
+    let organizationId = rawOrgId || orgId;
+    if (!organizationId) {
+      const team = await Team.findById(teamId).lean();
+      if (!team) return errorResponse(res, "Team not found", 404);
+      organizationId = team.organizationId.toString();
+    }
+
     const orgIdValidation = validateObjectId(organizationId, "Organization ID");
     if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
-
-
 
     for (const userId of userIds) {
       const userIdValidation = validateObjectId(userId, "User ID");
@@ -43,7 +49,7 @@ export const addTeamMemberToTeam = asyncHandler(
 
     for (const userId of userIds) {
       const userMemberships = existingMemberships.filter(m => m.userId.toString() === userId.toString());
-      
+
       const inOtherTeam = userMemberships.some(m => m.teamId.toString() !== teamId.toString());
       const inCurrentTeam = userMemberships.find(m => m.teamId.toString() === teamId.toString());
 
@@ -108,26 +114,75 @@ export const removeTeamMemberFromTeam = asyncHandler(
 
 export const getTeamMembers = asyncHandler(
     async (req, res) => {
-        const { teamId } = req.query;
+        let { teamId, projectId, page = 1, limit = 20, search = "", organizationId } = req.query;
 
-        const idValidation = validateObjectId(teamId, "Team ID");
-        if (!idValidation.valid) return errorResponse(res, idValidation.error);
+        const matchStage = {};
 
-        const membersList = await TeamMembership.aggregate([
-            { $match: { teamId: new mongoose.Types.ObjectId(teamId) } },
+        if (teamId) {
+            const idValidation = validateObjectId(teamId, "Team ID");
+            if (!idValidation.valid) return errorResponse(res, idValidation.error);
+            matchStage.teamId = new mongoose.Types.ObjectId(teamId);
+        }
+        if (organizationId) {
+            const idValidation = validateObjectId(organizationId, "Organization ID");
+            if (!idValidation.valid) return errorResponse(res, idValidation.error);
+            matchStage.organizationId = new mongoose.Types.ObjectId(organizationId);
+        }
+
+        const pipeline = [
+            { $match: matchStage },
             {
                 $lookup: {
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, employeeId: 1, isActive: 1 } }],
                     as: "user"
                 }
             },
-            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
-        ]);
-        console.log(membersList)
-        return successResponse(res, "Team members fetched", membersList);
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        ];
+
+        if (search) {
+            const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { "user.name": { $regex: escaped, $options: "i" } },
+                        { "user.email": { $regex: escaped, $options: "i" } }
+                    ]
+                }
+            });
+        }
+
+        // projectId filter: find users who are members of the given project
+        if (projectId) {
+            const idValidation = validateObjectId(projectId, "Project ID");
+            if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+            pipeline.push({
+                $lookup: {
+                    from: "projectmembers",
+                    let: { uid: "$userId" },
+                    pipeline: [
+                        { $match: { $expr: { $and: [
+                            { $eq: ["$userId", "$$uid"] },
+                            { $eq: ["$projectId", new mongoose.Types.ObjectId(projectId)] }
+                        ]}}}
+                    ],
+                    as: "projectMembership"
+                }
+            });
+            pipeline.push({ $match: { "projectMembership.0": { $exists: true } } });
+        }
+
+        const pagination = await Pagination(TeamMembership, page, limit, pipeline);
+
+        return successResponse(res, "Team members fetched", {
+            members: pagination.documents,
+            totalPages: pagination.totalPages,
+            totalRecords: pagination.totalRecords,
+        });
     }, "ADMIN_GET_TEAM_MEMBERS_ERROR");
 
 export const getUserTeams = asyncHandler(
@@ -153,4 +208,3 @@ export const getUserTeams = asyncHandler(
 
         return successResponse(res, "User teams fetched", teamsList);
     }, "ADMIN_GET_USER_TEAMS_ERROR");
-

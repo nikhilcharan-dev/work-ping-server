@@ -15,7 +15,7 @@ router.get('/get-teams-filter', getTeamsPagination);
 
 // Team Member routes
 
-router.get('/add-team-member', addTeamMemberToTeam);
+router.post('/add-team-member', addTeamMemberToTeam);
 router.post('/remove-team-member', removeTeamMemberFromTeam);
 router.get('/get-team-members', getTeamMembers);
 router.get('/get-user-teams', getUserTeams);

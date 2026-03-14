@@ -166,7 +166,15 @@ const getAllEmployeesByPageNumber = asyncHandler(
         passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
         bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
         dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
-        dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } }
+        dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } },
+        // Frontend-expected field aliases
+        userName: "$name",
+        userId: "$employeeId",
+        doj: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+        aadhaar: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+        pan: { $ifNull: ["$govtProof.panNumber", null] },
+        passport: { $ifNull: ["$govtProof.passportNumber", null] },
+        bankId: { $ifNull: ["$govtProof.bankAccount", null] },
       }
     });
     filter.push({

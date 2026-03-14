@@ -24,7 +24,7 @@ const getAttendanceByUserId = asyncHandler(
     const dateValidation = validateDate(date, "Date");
     if (!dateValidation.valid) return errorResponse(res, dateValidation.error);
 
-    const attendanceRecord = await Attendance.findOne({ userId, date });
+    const attendanceRecord = await Attendance.findOne({ userId, date: dateValidation.normalized });
 
     if (!attendanceRecord) {
       return successResponse(res, "Attendance Not Captured Yet");
@@ -59,7 +59,7 @@ const getAttendanceByTeamId = asyncHandler(
     const userIds = teamMembers.map((user) => user._id);
 
     const teamAttendance = await Attendance.aggregate([
-      { $match: { userId: { $in: userIds }, date } },
+      { $match: { userId: { $in: userIds }, date: dateValidation.normalized } },
       {
         $lookup: {
           from: "users",
@@ -111,7 +111,7 @@ const getAttendanceByOrganizationId = asyncHandler(
     const userIds = users.map((user) => user._id);
 
     const organizationAttendance = await Attendance.aggregate([
-      { $match: { userId: { $in: userIds }, date } },
+      { $match: { userId: { $in: userIds }, date: dateValidation.normalized } },
       {
         $lookup: {
           from: "users",

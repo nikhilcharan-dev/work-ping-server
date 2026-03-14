@@ -171,6 +171,13 @@ export const getTeam = asyncHandler(
                     pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
                     as: "leaders"
                 }
+            },
+            {
+                $addFields: {
+                    // Frontend-expected aliases
+                    teamManagerId: "$managerId",
+                    teamLeaderId: { $arrayElemAt: ["$leaderIds", 0] },
+                }
             }
         ]);
 

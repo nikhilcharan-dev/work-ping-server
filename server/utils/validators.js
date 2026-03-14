@@ -37,11 +37,6 @@ export const validatePhone = (phone) => {
         return { valid: false, error: "Phone number must be 10 digits" };
     }
     
-    // Check if starts with valid digit (6-9 for Indian mobile numbers)
-    if (!/^[6-9]/.test(cleanPhone)) {
-        return { valid: false, error: "Invalid phone number format" };
-    }
-    
     return { valid: true, normalized: cleanPhone };
 };
 
@@ -115,9 +110,26 @@ export const validateName = (name) => {
 
 // Date validation
 export const validateDate = (date, fieldName = "Date", options = {}) => {
-    if (!date) return { valid: false, error: `${fieldName} is required` };
+    // Default required to true if not specified, to maintain backwards compatibility
+    const isRequired = options.required !== false;
+
+    if (!date) {
+        if (isRequired) {
+            return { valid: false, error: `${fieldName} is required` };
+        }
+        return { valid: true };
+    }
     
-    const dateObj = new Date(date);
+    let dateObj;
+    
+    // Handle DD-MM-YYYY format specifically if it's a string
+    if (typeof date === 'string' && /^\d{1,2}-\d{1,2}-\d{4}$/.test(date)) {
+        const [d, m, y] = date.split('-').map(Number);
+        // Create as UTC 00:00
+        dateObj = new Date(Date.UTC(y, m - 1, d));
+    } else {
+        dateObj = new Date(date);
+    }
     
     if (isNaN(dateObj.getTime())) {
         return { valid: false, error: `Invalid ${fieldName} format` };
@@ -144,9 +156,14 @@ export const validateDate = (date, fieldName = "Date", options = {}) => {
         }
     }
     
-    // Strip time, keep date only
-    const dateOnly = new Date(dateObj.toISOString().split('T')[0]);
-    return { valid: true, normalized: dateOnly };
+    // Normalize to UTC 00:00:00 (Strip time)
+    // The safest way is to use the YYYY-MM-DD format which parses as UTC 00:00
+    const year = dateObj.getUTCFullYear();
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
+    return { valid: true, normalized: new Date(dateString) };
 };
 
 // Enum validation

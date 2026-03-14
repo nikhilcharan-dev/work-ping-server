@@ -90,9 +90,9 @@ async (req, res) => {
 
     // Passport validation
     if (passport) {
-        const passportRegex = /^[A-Z][1-9]\d{6}$/;
+        const passportRegex = /^[A-Z0-9]{4,15}$/;
         if (!passportRegex.test(String(passport).trim().toUpperCase())) {
-            return errorResponse(res, "Invalid passport format. Expected format: A1234567");
+            return errorResponse(res, "Invalid passport format. Expected 4-15 alphanumeric characters");
         }
     }
     console.log("Checkpoint 9");

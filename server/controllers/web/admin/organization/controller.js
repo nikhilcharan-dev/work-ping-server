@@ -11,6 +11,7 @@ import {
     validateNumber,
     validatePagination,
     validateEmail,
+    validateDate,
 } from "#utils/validators.js";
 
 const formatOrg = (org) => {
@@ -54,7 +55,11 @@ const addOrganization = asyncHandler(async (req, res) => {
     if (type !== undefined) orgData.type = String(type).trim();
     if (description !== undefined) orgData.description = String(description).trim();
     if (clDays !== undefined) orgData.clDays = clDays;
-    if (foundedAt !== undefined) orgData.foundedAt = foundedAt;
+    if (foundedAt !== undefined) {
+        const foundedAtValidation = validateDate(foundedAt, "Founded At");
+        if (!foundedAtValidation.valid) return errorResponse(res, foundedAtValidation.error);
+        orgData.foundedAt = foundedAtValidation.normalized;
+    }
     if (IPWhitelist !== undefined) orgData.IPWhitelist = Array.isArray(IPWhitelist) ? IPWhitelist : [IPWhitelist];
     if (req.body.coordinates !== undefined) orgData.coordinates = req.body.coordinates;
     if (req.body.msl !== undefined) orgData.msl = String(req.body.msl).trim();
@@ -169,7 +174,11 @@ const updateOrganization = asyncHandler(async (req, res) => {
 
     if (req.body.description !== undefined) updates.description = String(req.body.description).trim();
     if (req.body.type !== undefined) updates.type = String(req.body.type).trim();
-    if (req.body.foundedAt !== undefined) updates.foundedAt = req.body.foundedAt;
+    if (req.body.foundedAt !== undefined) {
+        const foundedAtValidation = validateDate(req.body.foundedAt, "Founded At");
+        if (!foundedAtValidation.valid) return errorResponse(res, foundedAtValidation.error);
+        updates.foundedAt = foundedAtValidation.normalized;
+    }
     if (req.body.IPWhitelist !== undefined) updates.IPWhitelist = Array.isArray(req.body.IPWhitelist) ? req.body.IPWhitelist : [req.body.IPWhitelist];
     if (req.body.coordinates !== undefined) updates.coordinates = req.body.coordinates;
     if (req.body.msl !== undefined) updates.msl = String(req.body.msl).trim();

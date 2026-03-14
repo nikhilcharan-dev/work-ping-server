@@ -141,10 +141,10 @@ const insertByExcel = asyncHandler(
 
             // Validate passport format if provided
             if (row.passport) {
-                const passportRegex = /^[A-Z][1-9]\d{6}$/;
+                const passportRegex = /^[A-Z0-9]{4,15}$/;
                 if (!passportRegex.test(String(row.passport).trim().toUpperCase())) {
                     failedRecords.push({
-                        error: "Invalid passport format. Expected format: A1234567",
+                        error: "Invalid passport format. Expected 4-15 alphanumeric characters",
                         rowNumber,
                         rowData: row
                     });

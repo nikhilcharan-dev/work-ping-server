@@ -59,7 +59,15 @@ const employeeLookupPipeline = [
             passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
             bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
             dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
-            dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } }
+            dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } },
+            // Frontend-expected field aliases
+            userName: "$name",
+            userId: "$employeeId",
+            doj: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+            aadhaar: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+            pan: { $ifNull: ["$govtProof.panNumber", null] },
+            passport: { $ifNull: ["$govtProof.passportNumber", null] },
+            bankId: { $ifNull: ["$govtProof.bankAccount", null] },
         }
     },
     {
@@ -240,9 +248,10 @@ const updateEmployee = asyncHandler(async (req, res) => {
     }
 
     if (passport) {
-        const passportRegex = /^[A-Z][1-9]\d{6}$/;
+        // Relaxed regex: starts with a letter or digit, 4-15 characters
+        const passportRegex = /^[A-Z0-9]{4,15}$/;
         if (!passportRegex.test(String(passport).trim().toUpperCase())) {
-            return errorResponse(res, "Invalid passport format. Expected format: A1234567");
+            return errorResponse(res, "Invalid passport format. Expected 4-15 alphanumeric characters");
         }
         govtUpdates.passportNumber = String(passport).trim().toUpperCase();
     }
