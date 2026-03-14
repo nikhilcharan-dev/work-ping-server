@@ -14,8 +14,7 @@ const app = express();
 
 app.get("/", (req, res) => {
     res.status(200).json({
-        status: "success",
-        message: "Server Running...",
+        status: "Running",
         contributors: [
             {
                 name: "Nikhil Charan",
