@@ -11,7 +11,6 @@ import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
 import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 // import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
 import getEmployee from "#webRoutes/admin/employee/router.js";
-import profileRoutes from "#webRoutes/admin/profile/routes.js";
 
 
 import projectRoutes from "#webRoutes/admin/project/router.js"
@@ -49,7 +48,7 @@ export default function adminRoutes(app) {
 
     // PhonePe — initiate payment (admin only)
     app.use("/api/admin/phonepe", ...adminOnly, phonepeGatewayRouter);
-    
+
     // Admin Profile
     app.use("/api/admin/profile", ...adminOnly, profileRoutes);
 
