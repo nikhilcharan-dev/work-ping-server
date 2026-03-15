@@ -158,7 +158,7 @@ export const getTeam = asyncHandler(
                     from: "users",
                     localField: "managerId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1, profileImage: 1 } }],
                     as: "manager"
                 }
             },
@@ -168,7 +168,7 @@ export const getTeam = asyncHandler(
                     from: "users",
                     localField: "leaderIds",
                     foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1, profileImage: 1 } }],
                     as: "leaders"
                 }
             },
@@ -199,7 +199,7 @@ export const getAllTeams = asyncHandler(
                     from: "users",
                     localField: "managerId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
                     as: "manager"
                 }
             },
@@ -209,7 +209,7 @@ export const getAllTeams = asyncHandler(
                     from: "users",
                     localField: "leaderIds",
                     foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
                     as: "leaders"
                 }
             },
@@ -222,13 +222,24 @@ export const getAllTeams = asyncHandler(
                 }
             },
             {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
                 $addFields: {
-                    memberCount: { $size: "$members" }
+                    memberCount: { $size: "$members" },
+                    organizationName: { $ifNull: ["$organization.name", null] }
                 }
             },
             {
                 $project: {
-                    members: 0
+                    members: 0,
+                    organization: 0
                 }
             }
         ]);
@@ -271,7 +282,7 @@ export const getTeamsPagination = asyncHandler(
                 from: "users",
                 localField: "managerId",
                 foreignField: "_id",
-                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
                 as: "manager"
             }
         });
@@ -281,7 +292,7 @@ export const getTeamsPagination = asyncHandler(
                 from: "users",
                 localField: "leaderIds",
                 foreignField: "_id",
-                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1 } }],
+                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
                 as: "leaders"
             }
         });
@@ -295,17 +306,29 @@ export const getTeamsPagination = asyncHandler(
             }
         });
 
-        thefilter.push({
-            $addFields: {
-                memberCount: { $size: "$members" }
+        thefilter.push(
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    memberCount: { $size: "$members" },
+                    organizationName: { $ifNull: ["$organization.name", null] }
+                }
+            },
+            {
+                $project: {
+                    members: 0,
+                    organization: 0
+                }
             }
-        });
-
-        thefilter.push({
-            $project: {
-                members: 0
-            }
-        });
+        );
 
         const results = await pagination(Team, page, limit, thefilter);
         return successResponse(res, "Teams fetched", {

@@ -167,6 +167,8 @@ const getAllEmployeesByPageNumber = asyncHandler(
         bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
         dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
         dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } },
+        workType: { $ifNull: ["$workType", null] },
+        profileImage: { $ifNull: ["$profileImage", null] },
         // Frontend-expected field aliases
         userName: "$name",
         userId: "$employeeId",

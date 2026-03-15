@@ -146,6 +146,15 @@ export const getTeamMembers = asyncHandler(
                 }
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } }
         ];
 
         if (search) {
@@ -184,7 +193,10 @@ export const getTeamMembers = asyncHandler(
         const pagination = await Pagination(TeamMembership, page, limit, pipeline);
 
         return successResponse(res, "Team members fetched", {
-            members: pagination.documents,
+            members: pagination.documents.map(m => ({
+                ...m,
+                organizationName: m.organization?.name || null
+            })),
             totalPages: pagination.totalPages,
             totalRecords: pagination.totalRecords,
         });
@@ -208,7 +220,22 @@ export const getUserTeams = asyncHandler(
                     as: "team"
                 }
             },
-            { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } }
+            { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    organizationName: "$organization.name"
+                }
+            },
+            { $project: { organization: 0 } }
         ]);
 
         return successResponse(res, "User teams fetched", teamsList);

@@ -65,7 +65,7 @@ const getAttendanceByTeamId = asyncHandler(
           from: "users",
           localField: "userId",
           foreignField: "_id",
-          pipeline: [{ $project: { name: 1, email: 1 } }],
+          pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
           as: "user"
         }
       },
@@ -117,7 +117,7 @@ const getAttendanceByOrganizationId = asyncHandler(
           from: "users",
           localField: "userId",
           foreignField: "_id",
-          pipeline: [{ $project: { name: 1, email: 1 } }],
+          pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
           as: "user"
         }
       },

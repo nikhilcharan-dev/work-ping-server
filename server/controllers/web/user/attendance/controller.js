@@ -123,6 +123,9 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
     return successResponse(res, "Attendance marked", { 
         confidence,
         name: user?.name || "User",
+        employeeId: user?.employeeId,
+        workType: user?.workType,
+        profileImage: user?.profileImage,
         attendance
     });
 }, "USER_VERIFY_MARK_ATTENDANCE_ERROR");

@@ -121,20 +121,30 @@ export const getProject = asyncHandler(
                     from: "users",
                     localField: "projectManager",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, employeeId: 1 } }],
+                    pipeline: [{ $project: { name: 1, employeeId: 1, email: 1, workType: 1, profileImage: 1 } }],
                     as: "projectManagerInfo"
                 }
             },
             { $unwind: { path: "$projectManagerInfo", preserveNullAndEmptyArrays: true } },
             {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
                 $addFields: {
                     // Keep projectManager as the original ObjectId (string) so frontend can use it as an ID
                     projectManagerName: { $ifNull: ["$projectManagerInfo.name", null] },
+                    organizationName: { $ifNull: ["$organization.name", null] },
                     assignedDate: { $dateToString: { format: "%Y-%m-%d", date: "$assignedDate" } },
                     dueDate: { $cond: { if: "$dueDate", then: { $dateToString: { format: "%Y-%m-%d", date: "$dueDate" } }, else: null } }
                 }
             },
-            { $project: { projectManagerInfo: 0 } }
+            { $project: { projectManagerInfo: 0, organization: 0 } }
         ]);
 
         if (!project) return errorResponse(res, "Project not found", 404);

@@ -97,13 +97,21 @@ export const getProjectMembers = asyncHandler(
         }
 
         filter.push({
+            $lookup: { from: "organizations", localField: "organizationId", foreignField: "_id", as: "organization" }
+        });
+        filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
+
+        filter.push({
             $addFields: {
                 userName: "$user.name",
                 userEmail: "$user.email",
-                employeeId: "$user.employeeId"
+                employeeId: "$user.employeeId",
+                workType: "$user.workType",
+                profileImage: "$user.profileImage",
+                organizationName: "$organization.name"
             }
         });
-        filter.push({ $project: { user: 0 } });
+        filter.push({ $project: { user: 0, organization: 0 } });
 
         const results = await pagination(ProjectMember, page, limit, filter);
         return successResponse(res, "Project members fetched", {
@@ -128,7 +136,7 @@ export const getProjectMember = asyncHandler(
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
                     as: "user"
                 }
             },

@@ -35,7 +35,7 @@ export const getMyTeam = asyncHandler(
                     from: "users",
                     localField: "managerId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
                     as: "manager"
                 }
             },
@@ -45,10 +45,26 @@ export const getMyTeam = asyncHandler(
                     from: "users",
                     localField: "leaderIds",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
                     as: "leaders"
                 }
-            }
+            },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1 } }],
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    organizationName: "$organization.name"
+                }
+            },
+            { $project: { organization: 0 } }
         ]);
 
         if (!team) return errorResponse(res, "Team not found", 404);
@@ -73,7 +89,7 @@ export const getMyTeamMembers = asyncHandler(
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, role: 1, profileImage: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, role: 1, profileImage: 1, employeeId: 1, workType: 1 } }],
                     as: "user"
                 }
             },
