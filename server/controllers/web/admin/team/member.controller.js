@@ -240,3 +240,46 @@ export const getUserTeams = asyncHandler(
 
         return successResponse(res, "User teams fetched", teamsList);
     }, "ADMIN_GET_USER_TEAMS_ERROR");
+
+export const getEligibleEmployeesForTeam = asyncHandler(
+    async (req, res) => {
+        const { teamId, organizationId, search = "", page = 1, limit = 20 } = req.query;
+
+        if (!organizationId) return errorResponse(res, "organizationId is required");
+
+        const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
+
+        // Find all users already in any team
+        const assignedUserIds = await TeamMembership.distinct("userId");
+
+        const filter = {
+            organizationId: new mongoose.Types.ObjectId(organizationId),
+            _id: { $nin: assignedUserIds },
+            isActive: true
+        };
+
+        if (search.trim()) {
+            filter.$or = [
+                { name: { $regex: search.trim(), $options: "i" } },
+                { email: { $regex: search.trim(), $options: "i" } },
+                { employeeId: { $regex: search.trim(), $options: "i" } }
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+        const [users, totalRecords] = await Promise.all([
+            User.find(filter)
+                .select("name email employeeId workType profileImage")
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            User.countDocuments(filter)
+        ]);
+
+        return successResponse(res, "Eligible employees fetched", {
+            users,
+            totalRecords,
+            totalPages: Math.ceil(totalRecords / limit)
+        });
+    }, "ADMIN_GET_ELIGIBLE_TEAM_MEMBERS_ERROR");

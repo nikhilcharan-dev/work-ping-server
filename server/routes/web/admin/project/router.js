@@ -10,7 +10,8 @@ import {
     getProjectMembers,
     getProjectMember,
     updateProjectMember,
-    removeProjectMembers
+    removeProjectMembers,
+    getEligibleEmployeesForProject
 } from "#webController/admin/project/teams.controller.js";
 import { Router } from "express";
 
@@ -29,5 +30,6 @@ router.get("/get-members", getProjectMembers);
 router.get("/get-member/:id", getProjectMember);
 router.put("/update-member/:id", updateProjectMember);
 router.post("/remove-members", removeProjectMembers);
+router.get("/eligible-members", getEligibleEmployeesForProject);
 
 export default router;
