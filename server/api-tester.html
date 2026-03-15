@@ -155,6 +155,16 @@ const ROUTES = [
   {group:"Admin Forgot Password",method:"POST",path:"/api/admin/forgot-password/verify-otp",auth:false,body:[{key:"email",type:"string",req:true},{key:"otp",type:"string",req:true}],query:[],params:[],desc:"Verify password reset OTP"},
   {group:"Admin Forgot Password",method:"POST",path:"/api/admin/forgot-password/verify-and-change",auth:false,body:[{key:"email",type:"string",req:true},{key:"otp",type:"string",req:true},{key:"newPassword",type:"string",req:true}],query:[],params:[],desc:"Verify OTP and change password"},
 
+  // ── ADMIN PROFILE ──
+  {group:"Admin Profile",method:"GET",path:"/api/admin/profile",auth:true,body:[],query:[],params:[],desc:"Get authenticated admin's profile"},
+  {group:"Admin Profile",method:"GET",path:"/api/admin/profile/by-email",auth:true,body:[],query:[{key:"email",type:"string",req:true}],params:[],desc:"Get admin profile by email"},
+  {group:"Admin Profile",method:"PUT",path:"/api/admin/profile",auth:true,body:[
+    {key:"name",type:"string",req:false},{key:"phoneNumber",type:"string",req:false}
+  ],query:[],params:[],desc:"Update admin's profile"},
+  {group:"Admin Profile",method:"PUT",path:"/api/admin/profile/change-password",auth:true,body:[
+    {key:"currentPassword",type:"string",req:true},{key:"newPassword",type:"string",req:true}
+  ],query:[],params:[],desc:"Change admin's password"},
+
   // ── ADMIN ORGANIZATION ──
   {group:"Admin Organization",method:"GET",path:"/api/admin/organization/get-organizations",auth:true,body:[],query:[
     {key:"search",type:"string",req:false},{key:"page",type:"number",req:false,hint:"default: 1"},{key:"limit",type:"number",req:false,hint:"default: 10"}

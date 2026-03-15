@@ -701,6 +701,93 @@ Get a monthly attendance summary with status breakdown.
 **Error Responses:**
 - `400` — Month and year are required
 
+
+---
+
+## Admin Profile
+
+### GET `/api/admin/profile`
+
+Get the authenticated admin's profile.
+
+**Response:** `200 OK`
+
+```json
+{
+  "_id": "...",
+  "name": "Admin Name",
+  "email": "admin@example.com",
+  "phoneNumber": "9876543210",
+  "plan": { "name": "Pro", "maxOrganizations": 5, "maxEmployees": 100 },
+  "organizations": [
+    { "_id": "...", "name": "Acme Corp", "type": "IT", "clDays": 12 }
+  ]
+}
+```
+
+---
+
+### GET `/api/admin/profile/by-email`
+
+Get an admin profile by their email address.
+
+**Query Parameters:**
+
+| Param | Type   | Required | Description   |
+|-------|--------|----------|---------------|
+| email | string | Yes      | Email address |
+
+**Response:** `200 OK`
+
+```json
+{
+  ...adminDetails
+}
+```
+
+---
+
+### PUT `/api/admin/profile`
+
+Update the authenticated admin's profile.
+
+**Body:**
+
+| Field       | Type   | Required | Description      |
+|-------------|--------|----------|------------------|
+| name        | string | No       | Full name        |
+| phoneNumber | string | No       | Phone number     |
+
+**Response:** `200 OK`
+
+```json
+{
+  "message": "Admin profile updated successfully",
+  "data": { ... }
+}
+```
+
+---
+
+### PUT `/api/admin/profile/change-password`
+
+Change the authenticated admin's password.
+
+**Body:**
+
+| Field           | Type   | Required | Description      |
+|-----------------|--------|----------|------------------|
+| currentPassword | string | Yes      | Current password |
+| newPassword     | string | Yes      | New password     |
+
+**Response:** `200 OK`
+
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
 ---
 
 ## Common Error Responses
