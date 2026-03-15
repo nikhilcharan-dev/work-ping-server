@@ -16,32 +16,51 @@ import {
     validateRequiredFields
 } from "#utils/validators.js";
 
+const userProfileLookupPipeline = [
+    {
+        $lookup: {
+            from: "organizations",
+            localField: "organizationId",
+            foreignField: "_id",
+            pipeline: [{ $project: { name: 1, type: 1 } }],
+            as: "organization"
+        }
+    },
+    { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+    {
+        $lookup: {
+            from: "teams",
+            localField: "teamId",
+            foreignField: "_id",
+            pipeline: [{ $project: { teamName: 1, description: 1 } }],
+            as: "team"
+        }
+    },
+    { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
+    {
+        $lookup: {
+            from: "accounts",
+            localField: "email",
+            foreignField: "email",
+            as: "account"
+        }
+    },
+    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+    {
+        $addFields: {
+            role: "$account.role",
+            twoFactorEnabled: "$account.twoFactorEnabled"
+        }
+    }
+];
+
 export const getProfile = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
 
         const [user] = await User.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(userId) } },
-            {
-                $lookup: {
-                    from: "organizations",
-                    localField: "organizationId",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, type: 1 } }],
-                    as: "organization"
-                }
-            },
-            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
-            {
-                $lookup: {
-                    from: "teams",
-                    localField: "teamId",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { teamName: 1, description: 1 } }],
-                    as: "team"
-                }
-            },
-            { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } }
+            ...userProfileLookupPipeline
         ]);
 
         if (!user) return errorResponse(res, "User not found", 404);
@@ -100,11 +119,42 @@ export const updateProfile = asyncHandler(
             updates.profileImage = profileImageValidation.normalized;
         }
 
-        if (Object.keys(updates).length === 0) return errorResponse(res, "No valid fields to update");
+        const account = await Account.findOne({ email: user.email, role: "user" });
+        if (!account) return errorResponse(res, "Account not found", 404);
 
-        const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+        const accountUpdates = {};
+        if (req.body.email !== undefined) {
+            const emailValidation = validateEmail(req.body.email);
+            if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+            const emailLower = emailValidation.normalized.toLowerCase();
+            if (emailLower !== account.email.toLowerCase()) {
+                const existingAccount = await Account.findOne({ email: emailLower });
+                if (existingAccount) return errorResponse(res, "Email already in use", 409);
+                updates.email = emailLower;
+                accountUpdates.email = emailLower;
+            }
+        }
 
-        return successResponse(res, "Profile updated successfully", formatUserDates(updatedUser));
+        if (req.body.twoFactorEnabled !== undefined) {
+            accountUpdates.twoFactorEnabled = !!req.body.twoFactorEnabled;
+        }
+
+        if (Object.keys(updates).length === 0 && Object.keys(accountUpdates).length === 0) {
+            return errorResponse(res, "No valid fields to update");
+        }
+
+        if (Object.keys(accountUpdates).length > 0) {
+            await Account.findByIdAndUpdate(account._id, accountUpdates);
+        }
+
+        await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+
+        const [enrichedUser] = await User.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+            ...userProfileLookupPipeline
+        ]);
+
+        return successResponse(res, "Profile updated successfully", formatUserDates(enrichedUser));
     }, "USER_UPDATE_PROFILE_ERROR"
 );
 

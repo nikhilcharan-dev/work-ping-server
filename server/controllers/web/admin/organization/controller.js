@@ -9,7 +9,9 @@ import {
     validateObjectId,
     validateString,
     validateNumber,
-    validatePagination
+    validatePagination,
+    validateEmail,
+    validateDate,
 } from "#utils/validators.js";
 
 const formatOrg = (org) => {
@@ -53,7 +55,11 @@ const addOrganization = asyncHandler(async (req, res) => {
     if (type !== undefined) orgData.type = String(type).trim();
     if (description !== undefined) orgData.description = String(description).trim();
     if (clDays !== undefined) orgData.clDays = clDays;
-    if (foundedAt !== undefined) orgData.foundedAt = foundedAt;
+    if (foundedAt !== undefined) {
+        const foundedAtValidation = validateDate(foundedAt, "Founded At");
+        if (!foundedAtValidation.valid) return errorResponse(res, foundedAtValidation.error);
+        orgData.foundedAt = foundedAtValidation.normalized;
+    }
     if (IPWhitelist !== undefined) orgData.IPWhitelist = Array.isArray(IPWhitelist) ? IPWhitelist : [IPWhitelist];
     if (req.body.coordinates !== undefined) orgData.coordinates = req.body.coordinates;
     if (req.body.msl !== undefined) orgData.msl = String(req.body.msl).trim();
@@ -105,6 +111,28 @@ const getOrganizationsOfAdmin = asyncHandler(async (req, res) => {
                 "organization.name": { $regex: search, $options: "i" }
             }
         },
+        {
+            $lookup: {
+                from: "users",
+                localField: "organizationId",
+                foreignField: "organizationId",
+                as: "employees"
+            }
+        },
+        {
+            $lookup: {
+                from: "teams",
+                localField: "organizationId",
+                foreignField: "organizationId",
+                as: "teams"
+            }
+        },
+        {
+            $addFields: {
+                "organization.employeeCount": { $size: "$employees" },
+                "organization.teamCount": { $size: "$teams" }
+            }
+        },
         { $sort: { "organization.name": 1 } },
     ];
 
@@ -146,7 +174,11 @@ const updateOrganization = asyncHandler(async (req, res) => {
 
     if (req.body.description !== undefined) updates.description = String(req.body.description).trim();
     if (req.body.type !== undefined) updates.type = String(req.body.type).trim();
-    if (req.body.foundedAt !== undefined) updates.foundedAt = req.body.foundedAt;
+    if (req.body.foundedAt !== undefined) {
+        const foundedAtValidation = validateDate(req.body.foundedAt, "Founded At");
+        if (!foundedAtValidation.valid) return errorResponse(res, foundedAtValidation.error);
+        updates.foundedAt = foundedAtValidation.normalized;
+    }
     if (req.body.IPWhitelist !== undefined) updates.IPWhitelist = Array.isArray(req.body.IPWhitelist) ? req.body.IPWhitelist : [req.body.IPWhitelist];
     if (req.body.coordinates !== undefined) updates.coordinates = req.body.coordinates;
     if (req.body.msl !== undefined) updates.msl = String(req.body.msl).trim();
@@ -235,11 +267,125 @@ const getOrganizationIDsOfAdmin = asyncHandler(async (req, res) => {
 }, "ADMIN_GET_ORG_IDS_ERROR");
 
 
+const getOrgAdmins = asyncHandler(async (req, res) => {
+    const { organizationId } = req.query;
+
+    const idValidation = validateObjectId(organizationId, "Organization ID");
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+    const orgAdmin = await OrgAdmin.findOne({ organizationId: new mongoose.Types.ObjectId(organizationId) })
+        .populate("primaryAdmin", "name email")
+        .populate("secondaryAdmin", "name email")
+        .lean();
+
+    if (!orgAdmin) return errorResponse(res, "No admins found for this organization", 404);
+
+    const admins = [];
+    if (orgAdmin.primaryAdmin) {
+        admins.push({
+            _id: orgAdmin.primaryAdmin._id,
+            userId: orgAdmin.primaryAdmin._id,
+            name: orgAdmin.primaryAdmin.name,
+            email: orgAdmin.primaryAdmin.email,
+            role: "primary",
+        });
+    }
+    if (orgAdmin.secondaryAdmin) {
+        admins.push({
+            _id: orgAdmin.secondaryAdmin._id,
+            userId: orgAdmin.secondaryAdmin._id,
+            name: orgAdmin.secondaryAdmin.name,
+            email: orgAdmin.secondaryAdmin.email,
+            role: "secondary",
+        });
+    }
+
+    return successResponse(res, "Org admins fetched", admins);
+}, "ADMIN_GET_ORG_ADMINS_ERROR");
+
+const findAdminByEmail = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+
+    const admin = await Admin.findOne({ email: emailValidation.normalized }).lean();
+    if (!admin) return errorResponse(res, "Admin not found", 404);
+
+    return successResponse(res, "Admin found", {
+        _id: admin._id,
+        userId: admin._id,
+        name: admin.name,
+        userName: admin.name,
+        email: admin.email,
+    });
+}, "ADMIN_FIND_BY_EMAIL_ERROR");
+
+const inviteAdmin = asyncHandler(async (req, res) => {
+    const { organizationId, userId } = req.body;
+
+    const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+    if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
+
+    const userIdValidation = validateObjectId(userId, "User ID");
+    if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
+
+    const org = await Organization.findById(organizationId);
+    if (!org) return errorResponse(res, "Organization not found", 404);
+
+    const admin = await Admin.findById(userId);
+    if (!admin) return errorResponse(res, "Admin not found", 404);
+
+    const orgAdmin = await OrgAdmin.findOne({ organizationId: new mongoose.Types.ObjectId(organizationId) });
+    if (!orgAdmin) return errorResponse(res, "Organization admin record not found", 404);
+
+    if (orgAdmin.primaryAdmin.toString() === userId) {
+        return errorResponse(res, "User is already the primary admin of this organization", 409);
+    }
+    if (orgAdmin.secondaryAdmin && orgAdmin.secondaryAdmin.toString() === userId) {
+        return errorResponse(res, "User is already a secondary admin of this organization", 409);
+    }
+
+    orgAdmin.secondaryAdmin = new mongoose.Types.ObjectId(userId);
+    await orgAdmin.save();
+
+    return successResponse(res, "Admin invited successfully");
+}, "ADMIN_INVITE_ADMIN_ERROR");
+
+const removeAdmin = asyncHandler(async (req, res) => {
+    const { organizationId, userId } = req.body;
+
+    const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+    if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
+
+    const userIdValidation = validateObjectId(userId, "User ID");
+    if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
+
+    const orgAdmin = await OrgAdmin.findOne({ organizationId: new mongoose.Types.ObjectId(organizationId) });
+    if (!orgAdmin) return errorResponse(res, "Organization admin record not found", 404);
+
+    if (orgAdmin.primaryAdmin.toString() === userId) {
+        return errorResponse(res, "Cannot remove the primary admin", 400);
+    }
+    if (!orgAdmin.secondaryAdmin || orgAdmin.secondaryAdmin.toString() !== userId) {
+        return errorResponse(res, "User is not a secondary admin of this organization", 404);
+    }
+
+    orgAdmin.secondaryAdmin = undefined;
+    await orgAdmin.save();
+
+    return successResponse(res, "Admin removed successfully");
+}, "ADMIN_REMOVE_ADMIN_ERROR");
+
 export {
     addOrganization,
     updateOrganization,
     getOrganizationById,
     getOrganizationsOfAdmin,
     deleteOrganization,
-    getOrganizationIDsOfAdmin
+    getOrganizationIDsOfAdmin,
+    getOrgAdmins,
+    findAdminByEmail,
+    inviteAdmin,
+    removeAdmin,
 }

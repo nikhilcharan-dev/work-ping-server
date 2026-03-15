@@ -8,3 +8,6 @@ package*.json
 todo.txt
 workping-mobile
 MOBILE_FACE_RECOGNITION.md
+*.md
+server/ALL_FRONTEND_BACKEND_ROUTES.json
+server/OTP_API_DOCS.json

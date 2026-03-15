@@ -24,6 +24,21 @@ export const getMyAttendance = asyncHandler(
             filter.push({ $match: { status } });
         }
 
+        filter.push({
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization"
+            }
+        });
+        filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
+        filter.push({
+            $addFields: {
+                organizationName: "$organization.name"
+            }
+        });
+        filter.push({ $project: { organization: 0 } });
         filter.push({ $sort: { date: -1 } });
 
         const pagination = await Pagination(Attendance, page, limit, filter);
@@ -47,10 +62,24 @@ export const getAttendanceByDate = asyncHandler(
         const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
         const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
 
-        const attendance = await Attendance.findOne({
-            userId,
-            date: { $gte: startOfDay, $lte: endOfDay }
-        });
+        const [attendance] = await Attendance.aggregate([
+            { $match: { userId: new mongoose.Types.ObjectId(userId), date: { $gte: startOfDay, $lte: endOfDay } } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    organizationName: "$organization.name"
+                }
+            },
+            { $project: { organization: 0 } }
+        ]);
 
         if (!attendance) return errorResponse(res, "No attendance record found for the given date", 404);
 

@@ -9,8 +9,10 @@ export const send_email_otp = asyncHandler(async (req, res) => {
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-    const user = await Admin.findOne({ email: emailValidation.normalized });
-    if (user) return errorResponse(res, "Email already exists", 409);
+    // For general verification, we don't necessarily want to block existing emails.
+    // If specific routes need that check, they should implement it or we add a query param.
+    // Const user = await Admin.findOne({ email: emailValidation.normalized });
+    // if (user) return errorResponse(res, "Email already exists", 409);
 
     await sendEmailOTP(emailValidation.normalized);
 

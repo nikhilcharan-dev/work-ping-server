@@ -16,7 +16,7 @@ socket(server);
     await mongooseConfig();
     await redis.connect();
     server.listen(PORT, () => {
-        console.log(`[Server] Running ${PORT}`);
+        console.log(`[Server] Running on http://localhost:${PORT}`);
     });
     // init();
 })();

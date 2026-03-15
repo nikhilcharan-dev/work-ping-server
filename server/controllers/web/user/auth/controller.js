@@ -104,6 +104,7 @@ export const register = asyncHandler(
             email: user.email,
             organizationId: user.organizationId,
             role: user.role,
+            token,
         }, 201);
     }, "USER_AUTH_REGISTER_ERROR");
 
@@ -139,5 +140,8 @@ export const login = asyncHandler(
         // });
         setAuthCookie(res, req, token);
 
-        return successResponse(res, "Login Successful", formatUserDates(userMetaDetails));
+        return successResponse(res, "Login Successful", {
+            ...formatUserDates(userMetaDetails),
+            token
+        });
     }, "USER_AUTH_LOGIN_ERROR");

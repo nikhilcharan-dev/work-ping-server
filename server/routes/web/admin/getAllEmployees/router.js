@@ -5,6 +5,7 @@ import getAllEmployeesByPageNumber from '#webController/admin/getAllEmployees/ge
 
 const router = Router();
 
+router.get("/", getAllEmployeesByPageNumber);
 router.get('/get-organization-info', getOrgInfo);
 router.get("/get-all-employees-by-page-number", getAllEmployeesByPageNumber);
 

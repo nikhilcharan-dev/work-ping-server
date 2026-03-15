@@ -9,7 +9,7 @@ const allowedOrigins = [
     "http://localhost:63342",
     "http://localhost:5173",
     "http://localhost:3000",
-    "http://localhost:4173",   // vite preview
+    "http://localhost:4173",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5501",
     "https://workping.live",
@@ -17,6 +17,8 @@ const allowedOrigins = [
     "https://phonepe.workping.live",
     "https://whatsapp.workping.live",
     "https://glorious-couscous-97qgvw6xqj79hxj5g-5173.app.github.dev",
+    "http://192.168.1.3:5000",
+    "http://192.168.1.3",
     process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -45,9 +47,9 @@ export default function middlewares(app) {
     app.use((req, res, next) => {
         console.log("------------------------------------------------");
         console.log(`[Request] ${req.method} ${req.url}`);
-        console.log("Origin:", req.headers.origin);
-        console.log("Cookies:", req.cookies);
-        console.log("User-Agent:", req.headers['user-agent']);
+        // console.log("Origin:", req.headers.origin);
+        // console.log("Cookies:", req.cookies);
+        // console.log("User-Agent:", req.headers['user-agent']);
         console.log("------------------------------------------------");
         console.log("Origin IP:", req.ip);
         if (req.headers['user-agent']?.includes('PostmanRuntime') && MODE === "production") {

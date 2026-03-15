@@ -137,17 +137,46 @@ const getAllEmployeesByPageNumber = asyncHandler(
       $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true }
     });
 
+    // Lookup projects the employee belongs to
+    filter.push({
+      $lookup: {
+        from: "projectmembers",
+        localField: "_id",
+        foreignField: "userId",
+        as: "projectMemberships"
+      }
+    });
+    filter.push({
+      $lookup: {
+        from: "projects",
+        localField: "projectMemberships.projectId",
+        foreignField: "_id",
+        as: "assignedProjects"
+      }
+    });
+
     // Project fields: replace organizationId with organizationName, add department & govt proof fields
     filter.push({
       $addFields: {
         organizationName: { $ifNull: ["$organization.name", null] },
         departmentName: { $ifNull: ["$team.teamName", null] },
+        projects: { $ifNull: ["$assignedProjects.name", []] },
         aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
         panNumber: { $ifNull: ["$govtProof.panNumber", null] },
         passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
         bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
         dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
-        dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } }
+        dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } },
+        workType: { $ifNull: ["$workType", null] },
+        profileImage: { $ifNull: ["$profileImage", null] },
+        // Frontend-expected field aliases
+        userName: "$name",
+        userId: "$employeeId",
+        doj: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+        aadhaar: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+        pan: { $ifNull: ["$govtProof.panNumber", null] },
+        passport: { $ifNull: ["$govtProof.passportNumber", null] },
+        bankId: { $ifNull: ["$govtProof.bankAccount", null] },
       }
     });
     filter.push({

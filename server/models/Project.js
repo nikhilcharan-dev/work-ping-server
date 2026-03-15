@@ -57,6 +57,7 @@ export const requiredProjectFields = [
 export const optionalProjectFields = [
     "description",
     "dueDate",
+    "assignedDate",
     "contractedBy"
 ];
 

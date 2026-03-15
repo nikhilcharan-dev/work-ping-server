@@ -97,13 +97,21 @@ export const getProjectMembers = asyncHandler(
         }
 
         filter.push({
+            $lookup: { from: "organizations", localField: "organizationId", foreignField: "_id", as: "organization" }
+        });
+        filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
+
+        filter.push({
             $addFields: {
                 userName: "$user.name",
                 userEmail: "$user.email",
-                employeeId: "$user.employeeId"
+                employeeId: "$user.employeeId",
+                workType: "$user.workType",
+                profileImage: "$user.profileImage",
+                organizationName: "$organization.name"
             }
         });
-        filter.push({ $project: { user: 0 } });
+        filter.push({ $project: { user: 0, organization: 0 } });
 
         const results = await pagination(ProjectMember, page, limit, filter);
         return successResponse(res, "Project members fetched", {
@@ -128,7 +136,7 @@ export const getProjectMember = asyncHandler(
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
                     as: "user"
                 }
             },
@@ -206,3 +214,52 @@ export const removeProjectMembers = asyncHandler(
         return successResponse(res, `${result.deletedCount} member(s) removed successfully`, { deletedCount: result.deletedCount });
     },
     "REMOVE_PROJECT_MEMBERS_ERROR");
+
+export const getEligibleEmployeesForProject = asyncHandler(
+    async (req, res) => {
+        const { projectId, organizationId, search = "", page = 1, limit = 20 } = req.query;
+
+        if (!projectId) return errorResponse(res, "projectId is required");
+        if (!organizationId) return errorResponse(res, "organizationId is required");
+
+        const projIdValidation = validateObjectId(projectId, "Project ID");
+        if (!projIdValidation.valid) return errorResponse(res, projIdValidation.error);
+
+        const orgIdValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
+
+        // Find all users already in this specific project
+        const assignedUserIds = await ProjectMember.distinct("userId", { 
+            projectId: new mongoose.Types.ObjectId(projectId) 
+        });
+
+        const filter = {
+            organizationId: new mongoose.Types.ObjectId(organizationId),
+            _id: { $nin: assignedUserIds },
+            isActive: true
+        };
+
+        if (search.trim()) {
+            filter.$or = [
+                { name: { $regex: search.trim(), $options: "i" } },
+                { email: { $regex: search.trim(), $options: "i" } },
+                { employeeId: { $regex: search.trim(), $options: "i" } }
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+        const [users, totalRecords] = await Promise.all([
+            User.find(filter)
+                .select("name email employeeId workType profileImage")
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            User.countDocuments(filter)
+        ]);
+
+        return successResponse(res, "Eligible employees for project fetched", {
+            users,
+            totalRecords,
+            totalPages: Math.ceil(totalRecords / limit)
+        });
+    }, "ADMIN_GET_ELIGIBLE_PROJECT_MEMBERS_ERROR");

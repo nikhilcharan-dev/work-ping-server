@@ -24,9 +24,11 @@ export const applyLeave = asyncHandler(
         });
         if (!datesValidation.valid) return errorResponse(res, datesValidation.error);
 
+        const normalizedDates = [];
         for (let i = 0; i < dates.length; i++) {
             const dateValidation = validateDate(dates[i], `Date at index ${i}`, { noPast: true });
             if (!dateValidation.valid) return errorResponse(res, dateValidation.error);
+            normalizedDates.push(dateValidation.normalized);
         }
 
         if (reason) {
@@ -43,7 +45,7 @@ export const applyLeave = asyncHandler(
         const leave = await Leave.create({
             userId,
             organizationId: user.organizationId,
-            dates,
+            dates: normalizedDates,
             reason: reason || "",
             appliedBy: userId,
             status: "pending"
@@ -92,7 +94,7 @@ export const getLeaveById = asyncHandler(
                     from: "users",
                     localField: "approvedBy",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
                     as: "approvedByUser"
                 }
             },

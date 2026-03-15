@@ -1,5 +1,5 @@
 import Account from "#models/Account.js";
-import { sendEmailOTP, verifyEmailOTP } from "#services/mailer/mail.service.js";
+import { sendResetPasswordOTP, verifyResetPasswordOTP } from "#services/mailer/mail.service.js";
 import bcrypt from "bcrypt";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
@@ -24,7 +24,7 @@ export const send_otp = asyncHandler(
         }
 
         try {
-            await sendEmailOTP(emailValidation.normalized);
+            await sendResetPasswordOTP(emailValidation.normalized);
         } catch (err) {
             return errorResponse(res, "Something went wrong sending OTP", 500);
         }
@@ -49,7 +49,7 @@ export const verify_otp = asyncHandler(
         if (!findAdmin) return errorResponse(res, "Verification failed", 401);
 
         try {
-            await verifyEmailOTP(emailValidation.normalized, otp);
+            await verifyResetPasswordOTP(emailValidation.normalized, otp);
         } catch (err) {
             return errorResponse(res, "Invalid OTP", 401);
         }
@@ -74,7 +74,7 @@ export const verify_otp_and_change_password = asyncHandler(
         if (!account) return errorResponse(res, "Admin does not exist", 401);
 
         try {
-            await verifyEmailOTP(emailValidation.normalized, otp);
+            await verifyResetPasswordOTP(emailValidation.normalized, otp);
         } catch (err) {
             return errorResponse(res, "Password change failed. Invalid OTP.", 401);
         }

@@ -5,6 +5,7 @@ import organisationRoutes from "#webRoutes/user/organisation/router.js";
 import payrollRoutes from "#webRoutes/user/payroll/router.js";
 import projectRoutes from "#webRoutes/user/projects/router.js";
 import attendanceHistoryRoutes from "#webRoutes/user/attendance/history.router.js";
+import attendanceRouter from "#webRoutes/user/attendance/router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import requireRole from "#middleware/requireRole.js";
@@ -19,4 +20,5 @@ export default function userRoutesSetup(app) {
     app.use("/api/user/payroll", ...userOnly, payrollRoutes);
     app.use("/api/user/projects", ...userOnly, projectRoutes);
     app.use("/api/user/attendance", ...userOnly, attendanceHistoryRoutes);
+    app.use("/api/user/attendance", ...userOnly, attendanceRouter);
 }

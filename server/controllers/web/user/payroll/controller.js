@@ -19,8 +19,26 @@ export const getMySalarySlips = asyncHandler(
             if (!statusValidation.valid) return errorResponse(res, statusValidation.error);
         }
 
-        const filter = [{ $match: { userId: new mongoose.Types.ObjectId(userId) } }];
+        const filter = [
+            { $match: { userId: new mongoose.Types.ObjectId(userId) } }
+        ];
         if (status) filter.push({ $match: { status } });
+        
+        filter.push({
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization"
+            }
+        });
+        filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
+        filter.push({
+            $addFields: {
+                organizationName: "$organization.name"
+            }
+        });
+        filter.push({ $project: { organization: 0 } });
         filter.push({ $sort: { generatedDate: -1 } });
 
         const pagination = await Pagination(Salary, page, limit, filter);
@@ -41,7 +59,25 @@ export const getSalarySlipById = asyncHandler(
         const idValidation = validateObjectId(salaryId, "Salary ID");
         if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
-        const salary = await Salary.findOne({ _id: salaryId, userId });
+        const [salary] = await Salary.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(salaryId), userId: new mongoose.Types.ObjectId(userId) } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    organizationName: "$organization.name"
+                }
+            },
+            { $project: { organization: 0 } }
+        ]);
+
         if (!salary) return errorResponse(res, "Salary slip not found", 404);
 
         return successResponse(res, "Salary slip fetched", salary);
@@ -56,7 +92,25 @@ export const getSalaryByMonth = asyncHandler(
         const monthValidation = validateMonth(month);
         if (!monthValidation.valid) return errorResponse(res, monthValidation.error);
 
-        const salary = await Salary.findOne({ userId, month });
+        const [salary] = await Salary.aggregate([
+            { $match: { userId: new mongoose.Types.ObjectId(userId), month } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    organizationName: "$organization.name"
+                }
+            },
+            { $project: { organization: 0 } }
+        ]);
+
         if (!salary) return errorResponse(res, "Salary slip not found for the given month", 404);
 
         return successResponse(res, "Salary slip fetched", salary);

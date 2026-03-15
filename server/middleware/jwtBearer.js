@@ -2,12 +2,12 @@ import jwt from "jsonwebtoken";
 
 const validateCookie = (req, res, next) => {
     try {
-        console.log("cookie: ", req.cookies)
-        let token = req.cookies?.accessToken;
+        let token = null;
 
-        // Fallback to Authorization header if cookie is not present
-        if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
             token = req.headers.authorization.split(' ')[1];
+        } else if (req.cookies?.accessToken) {
+            token = req.cookies.accessToken;
         }
 
         if (!token) {

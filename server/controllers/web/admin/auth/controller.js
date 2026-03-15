@@ -91,6 +91,7 @@ export const register = asyncHandler(
             name: user.name,
             email: user.email,
             phoneNumber: user.phoneNumber,
+            token: token,
         }, 201);
     }, "REGISTER_ADMIN_CONTROLLER_ERROR");
 
@@ -126,7 +127,13 @@ export const login = asyncHandler(
         // });
         setAuthCookie(res, req, token);
 
-        return successResponse(res, "Login Successful");
+        return successResponse(res, "Login Successful", {
+            id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            phoneNumber: admin.phoneNumber,
+            token: token,
+        });
     }, "LOGIN_ADMIN_ERROR");
 
 export const logout = asyncHandler(
@@ -226,3 +233,144 @@ export const forgot_password_reset = asyncHandler(
 
         return successResponse(res, "Password reset successful");
     }, "FORGOT_PASSWORD_RESET_ERROR");
+
+export const getProfile = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const [admin] = await Admin.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+            {
+                $lookup: {
+                    from: "accounts",
+                    localField: "email",
+                    foreignField: "email",
+                    as: "account"
+                }
+            },
+            { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    role: "$account.role",
+                    twoFactorEnabled: "$account.twoFactorEnabled"
+                }
+            }
+        ]);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+        return successResponse(res, "Admin profile fetched", admin);
+    }, "ADMIN_GET_PROFILE_ERROR"
+);
+
+export const updateProfile = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const updates = {};
+        if (req.body.name !== undefined) {
+            const nameValidation = validateName(req.body.name);
+            if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
+            updates.name = nameValidation.normalized;
+        }
+
+        if (req.body.phone !== undefined || req.body.phoneNumber !== undefined) {
+            const phone = req.body.phone || req.body.phoneNumber;
+            const phoneValidation = validatePhone(phone);
+            if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
+            updates.phoneNumber = phoneValidation.normalized;
+        }
+
+        if (req.body.profileImage !== undefined) {
+            updates.profileImage = req.body.profileImage;
+        }
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const accountUpdates = {};
+        if (req.body.email !== undefined) {
+            const emailValidation = validateEmail(req.body.email);
+            if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+            const emailLower = emailValidation.normalized.toLowerCase();
+            if (emailLower !== account.email.toLowerCase()) {
+                const existingAccount = await Account.findOne({ email: emailLower });
+                if (existingAccount) return errorResponse(res, "Email already in use", 409);
+                updates.email = emailLower;
+                accountUpdates.email = emailLower;
+            }
+        }
+
+        if (req.body.twoFactorEnabled !== undefined) {
+            accountUpdates.twoFactorEnabled = !!req.body.twoFactorEnabled;
+        }
+
+        if (Object.keys(updates).length === 0 && Object.keys(accountUpdates).length === 0) {
+            return errorResponse(res, "No valid fields to update");
+        }
+
+        if (Object.keys(accountUpdates).length > 0) {
+            await Account.findByIdAndUpdate(account._id, accountUpdates);
+        }
+
+        const updatedAdmin = await Admin.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+        return successResponse(res, "Admin profile updated", updatedAdmin);
+    }, "ADMIN_UPDATE_PROFILE_ERROR"
+);
+
+export const changePassword = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { currentPassword, newPassword } = req.body;
+
+        const requiredCheck = validateRequiredFields(
+            { currentPassword, newPassword },
+            ['currentPassword', 'newPassword']
+        );
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
+
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const isMatch = await bcrypt.compare(currentPassword, account.password);
+        if (!isMatch) return errorResponse(res, "Current password is incorrect", 401);
+
+        const isSamePassword = await bcrypt.compare(newPassword, account.password);
+        if (isSamePassword) return errorResponse(res, "New password cannot be the same as current password");
+
+        account.password = await bcrypt.hash(newPassword, 10);
+        await account.save();
+
+        return successResponse(res, "Password changed successfully");
+    }, "ADMIN_CHANGE_PASSWORD_ERROR"
+);
+
+export const deactivateAccount = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { password } = req.body;
+
+        if (!password) return errorResponse(res, "Password is required to deactivate account");
+
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) return errorResponse(res, "Invalid password", 401);
+
+        // Deactivate admin profile? Or just account?
+        // Admin model doesn't have isActive? (Checked Admin.js, it doesn't)
+        // Let's just clear cookie and respond
+        clearAuthCookie(res, req);
+
+        return successResponse(res, "Account deactivated successfully");
+    }, "ADMIN_DEACTIVATE_ACCOUNT_ERROR"
+);

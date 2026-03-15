@@ -34,15 +34,42 @@ const employeeLookupPipeline = [
     },
     { $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true } },
     {
+        $lookup: {
+            from: "projectmembers",
+            localField: "_id",
+            foreignField: "userId",
+            as: "projectMemberships"
+        }
+    },
+    {
+        $lookup: {
+            from: "projects",
+            localField: "projectMemberships.projectId",
+            foreignField: "_id",
+            as: "assignedProjects"
+        }
+    },
+    {
         $addFields: {
             organizationName: { $ifNull: ["$organization.name", null] },
             departmentName: { $ifNull: ["$team.teamName", null] },
+            projects: { $ifNull: ["$assignedProjects.name", []] },
             aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
             panNumber: { $ifNull: ["$govtProof.panNumber", null] },
             passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
             bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
+            workType: { $ifNull: ["$workType", null] },
+            profileImage: { $ifNull: ["$profileImage", null] },
             dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
-            dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } }
+            dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } },
+            // Frontend-expected field aliases
+            userName: "$name",
+            userId: "$employeeId",
+            doj: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+            aadhaar: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+            pan: { $ifNull: ["$govtProof.panNumber", null] },
+            passport: { $ifNull: ["$govtProof.passportNumber", null] },
+            bankId: { $ifNull: ["$govtProof.bankAccount", null] },
         }
     },
     {
@@ -79,7 +106,31 @@ const updateEmployee = asyncHandler(async (req, res) => {
     const employee = await User.findById(employeeId);
     if (!employee) return errorResponse(res, "Employee doesn't exist", 404);
 
-    const { userName: name, email, phone, gender, salary, dob, address, dateOfJoining, role, isActive, teamId, userId, organizationId, aadhaar, pan, passport, bankId, workType } = req.body;
+    const { 
+        userName, 
+        name: bodyName, 
+        email, 
+        phone, 
+        gender, 
+        salary, 
+        dob, 
+        address, 
+        dateOfJoining, 
+        role, 
+        isActive, 
+        teamId, 
+        userId, 
+        employeeId: bodyEmployeeId, 
+        organizationId, 
+        aadhaar, 
+        pan, 
+        passport, 
+        bankId, 
+        workType 
+    } = req.body;
+
+    const name = userName || bodyName;
+    const userIdToUse = userId || bodyEmployeeId;
 
     const updates = {};
     const govtUpdates = {};
@@ -118,8 +169,8 @@ const updateEmployee = asyncHandler(async (req, res) => {
         updates.phone = phoneValidation.normalized;
     }
 
-    if (userId && userId !== employee.employeeId) {
-        const userIdValidation = validateEmployeeId(userId);
+    if (userIdToUse && userIdToUse !== employee.employeeId) {
+        const userIdValidation = validateEmployeeId(userIdToUse);
         if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
 
         const existingEmpId = await User.findOne({ employeeId: userIdValidation.normalized, organizationId: employee.organizationId, _id: { $ne: employeeId } });
@@ -199,9 +250,10 @@ const updateEmployee = asyncHandler(async (req, res) => {
     }
 
     if (passport) {
-        const passportRegex = /^[A-Z][1-9]\d{6}$/;
+        // Relaxed regex: starts with a letter or digit, 4-15 characters
+        const passportRegex = /^[A-Z0-9]{4,15}$/;
         if (!passportRegex.test(String(passport).trim().toUpperCase())) {
-            return errorResponse(res, "Invalid passport format. Expected format: A1234567");
+            return errorResponse(res, "Invalid passport format. Expected 4-15 alphanumeric characters");
         }
         govtUpdates.passportNumber = String(passport).trim().toUpperCase();
     }

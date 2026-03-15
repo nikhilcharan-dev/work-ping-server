@@ -7,7 +7,8 @@ import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateString,
-    validatePagination
+    validatePagination,
+    validateDate
 } from "#utils/validators.js";
 
 export const createProject = asyncHandler(
@@ -24,6 +25,18 @@ export const createProject = asyncHandler(
         };
 
         if (data.name) data.name = String(data.name).trim();
+
+        if (data.assignedDate) {
+            const assignedDateValidation = validateDate(data.assignedDate, "Assigned Date");
+            if (!assignedDateValidation.valid) return errorResponse(res, assignedDateValidation.error);
+            data.assignedDate = assignedDateValidation.normalized;
+        }
+
+        if (data.dueDate) {
+            const dueDateValidation = validateDate(data.dueDate, "Due Date", { required: false });
+            if (!dueDateValidation.valid) return errorResponse(res, dueDateValidation.error);
+            data.dueDate = dueDateValidation.normalized;
+        }
 
         const isExisting = await Project.findOne({ name: data.name, organizationId: data.organizationId });
         if (isExisting) return errorResponse(res, "Project already exists", 409);
@@ -72,11 +85,18 @@ export const getProjects = asyncHandler(
             $lookup: { from: "users", localField: "projectManager", foreignField: "_id", as: "manager" }
         });
         filter.push({
+            $lookup: { from: "projectmembers", localField: "_id", foreignField: "projectId", as: "members" }
+        });
+        filter.push({
             $addFields: {
                 organizationName: { $arrayElemAt: ["$organization.name", 0] },
-                projectManagerName: { $arrayElemAt: ["$manager.name", 0] }
+                projectManagerName: { $arrayElemAt: ["$manager.name", 0] },
+                memberCount: { $size: "$members" },
+                assignedDate: { $dateToString: { format: "%Y-%m-%d", date: "$assignedDate" } },
+                dueDate: { $cond: { if: "$dueDate", then: { $dateToString: { format: "%Y-%m-%d", date: "$dueDate" } }, else: null } }
             }
         });
+        filter.push({ $project: { members: 0, manager: 0, organization: 0 } });
 
         const pagination = await Pagination(Project, page, limit, filter);
         return successResponse(res, "Projects fetched", {
@@ -101,11 +121,30 @@ export const getProject = asyncHandler(
                     from: "users",
                     localField: "projectManager",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1 } }],
-                    as: "projectManager"
+                    pipeline: [{ $project: { name: 1, employeeId: 1, email: 1, workType: 1, profileImage: 1 } }],
+                    as: "projectManagerInfo"
                 }
             },
-            { $unwind: { path: "$projectManager", preserveNullAndEmptyArrays: true } }
+            { $unwind: { path: "$projectManagerInfo", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    // Keep projectManager as the original ObjectId (string) so frontend can use it as an ID
+                    projectManagerName: { $ifNull: ["$projectManagerInfo.name", null] },
+                    organizationName: { $ifNull: ["$organization.name", null] },
+                    assignedDate: { $dateToString: { format: "%Y-%m-%d", date: "$assignedDate" } },
+                    dueDate: { $cond: { if: "$dueDate", then: { $dateToString: { format: "%Y-%m-%d", date: "$dueDate" } }, else: null } }
+                }
+            },
+            { $project: { projectManagerInfo: 0, organization: 0 } }
         ]);
 
         if (!project) return errorResponse(res, "Project not found", 404);
@@ -138,6 +177,18 @@ export const updateProject = asyncHandler(
                 _id: { $ne: id }
             });
             if (isExisting) return errorResponse(res, "Project with this name already exists", 409);
+        }
+
+        if (updateData.assignedDate) {
+            const assignedDateValidation = validateDate(updateData.assignedDate, "Assigned Date");
+            if (!assignedDateValidation.valid) return errorResponse(res, assignedDateValidation.error);
+            updateData.assignedDate = assignedDateValidation.normalized;
+        }
+
+        if (updateData.dueDate) {
+            const dueDateValidation = validateDate(updateData.dueDate, "Due Date", { required: false });
+            if (!dueDateValidation.valid) return errorResponse(res, dueDateValidation.error);
+            updateData.dueDate = dueDateValidation.normalized;
         }
 
         const updatedProject = await Project.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });

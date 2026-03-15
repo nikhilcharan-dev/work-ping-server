@@ -63,7 +63,7 @@ export const getProjectById = asyncHandler(
                     from: "users",
                     localField: "projectManager",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
                     as: "projectManager"
                 }
             },
@@ -104,7 +104,7 @@ export const getProjectMembers = asyncHandler(
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, role: 1, profileImage: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, role: 1, profileImage: 1, employeeId: 1, workType: 1 } }],
                     as: "user"
                 }
             },
