@@ -7,11 +7,12 @@ import Account from "#models/Account.js";
 import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 
 const insertByExcel = asyncHandler(
     async (req, res) => {
         if (!req.file) {
-            return res.status(400).json({ message: "No file uploaded" });
+            return errorResponse(res, "No file uploaded");
         }
 
         const filePath = req.file.path;
@@ -28,15 +29,19 @@ const insertByExcel = asyncHandler(
             "email",
             "phone",
             "employeeId",
-            "organizationId",
+            "organizationName",
             "dateOfJoining",
-            "role"
+            "aadhaar",
+            "gender",
+            "dob",
+            "address",
+            "workType"
         ];
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const validRoles = ["admin", "user"];
+        const validRoles = ["manager", "teamLead", "employee"];
         const validGenders = ["male", "female", "other"];
-        const validRolesInTeam = ["manager", "teamLead", "member"];
+        const validWorkTypes = ["onsite", "remote", "hybrid"];
 
         const failedRecords = [];
         const successfulRecords = [];
@@ -78,9 +83,9 @@ const insertByExcel = asyncHandler(
                 continue;
             }
 
-            // Validate role enum
-            const role = String(row.role).toLowerCase();
-            if (!validRoles.includes(role)) {
+            // Validate role enum if provided
+            const role = row.role ? String(row.role).toLowerCase() : null;
+            if (role && !validRoles.includes(role)) {
                 failedRecords.push({
                     error: `Invalid role. Must be one of: ${validRoles.join(", ")}`,
                     rowNumber,
@@ -89,12 +94,44 @@ const insertByExcel = asyncHandler(
                 continue;
             }
 
-            // Validate gender enum if provided
-            if (row.gender) {
-                const gender = String(row.gender).toLowerCase();
-                if (!validGenders.includes(gender)) {
+            // Validate gender enum
+            const gender = String(row.gender).toLowerCase();
+            if (!validGenders.includes(gender)) {
+                failedRecords.push({
+                    error: `Invalid gender. Must be one of: ${validGenders.join(", ")}`,
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
+            // Validate aadhaar format
+            const aadhaarRegex = /^\d{12}$/;
+            if (!aadhaarRegex.test(String(row.aadhaar).trim())) {
+                failedRecords.push({
+                    error: "Invalid aadhaar format. Must be exactly 12 digits",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
+            if (!validWorkTypes.includes(String(row.workType).toLowerCase())) {
+                failedRecords.push({
+                    error: `Invalid work type. Must be one of: ${validWorkTypes.join(", ")}`,
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
+
+            // Validate PAN format if provided
+            if (row.pan) {
+                const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+                if (!panRegex.test(String(row.pan).trim().toUpperCase())) {
                     failedRecords.push({
-                        error: `Invalid gender. Must be one of: ${validGenders.join(", ")}`,
+                        error: "Invalid PAN format. Expected format: AAAAA9999A",
                         rowNumber,
                         rowData: row
                     });
@@ -102,14 +139,17 @@ const insertByExcel = asyncHandler(
                 }
             }
 
-            // Validate roleInTeam enum if provided
-            if (row.roleInTeam && !validRolesInTeam.includes(row.roleInTeam)) {
-                failedRecords.push({
-                    error: `Invalid roleInTeam. Must be one of: ${validRolesInTeam.join(", ")}`,
-                    rowNumber,
-                    rowData: row
-                });
-                continue;
+            // Validate passport format if provided
+            if (row.passport) {
+                const passportRegex = /^[A-Z0-9]{4,15}$/;
+                if (!passportRegex.test(String(row.passport).trim().toUpperCase())) {
+                    failedRecords.push({
+                        error: "Invalid passport format. Expected 4-15 alphanumeric characters",
+                        rowNumber,
+                        rowData: row
+                    });
+                    continue;
+                }
             }
 
             // Validate salary if provided
@@ -125,51 +165,75 @@ const insertByExcel = asyncHandler(
                 }
             }
 
-            // Validate date of birth if provided
-            if (row.dob) {
-                const dobDate = new Date(row.dob);
-                if (isNaN(dobDate.getTime())) {
-                    failedRecords.push({
-                        error: "Invalid date of birth",
-                        rowNumber,
-                        rowData: row
-                    });
-                    continue;
-                }
-            }
-
-            // Validate GovtProof fields if any is provided
-            if (row.aadhaar || row.pan || row.bankId || row.passport) {
-                if (!row.aadhaar || !row.pan || !row.bankId) {
-                    failedRecords.push({
-                        error: "If providing government proof, aadhaar, pan, and bankId are all required",
-                        rowNumber,
-                        rowData: row
-                    });
-                    continue;
-                }
-            }
-
-            // Check if organization exists
-            const organization = await Organization.findById(row.organizationId);
-            if (!organization) {
+            // Validate dateOfJoining is not a future date
+            const dojDate = new Date(row.dateOfJoining);
+            if (isNaN(dojDate.getTime())) {
                 failedRecords.push({
-                    error: `Organization with ID '${row.organizationId}' not found`,
+                    error: "Invalid date of joining",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+            if (dojDate > new Date()) {
+                failedRecords.push({
+                    error: "Date of joining cannot be a future date",
                     rowNumber,
                     rowData: row
                 });
                 continue;
             }
 
-            // Check if team exists (if teamId provided)
-            if (row.teamId) {
-                const team = await Team.findOne({
-                    _id: row.teamId,
-                    organizationId: row.organizationId
+            // Validate date of birth
+            const dobDate = new Date(row.dob);
+            if (isNaN(dobDate.getTime())) {
+                failedRecords.push({
+                    error: "Invalid date of birth",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+            if (dobDate > new Date()) {
+                failedRecords.push({
+                    error: "Date of birth cannot be a future date",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
+            // Validate PAN and bankId must be provided together
+            if ((row.pan && !row.bankId) || (!row.pan && row.bankId)) {
+                failedRecords.push({
+                    error: "pan and bankId must be provided together",
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
+            // Check if organization exists
+            const organization = await Organization.findOne({ name: row.organizationName });
+            if (!organization) {
+                failedRecords.push({
+                    error: `Organization '${row.organizationName}' not found`,
+                    rowNumber,
+                    rowData: row
+                });
+                continue;
+            }
+
+            // Check if team exists (if teamName provided)
+            let team = null;
+            if (row.teamName) {
+                team = await Team.findOne({
+                    teamName: row.teamName,
+                    organizationId: organization._id
                 });
                 if (!team) {
                     failedRecords.push({
-                        error: `Team with ID '${row.teamId}' not found in organization`,
+                        error: `Team '${row.teamName}' not found in organization '${row.organizationName}'`,
                         rowNumber,
                         rowData: row
                     });
@@ -177,18 +241,18 @@ const insertByExcel = asyncHandler(
                 }
             }
 
-            // Check if user already exists
+            // Check if user already exists (email/phone globally, employeeId within org)
             const existingUser = await User.findOne({
                 $or: [
                     { email: email },
                     { phone: String(row.phone).trim() },
-                    { employeeId: String(row.employeeId).trim() }
+                    { employeeId: String(row.employeeId).trim(), organizationId: organization._id }
                 ]
             });
 
             if (existingUser) {
                 failedRecords.push({
-                    error: "User already exists with this email, phone, or employeeId",
+                    error: "User already exists with this email, phone, or employeeId in this organization",
                     rowNumber,
                     rowData: row
                 });
@@ -206,9 +270,8 @@ const insertByExcel = asyncHandler(
                 continue;
             }
 
-            // Use transaction for atomicity
-            // const session = await mongoose.startSession();
-            // session.startTransaction();
+            const session = await mongoose.startSession();
+            session.startTransaction();
 
             try {
                 // Prepare user data
@@ -217,19 +280,21 @@ const insertByExcel = asyncHandler(
                     email: email,
                     phone: String(row.phone).trim(),
                     employeeId: String(row.employeeId).trim(),
-                    organizationId: row.organizationId,
-                    dateOfJoining: new Date(row.dateOfJoining)
+                    organizationId: organization._id,
+                    dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),
+                    workType: String(row.workType).trim().toLowerCase()
                 };
 
                 // Add optional user fields
-                if (row.gender) userData.gender = String(row.gender).toLowerCase();
+                userData.gender = String(row.gender).toLowerCase();
+                if (role) userData.role = role;
                 if (row.salary !== undefined && row.salary !== null && row.salary !== "") {
                     userData.salary = Number(row.salary);
                 }
-                if (row.dob) userData.dob = new Date(row.dob);
-                if (row.address) userData.address = String(row.address).trim();
-                if (row.teamId) userData.teamId = row.teamId;
-                if (row.roleInTeam) userData.roleInTeam = row.roleInTeam;
+                const dobOnly = new Date(new Date(row.dob).toISOString().split('T')[0]);
+                userData.dob = dobOnly;
+                userData.address = String(row.address).trim();
+                if (team) userData.teamId = team._id;
                 if (row.isActive !== undefined) userData.isActive = Boolean(row.isActive);
 
                 // Create user
@@ -240,31 +305,32 @@ const insertByExcel = asyncHandler(
                 const hashedPassword = await bcrypt.hash(password, 10);
 
                 const accountData = {
-                    role: role,
                     email: email,
                     password: hashedPassword,
                     emailVerified: false
                 };
 
+                if (role) accountData.role = role;
+
                 await Account.create([accountData], { session });
 
-                // Create government proof if provided
-                if (row.aadhaar && row.pan && row.bankId) {
+                // Create government proof
+                if (row.pan && row.bankId) {
                     const govtProofData = {
                         aadhaarNumber: String(row.aadhaar).trim(),
-                        panNumber: String(row.pan).trim(),
+                        panNumber: String(row.pan).trim().toUpperCase(),
                         bankAccount: String(row.bankId).trim(),
                         userId: newUser._id
                     };
 
-                    if (row.passport) govtProofData.passportNumber = String(row.passport).trim();
+                    if (row.passport) {
+                        govtProofData.passportNumber = String(row.passport).trim().toUpperCase();
+                    }
 
                     await GovtProof.create([govtProofData], { session });
                 }
 
-                // Commit transaction
-                // await session.commitTransaction();
-                // session.endSession();
+                await session.commitTransaction();
 
                 successfulRecords.push({
                     rowNumber,
@@ -274,15 +340,15 @@ const insertByExcel = asyncHandler(
                 });
 
             } catch (error) {
-                // Rollback transaction on error
-                // await session.abortTransaction();
-                // session.endSession();
+                await session.abortTransaction();
 
                 failedRecords.push({
                     error: error.message || "Database error occurred",
                     rowNumber,
                     rowData: row
                 });
+            } finally {
+                session.endSession();
             }
         }
 
@@ -291,27 +357,17 @@ const insertByExcel = asyncHandler(
         const totalCount = jsonData.length;
 
         if (failedCount === 0) {
-            return res.status(201).json({
-                message: "All employees added successfully",
-                count: {
-                    total: totalCount,
-                    successful: successCount,
-                    failed: failedCount
-                },
+            return successResponse(res, "All employees added successfully", {
+                count: { total: totalCount, successful: successCount, failed: failedCount },
                 successfulRecords
-            });
+            }, 201);
         }
 
-        return res.status(207).json({
-            message: `Processed ${totalCount} records: ${successCount} successful, ${failedCount} failed`,
-            count: {
-                total: totalCount,
-                successful: successCount,
-                failed: failedCount
-            },
+        return successResponse(res, `Processed ${totalCount} records: ${successCount} successful, ${failedCount} failed`, {
+            count: { total: totalCount, successful: successCount, failed: failedCount },
             successfulRecords,
             failedRecords
-        });
+        }, 207);
     }, "ERROR_PROCESSING_EXCEL_FILE");
 
 export default insertByExcel;  

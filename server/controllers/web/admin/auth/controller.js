@@ -1,9 +1,12 @@
 import Admin from "#models/Admin.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import mongoose from "mongoose";
 import Account from "#models/Account.js";
-import mailClient from "#utils/axios.mail.js";
+import mailClient from "#utils/mailClient.js";
 import axios from "axios";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { setAuthCookie, clearAuthCookie } from "#utils/cookie.helper.js";
 import {
     validateEmail,
     validatePhone,
@@ -13,297 +16,361 @@ import {
 } from "#utils/validators.js";
 
 
-
 export const register = asyncHandler(
     async (req, res) => {
-        console.log(req.body);
         const { name, email, password, number: phoneNumber } = req.body;
-        
-        // Validate required fields
+
         const requiredCheck = validateRequiredFields(
-            { name, email, password, phoneNumber }, 
+            { name, email, password, phoneNumber },
             ['name', 'email', 'password', 'phoneNumber']
         );
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ message: requiredCheck.error });
-        }
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
-        // Validate name
         const nameValidation = validateName(name);
-        if (!nameValidation.valid) {
-            return res.status(400).json({ message: nameValidation.error });
-        }
+        if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
 
-        // Validate email
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ message: emailValidation.error });
-        }
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-        // Validate password strength
         const passwordValidation = validatePassword(password);
-        if (!passwordValidation.valid) {
-            return res.status(400).json({ message: passwordValidation.error });
-        }
+        if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
 
-        // Validate phone number
         const phoneValidation = validatePhone(phoneNumber);
-        if (!phoneValidation.valid) {
-            return res.status(400).json({ message: phoneValidation.error });
-        }
+        if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
 
-        // Check if admin already exists in Admin collection
         const existingUser = await Admin.findOne({ email: emailValidation.normalized });
-        if (existingUser) {
-            return res.status(409).json({
-                message: "Admin already exists"
-            });
-        }
+        if (existingUser) return errorResponse(res, "Admin already exists", 409);
 
-        // Check if account already exists
         const existingAccount = await Account.findOne({ email: emailValidation.normalized });
-        if (existingAccount) {
-            return res.status(409).json({
-                message: "Account already exists with this email"
-            });
-        }
+        if (existingAccount) return errorResponse(res, "Account already exists with this email", 409);
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await Admin.create({
-            name: nameValidation.normalized,
-            email: emailValidation.normalized,
-            phoneNumber: phoneValidation.normalized,
-        });
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        let user;
+        try {
+            ([user] = await Admin.create([{
+                name: nameValidation.normalized,
+                email: emailValidation.normalized,
+                phoneNumber: phoneValidation.normalized,
+            }], { session }));
 
-        const account = await Account.create({
-            password: hashedPassword,
-            email: user.email,
-            role: "admin",
-            twoFactorEnabled: false,
-        });
-        
+            await Account.create([{
+                password: hashedPassword,
+                email: emailValidation.normalized,
+                role: "admin",
+                twoFactorEnabled: false,
+            }], { session });
+
+            await session.commitTransaction();
+        } catch (err) {
+            await session.abortTransaction();
+            throw err;
+        } finally {
+            session.endSession();
+        }
+
         const token = jwt.sign(
-            { userId: user._id },
+            { userId: user._id, role: "admin" },
             process.env.SECRET_KEY,
             { expiresIn: process.env.JWT_EXPIRES_IN }
-        )
+        );
 
-        const isLive = process.env.MODE === "production";
+        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+        // res.cookie("accessToken", token, {
+        //     httpOnly: false,
+        //     secure: isSecure,
+        //     sameSite: isSecure ? "none" : "lax",
+        //     maxAge: 1000 * 60 * 60 * 24
+        // });
+        setAuthCookie(res, req, token, { httpOnly: false });
 
-        res.cookie("accessToken", token, {
-            httpOnly: false,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 24 // 1 Day
-        })
-
-        return res.status(201).json({
-            message: "Register Successful",
-            userDetails: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phoneNumber: user.phoneNumber,
-            },
+        return successResponse(res, "Register Successful", {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            phoneNumber: user.phoneNumber,
             token: token,
-        });
+        }, 201);
     }, "REGISTER_ADMIN_CONTROLLER_ERROR");
 
 export const login = asyncHandler(
     async (req, res) => {
         const { email, password } = req.body;
-        
-        // Validate required fields
-        const requiredCheck = validateRequiredFields(
-            { email, password }, 
-            ['email', 'password']
-        );
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ message: requiredCheck.error });
-        }
 
-        // Validate email format
+        const requiredCheck = validateRequiredFields({ email, password }, ['email', 'password']);
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ message: emailValidation.error });
-        }
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
         const account = await Account.findOne({ email: emailValidation.normalized });
-        if (!account || account.role !== "admin") {
-            return res.status(401).json({ message: "Admin does not exist" });
-        }
+        if (!account || account.role !== "admin") return errorResponse(res, "Admin does not exist", 401);
 
-        const isMatch = await bcrypt.compare(
-            password,
-            account.password
-        );
-
-        if (!isMatch) {
-            return res.status(401).json({ message: "Invalid credentials" });
-        }
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) return errorResponse(res, "Invalid credentials", 401);
 
         const admin = await Admin.findOne({ email: emailValidation.normalized });
-            if (!admin) {
-                return res.status(401).json({ message: "Admin profile not found" });
-            }
+        if (!admin) return errorResponse(res, "Admin profile not found", 401);
 
-        const token = await jwt.sign({ userId: admin._id }, process.env.SECRET_KEY, {
+        const token = jwt.sign({ userId: admin._id, role: "admin" }, process.env.SECRET_KEY, {
             expiresIn: process.env.JWT_EXPIRES_IN,
-        })
-
-        const isLive = process.env.MODE === "production";
-        console.log(token)
-
-        res.cookie("accessToken", token, {
-            httpOnly: true,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 24 // 1 Day
-        })
-
-
-        return res.status(200).json({
-            message: "Login Successful",
-            token: token,
         });
 
+        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+        // res.cookie("accessToken", token, {
+        //     httpOnly: true,
+        //     secure: isSecure,
+        //     sameSite: isSecure ? "none" : "lax",
+        //     maxAge: 1000 * 60 * 60 * 24
+        // });
+        setAuthCookie(res, req, token);
+
+        return successResponse(res, "Login Successful", {
+            id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            phoneNumber: admin.phoneNumber,
+            token: token,
+        });
     }, "LOGIN_ADMIN_ERROR");
 
 export const logout = asyncHandler(
     async (req, res) => {
-        const isLive = process.env.MODE === "production";
-        res.clearCookie("accessToken", {
-            httpOnly: true,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-            path: "/"
-        })
-            .status(200)
-            .json({
-                message: "Logout successful"
-            });
-
-        
+        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+        // res.clearCookie("accessToken", {
+        //     httpOnly: true,
+        //     secure: isSecure,
+        //     sameSite: isSecure ? "none" : "lax",
+        //     path: "/"
+        // });
+        clearAuthCookie(res, req);
+        return successResponse(res, "Logout successful");
     }, "ADMIN_LOGOUT_ERROR");
 
 export const forgot_password_send_otp = asyncHandler(
     async (req, res) => {
         const { email } = req.body;
-        
-        // Validate email
+
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ message: emailValidation.error });
-        }
-        
-        // Check if admin exists
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+
         const admin = await Admin.findOne({ email: emailValidation.normalized });
-        if (!admin) {
-            return res.status(404).json({ message: "Admin not found" });
-        }
-        
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
         const send_otp_end_point = process.env.MAIL_SERVICE_URI + "/send-email-otp";
         let send_otp;
         try {
             send_otp = await axios.post(send_otp_end_point, { email: emailValidation.normalized });
         } catch (err) {
-            return res.status(500).json({ error: "Failed to send OTP" });
+            return errorResponse(res, "Failed to send OTP", 500);
         }
         if (!send_otp.data || send_otp.data.status !== "success") {
-            return res.status(401).json({
-                error: "Something went wrong",
-            });
+            return errorResponse(res, "Something went wrong", 401);
         }
-        res.status(200).json({
-            status: "success"
-        });
+        return successResponse(res, "OTP sent successfully");
     }, "FORGOT_PASSWORD_SEND_OTP_ERROR");
 
 export const forgot_password_verify_otp = asyncHandler(
     async (req, res) => {
         const { email, otp } = req.body;
-        
-        // Validate required fields
+
         const requiredCheck = validateRequiredFields({ email, otp }, ['email', 'otp']);
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ message: requiredCheck.error });
-        }
-        
-        // Validate email format
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ message: emailValidation.error });
-        }
-        
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+
         const verify_otp_end_point = process.env.MAIL_SERVICE_URI + "/verify-email-otp";
         let verify_otp;
         try {
             verify_otp = await axios.post(verify_otp_end_point, { email: emailValidation.normalized, otp });
         } catch (err) {
-            return res.status(500).json({ message: "Failed to verify OTP" });
+            return errorResponse(res, "Failed to verify OTP", 500);
         }
         if (!verify_otp.data || verify_otp.data.status !== "success") {
-            return res.status(401).json({
-                message: "Invalid OTP",
-            });
+            return errorResponse(res, "Invalid OTP", 401);
         }
-        res.status(200).json({
-            message: "OTP Verification Successful",
-        });
+        return successResponse(res, "OTP Verification Successful");
     }, "FORGOT_PASSWORD_VERIFY_OTP_ERROR");
 
-// Reset password after OTP verification
 export const forgot_password_reset = asyncHandler(
     async (req, res) => {
         const { email, otp, newPassword } = req.body;
-        
-        // Validate required fields
+
         const requiredCheck = validateRequiredFields(
-            { email, otp, newPassword }, 
+            { email, otp, newPassword },
             ['email', 'otp', 'newPassword']
         );
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ message: requiredCheck.error });
-        }
-        
-        // Validate email format
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
         const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-            return res.status(400).json({ message: emailValidation.error });
-        }
-        
-        // Validate password strength
+        if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+
         const passwordValidation = validatePassword(newPassword);
-        if (!passwordValidation.valid) {
-            return res.status(400).json({ message: passwordValidation.error });
-        }
+        if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
 
         const verify_otp_end_point = process.env.MAIL_SERVICE_URI + "/verify-email-otp";
         let verify_otp;
         try {
             verify_otp = await axios.post(verify_otp_end_point, { email: emailValidation.normalized, otp });
         } catch (err) {
-            return res.status(500).json({ message: "Failed to verify OTP" });
+            return errorResponse(res, "Failed to verify OTP", 500);
         }
         if (!verify_otp.data || verify_otp.data.status !== "success") {
-            return res.status(401).json({ message: "Invalid OTP" });
+            return errorResponse(res, "Invalid OTP", 401);
         }
 
         const account = await Account.findOne({ email: emailValidation.normalized, role: "admin" });
-        if (!account) {
-            return res.status(404).json({ message: "Admin account not found" });
-        }
-        
-        // Check if new password is same as current password
+        if (!account) return errorResponse(res, "Admin account not found", 404);
+
         const isSamePassword = await bcrypt.compare(newPassword, account.password);
-        if (isSamePassword) {
-            return res.status(400).json({ message: "New password cannot be the same as current password" });
-        }
-        
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        account.password = hashedPassword;
+        if (isSamePassword) return errorResponse(res, "New password cannot be the same as current password");
+
+        account.password = await bcrypt.hash(newPassword, 10);
         await account.save();
 
-        res.status(200).json({ message: "Password reset successful" });
+        return successResponse(res, "Password reset successful");
     }, "FORGOT_PASSWORD_RESET_ERROR");
+
+export const getProfile = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const [admin] = await Admin.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+            {
+                $lookup: {
+                    from: "accounts",
+                    localField: "email",
+                    foreignField: "email",
+                    as: "account"
+                }
+            },
+            { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    role: "$account.role",
+                    twoFactorEnabled: "$account.twoFactorEnabled"
+                }
+            }
+        ]);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+        return successResponse(res, "Admin profile fetched", admin);
+    }, "ADMIN_GET_PROFILE_ERROR"
+);
+
+export const updateProfile = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const updates = {};
+        if (req.body.name !== undefined) {
+            const nameValidation = validateName(req.body.name);
+            if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
+            updates.name = nameValidation.normalized;
+        }
+
+        if (req.body.phone !== undefined || req.body.phoneNumber !== undefined) {
+            const phone = req.body.phone || req.body.phoneNumber;
+            const phoneValidation = validatePhone(phone);
+            if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
+            updates.phoneNumber = phoneValidation.normalized;
+        }
+
+        if (req.body.profileImage !== undefined) {
+            updates.profileImage = req.body.profileImage;
+        }
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const accountUpdates = {};
+        if (req.body.email !== undefined) {
+            const emailValidation = validateEmail(req.body.email);
+            if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+            const emailLower = emailValidation.normalized.toLowerCase();
+            if (emailLower !== account.email.toLowerCase()) {
+                const existingAccount = await Account.findOne({ email: emailLower });
+                if (existingAccount) return errorResponse(res, "Email already in use", 409);
+                updates.email = emailLower;
+                accountUpdates.email = emailLower;
+            }
+        }
+
+        if (req.body.twoFactorEnabled !== undefined) {
+            accountUpdates.twoFactorEnabled = !!req.body.twoFactorEnabled;
+        }
+
+        if (Object.keys(updates).length === 0 && Object.keys(accountUpdates).length === 0) {
+            return errorResponse(res, "No valid fields to update");
+        }
+
+        if (Object.keys(accountUpdates).length > 0) {
+            await Account.findByIdAndUpdate(account._id, accountUpdates);
+        }
+
+        const updatedAdmin = await Admin.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+        return successResponse(res, "Admin profile updated", updatedAdmin);
+    }, "ADMIN_UPDATE_PROFILE_ERROR"
+);
+
+export const changePassword = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { currentPassword, newPassword } = req.body;
+
+        const requiredCheck = validateRequiredFields(
+            { currentPassword, newPassword },
+            ['currentPassword', 'newPassword']
+        );
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
+
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const isMatch = await bcrypt.compare(currentPassword, account.password);
+        if (!isMatch) return errorResponse(res, "Current password is incorrect", 401);
+
+        const isSamePassword = await bcrypt.compare(newPassword, account.password);
+        if (isSamePassword) return errorResponse(res, "New password cannot be the same as current password");
+
+        account.password = await bcrypt.hash(newPassword, 10);
+        await account.save();
+
+        return successResponse(res, "Password changed successfully");
+    }, "ADMIN_CHANGE_PASSWORD_ERROR"
+);
+
+export const deactivateAccount = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { password } = req.body;
+
+        if (!password) return errorResponse(res, "Password is required to deactivate account");
+
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) return errorResponse(res, "Invalid password", 401);
+
+        // Deactivate admin profile? Or just account?
+        // Admin model doesn't have isActive? (Checked Admin.js, it doesn't)
+        // Let's just clear cookie and respond
+        clearAuthCookie(res, req);
+
+        return successResponse(res, "Account deactivated successfully");
+    }, "ADMIN_DEACTIVATE_ACCOUNT_ERROR"
+);

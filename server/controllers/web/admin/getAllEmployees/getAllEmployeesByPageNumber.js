@@ -1,6 +1,7 @@
 import User from "#models/User.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateObjectId,
     validateString
@@ -18,7 +19,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
         maxLength: 100
       });
       if (!searchValidation.valid) {
-        return res.status(400).json({ error: searchValidation.error });
+        return errorResponse(res, searchValidation.error);
       }
     }
     
@@ -26,7 +27,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     if (organizationId) {
       const orgIdValidation = validateObjectId(organizationId, "Organization ID");
       if (!orgIdValidation.valid) {
-        return res.status(400).json({ error: orgIdValidation.error });
+        return errorResponse(res, orgIdValidation.error);
       }
     }
     
@@ -34,7 +35,7 @@ const getAllEmployeesByPageNumber = asyncHandler(
     if (teamId) {
       const teamIdValidation = validateObjectId(teamId, "Team ID");
       if (!teamIdValidation.valid) {
-        return res.status(400).json({ error: teamIdValidation.error });
+        return errorResponse(res, teamIdValidation.error);
       }
     }
 
@@ -97,9 +98,100 @@ const getAllEmployeesByPageNumber = asyncHandler(
       }
     }
 
+    // Lookup organization name
+    filter.push({
+      $lookup: {
+        from: "organizations",
+        localField: "organizationId",
+        foreignField: "_id",
+        as: "organization"
+      }
+    });
+    filter.push({
+      $unwind: { path: "$organization", preserveNullAndEmptyArrays: true }
+    });
+
+    // Lookup team/department name
+    filter.push({
+      $lookup: {
+        from: "teams",
+        localField: "teamId",
+        foreignField: "_id",
+        as: "team"
+      }
+    });
+    filter.push({
+      $unwind: { path: "$team", preserveNullAndEmptyArrays: true }
+    });
+
+    // Lookup govt proof (PAN, Aadhaar, passport, bank)
+    filter.push({
+      $lookup: {
+        from: "govtproofs",
+        localField: "_id",
+        foreignField: "userId",
+        as: "govtProof"
+      }
+    });
+    filter.push({
+      $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true }
+    });
+
+    // Lookup projects the employee belongs to
+    filter.push({
+      $lookup: {
+        from: "projectmembers",
+        localField: "_id",
+        foreignField: "userId",
+        as: "projectMemberships"
+      }
+    });
+    filter.push({
+      $lookup: {
+        from: "projects",
+        localField: "projectMemberships.projectId",
+        foreignField: "_id",
+        as: "assignedProjects"
+      }
+    });
+
+    // Project fields: replace organizationId with organizationName, add department & govt proof fields
+    filter.push({
+      $addFields: {
+        organizationName: { $ifNull: ["$organization.name", null] },
+        departmentName: { $ifNull: ["$team.teamName", null] },
+        projects: { $ifNull: ["$assignedProjects.name", []] },
+        aadhaarNumber: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+        panNumber: { $ifNull: ["$govtProof.panNumber", null] },
+        passportNumber: { $ifNull: ["$govtProof.passportNumber", null] },
+        bankAccount: { $ifNull: ["$govtProof.bankAccount", null] },
+        dateOfJoining: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+        dob: { $cond: { if: "$dob", then: { $dateToString: { format: "%Y-%m-%d", date: "$dob" } }, else: null } },
+        workType: { $ifNull: ["$workType", null] },
+        profileImage: { $ifNull: ["$profileImage", null] },
+        // Frontend-expected field aliases
+        userName: "$name",
+        userId: "$employeeId",
+        doj: { $dateToString: { format: "%Y-%m-%d", date: "$dateOfJoining" } },
+        aadhaar: { $ifNull: ["$govtProof.aadhaarNumber", null] },
+        pan: { $ifNull: ["$govtProof.panNumber", null] },
+        passport: { $ifNull: ["$govtProof.passportNumber", null] },
+        bankId: { $ifNull: ["$govtProof.bankAccount", null] },
+      }
+    });
+    filter.push({
+      $project: {
+        organization: 0,
+        team: 0,
+        govtProof: 0
+      }
+    });
+
     const pagination = await Pagination(User, page, limit, filter);
 
-    res.status(200).json({
+    console.log("pagination result ", pagination.documents[0]);
+
+    return successResponse(res, "Employees fetched", {
       totalPages: pagination.totalPages,
       totalRecords: pagination.totalRecords,
       data: pagination.documents

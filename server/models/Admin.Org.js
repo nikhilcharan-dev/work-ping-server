@@ -5,7 +5,7 @@ const orgAdminSchema = new mongoose.Schema(
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
-            required: true ,
+            required: true,
             index: true
         },
 
@@ -22,5 +22,7 @@ const orgAdminSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+orgAdminSchema.index({ organizationId: 1, primaryAdmin: 1 }, { unique: true });
 
 export default mongoose.model("OrgAdmin", orgAdminSchema);

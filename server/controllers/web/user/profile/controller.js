@@ -2,6 +2,9 @@ import User from '#models/User.js';
 import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+import { formatUserDates } from "#helpers/data.reducer.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { clearAuthCookie } from "#utils/cookie.helper.js";
 import {
     validateEmail,
     validatePhone,
@@ -13,19 +16,56 @@ import {
     validateRequiredFields
 } from "#utils/validators.js";
 
+const userProfileLookupPipeline = [
+    {
+        $lookup: {
+            from: "organizations",
+            localField: "organizationId",
+            foreignField: "_id",
+            pipeline: [{ $project: { name: 1, type: 1 } }],
+            as: "organization"
+        }
+    },
+    { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+    {
+        $lookup: {
+            from: "teams",
+            localField: "teamId",
+            foreignField: "_id",
+            pipeline: [{ $project: { teamName: 1, description: 1 } }],
+            as: "team"
+        }
+    },
+    { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
+    {
+        $lookup: {
+            from: "accounts",
+            localField: "email",
+            foreignField: "email",
+            as: "account"
+        }
+    },
+    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+    {
+        $addFields: {
+            role: "$account.role",
+            twoFactorEnabled: "$account.twoFactorEnabled"
+        }
+    }
+];
+
 export const getProfile = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
 
-        const user = await User.findById(userId)
-            .populate({ path: "organizationId", select: "name type" })
-            .populate({ path: "teamId", select: "teamName description" });
+        const [user] = await User.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+            ...userProfileLookupPipeline
+        ]);
 
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
-        return res.status(200).json(user);
+        return successResponse(res, "Profile fetched", formatUserDates(user));
     }, "USER_GET_PROFILE_ERROR"
 );
 
@@ -34,105 +74,87 @@ export const updateProfile = asyncHandler(
         const { userId } = req.user;
 
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
-        const allowedFields = ["name", "phone", "gender", "dob", "address", "profileImage"];
         const updates = {};
-        
-        // Validate name if being updated
+
         if (req.body.name !== undefined) {
             const nameValidation = validateName(req.body.name);
-            if (!nameValidation.valid) {
-                return res.status(400).json({ error: nameValidation.error });
-            }
+            if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
             updates.name = nameValidation.normalized;
         }
-        
-        // Validate phone if being updated
+
         if (req.body.phone !== undefined) {
             const phoneValidation = validatePhone(req.body.phone);
-            if (!phoneValidation.valid) {
-                return res.status(400).json({ error: phoneValidation.error });
-            }
-            // Check phone uniqueness
-            const existingPhone = await User.findOne({ 
-                phone: phoneValidation.normalized, 
-                _id: { $ne: userId } 
+            if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
+            const existingPhone = await User.findOne({
+                phone: phoneValidation.normalized,
+                _id: { $ne: userId }
             });
-            if (existingPhone) {
-                return res.status(409).json({ error: "Phone number already in use" });
-            }
+            if (existingPhone) return errorResponse(res, "Phone number already in use", 409);
             updates.phone = phoneValidation.normalized;
         }
-        
-        // Validate gender if being updated
+
         if (req.body.gender !== undefined) {
-            const genderValidation = validateEnum(
-                req.body.gender, 
-                ["male", "female", "other"], 
-                "Gender"
-            );
-            if (!genderValidation.valid) {
-                return res.status(400).json({ error: genderValidation.error });
-            }
+            const genderValidation = validateEnum(req.body.gender, ["male", "female", "other"], "Gender");
+            if (!genderValidation.valid) return errorResponse(res, genderValidation.error);
             updates.gender = genderValidation.normalized;
         }
-        
-        // Validate DOB if being updated
+
         if (req.body.dob !== undefined) {
-            const dobValidation = validateDate(
-                req.body.dob, 
-                "Date of birth", 
-                { noFuture: true, minAge: 18 }
-            );
-            if (!dobValidation.valid) {
-                return res.status(400).json({ error: dobValidation.error });
-            }
+            const dobValidation = validateDate(req.body.dob, "Date of birth", { noFuture: true, minAge: 18 });
+            if (!dobValidation.valid) return errorResponse(res, dobValidation.error);
             updates.dob = dobValidation.normalized;
         }
-        
-        // Validate address if being updated
+
         if (req.body.address !== undefined) {
-            const addressValidation = validateString(
-                req.body.address, 
-                "Address", 
-                { maxLength: 500 }
-            );
-            if (!addressValidation.valid) {
-                return res.status(400).json({ error: addressValidation.error });
-            }
+            const addressValidation = validateString(req.body.address, "Address", { maxLength: 500 });
+            if (!addressValidation.valid) return errorResponse(res, addressValidation.error);
             updates.address = addressValidation.normalized;
         }
-        
-        // Validate profile image if being updated
+
         if (req.body.profileImage !== undefined) {
-            const profileImageValidation = validateString(
-                req.body.profileImage, 
-                "Profile image", 
-                { maxLength: 500 }
-            );
-            if (!profileImageValidation.valid) {
-                return res.status(400).json({ error: profileImageValidation.error });
-            }
+            const profileImageValidation = validateString(req.body.profileImage, "Profile image", { maxLength: 500 });
+            if (!profileImageValidation.valid) return errorResponse(res, profileImageValidation.error);
             updates.profileImage = profileImageValidation.normalized;
         }
 
-        if (Object.keys(updates).length === 0) {
-            return res.status(400).json({ error: "No valid fields to update" });
+        const account = await Account.findOne({ email: user.email, role: "user" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const accountUpdates = {};
+        if (req.body.email !== undefined) {
+            const emailValidation = validateEmail(req.body.email);
+            if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
+            const emailLower = emailValidation.normalized.toLowerCase();
+            if (emailLower !== account.email.toLowerCase()) {
+                const existingAccount = await Account.findOne({ email: emailLower });
+                if (existingAccount) return errorResponse(res, "Email already in use", 409);
+                updates.email = emailLower;
+                accountUpdates.email = emailLower;
+            }
         }
 
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            updates,
-            { new: true, runValidators: true }
-        );
+        if (req.body.twoFactorEnabled !== undefined) {
+            accountUpdates.twoFactorEnabled = !!req.body.twoFactorEnabled;
+        }
 
-        return res.status(200).json({
-            message: "Profile updated successfully",
-            userDetails: updatedUser
-        });
+        if (Object.keys(updates).length === 0 && Object.keys(accountUpdates).length === 0) {
+            return errorResponse(res, "No valid fields to update");
+        }
+
+        if (Object.keys(accountUpdates).length > 0) {
+            await Account.findByIdAndUpdate(account._id, accountUpdates);
+        }
+
+        await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+
+        const [enrichedUser] = await User.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+            ...userProfileLookupPipeline
+        ]);
+
+        return successResponse(res, "Profile updated successfully", formatUserDates(enrichedUser));
     }, "USER_UPDATE_PROFILE_ERROR"
 );
 
@@ -141,47 +163,31 @@ export const changePassword = asyncHandler(
         const { userId } = req.user;
         const { currentPassword, newPassword } = req.body;
 
-        // Validate required fields
         const requiredCheck = validateRequiredFields(
             { currentPassword, newPassword },
             ['currentPassword', 'newPassword']
         );
-        if (!requiredCheck.valid) {
-            return res.status(400).json({ error: requiredCheck.error });
-        }
-        
-        // Validate new password strength
+        if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
+
         const passwordValidation = validatePassword(newPassword);
-        if (!passwordValidation.valid) {
-            return res.status(400).json({ error: passwordValidation.error });
-        }
+        if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
 
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
         const account = await Account.findOne({ email: user.email, role: "user" });
-        if (!account) {
-            return res.status(404).json({ error: "Account not found" });
-        }
+        if (!account) return errorResponse(res, "Account not found", 404);
 
         const isMatch = await bcrypt.compare(currentPassword, account.password);
-        if (!isMatch) {
-            return res.status(401).json({ error: "Current password is incorrect" });
-        }
-        
-        // Check if new password is same as current
-        const isSamePassword = await bcrypt.compare(newPassword, account.password);
-        if (isSamePassword) {
-            return res.status(400).json({ error: "New password cannot be the same as current password" });
-        }
+        if (!isMatch) return errorResponse(res, "Current password is incorrect", 401);
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        account.password = hashedPassword;
+        const isSamePassword = await bcrypt.compare(newPassword, account.password);
+        if (isSamePassword) return errorResponse(res, "New password cannot be the same as current password");
+
+        account.password = await bcrypt.hash(newPassword, 10);
         await account.save();
 
-        return res.status(200).json({ message: "Password changed successfully" });
+        return successResponse(res, "Password changed successfully");
     }, "USER_CHANGE_PASSWORD_ERROR"
 );
 
@@ -190,36 +196,29 @@ export const deactivateAccount = asyncHandler(
         const { userId } = req.user;
         const { password } = req.body;
 
-        if (!password) {
-            return res.status(400).json({ error: "Password is required to deactivate account" });
-        }
+        if (!password) return errorResponse(res, "Password is required to deactivate account");
 
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return errorResponse(res, "User not found", 404);
 
         const account = await Account.findOne({ email: user.email, role: "user" });
-        if (!account) {
-            return res.status(404).json({ error: "Account not found" });
-        }
+        if (!account) return errorResponse(res, "Account not found", 404);
 
         const isMatch = await bcrypt.compare(password, account.password);
-        if (!isMatch) {
-            return res.status(401).json({ error: "Invalid password" });
-        }
+        if (!isMatch) return errorResponse(res, "Invalid password", 401);
 
         user.isActive = false;
         await user.save();
 
-        const isLive = process.env.MODE === "production";
-        res.clearCookie("accessToken", {
-            httpOnly: true,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-            path: "/"
-        });
+        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+        // res.clearCookie("accessToken", {
+        //     httpOnly: true,
+        //     secure: isSecure,
+        //     sameSite: isSecure ? "none" : "lax",
+        //     path: "/"
+        // });
+        clearAuthCookie(res, req);
 
-        return res.status(200).json({ message: "Account deactivated successfully" });
+        return successResponse(res, "Account deactivated successfully");
     }, "USER_DEACTIVATE_ACCOUNT_ERROR"
 );

@@ -30,14 +30,15 @@ const workStatusSchema = new mongoose.Schema(
             ref: "Shift"
         },
 
-        status: String,
+        status: {
+            type: String,
+            enum: ["Present", "Absent", "Late", "HalfDay", "OnLeave", "Holiday"],
+            required: true
+        }
     },
     { timestamps: true }
 );
 
-workStatusSchema.index(
-    { userId: 1, date: 1 },
-    { unique: true }
-);
+workStatusSchema.index({ userId: 1, date: 1 }, { unique: true });
 
 export default mongoose.model("WorkStatus", workStatusSchema);

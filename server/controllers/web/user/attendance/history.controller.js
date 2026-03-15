@@ -2,6 +2,7 @@ import Attendance from "#models/Attendance.js";
 import User from "#models/User.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 
 export const getMyAttendance = asyncHandler(
     async (req, res) => {
@@ -23,11 +24,26 @@ export const getMyAttendance = asyncHandler(
             filter.push({ $match: { status } });
         }
 
+        filter.push({
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization"
+            }
+        });
+        filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
+        filter.push({
+            $addFields: {
+                organizationName: "$organization.name"
+            }
+        });
+        filter.push({ $project: { organization: 0 } });
         filter.push({ $sort: { date: -1 } });
 
         const pagination = await Pagination(Attendance, page, limit, filter);
 
-        return res.status(200).json({
+        return successResponse(res, "Attendance fetched", {
             totalRecords: pagination.totalRecords,
             totalPages: pagination.totalPages,
             attendance: pagination.documents
@@ -40,24 +56,34 @@ export const getAttendanceByDate = asyncHandler(
         const { userId } = req.user;
         const { date } = req.query;
 
-        if (!date) {
-            return res.status(400).json({ error: "Date is required" });
-        }
+        if (!date) return errorResponse(res, "Date is required");
 
         const queryDate = new Date(date);
         const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
         const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
 
-        const attendance = await Attendance.findOne({
-            userId,
-            date: { $gte: startOfDay, $lte: endOfDay }
-        });
+        const [attendance] = await Attendance.aggregate([
+            { $match: { userId: new mongoose.Types.ObjectId(userId), date: { $gte: startOfDay, $lte: endOfDay } } },
+            {
+                $lookup: {
+                    from: "organizations",
+                    localField: "organizationId",
+                    foreignField: "_id",
+                    as: "organization"
+                }
+            },
+            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    organizationName: "$organization.name"
+                }
+            },
+            { $project: { organization: 0 } }
+        ]);
 
-        if (!attendance) {
-            return res.status(404).json({ error: "No attendance record found for the given date" });
-        }
+        if (!attendance) return errorResponse(res, "No attendance record found for the given date", 404);
 
-        return res.status(200).json(attendance);
+        return successResponse(res, "Attendance fetched", attendance);
     }, "USER_GET_ATTENDANCE_BY_DATE_ERROR"
 );
 
@@ -66,9 +92,7 @@ export const getMyAttendanceSummary = asyncHandler(
         const { userId } = req.user;
         const { month, year } = req.query;
 
-        if (!month || !year) {
-            return res.status(400).json({ error: "Month and year are required" });
-        }
+        if (!month || !year) return errorResponse(res, "Month and year are required");
 
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -92,6 +116,6 @@ export const getMyAttendanceSummary = asyncHandler(
             }
         });
 
-        return res.status(200).json(summary);
+        return successResponse(res, "Attendance summary fetched", summary);
     }, "USER_GET_ATTENDANCE_SUMMARY_ERROR"
 );

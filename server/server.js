@@ -7,16 +7,16 @@ import init from './cleanup/cleanDB.js';
 import app from "./app/app.js";
 import mongooseConfig from "./config/mongoose.js";
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
 socket(server);
 
 (async () => {
     await mongooseConfig();
-    // await redis.connect();
+    await redis.connect();
     server.listen(PORT, () => {
-        console.log(`[Server] Running ${PORT}`);
+        console.log(`[Server] Running on http://localhost:${PORT}`);
     });
     // init();
 })();

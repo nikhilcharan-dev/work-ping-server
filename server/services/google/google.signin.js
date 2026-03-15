@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import Account from "#models/Account.js";
 import Admin from "#models/Admin.js";
 import User from "#models/User.js";
+import { setAuthCookie } from "#utils/cookie.helper.js";
 
 const router = Router();
 
@@ -18,15 +19,20 @@ const SCOPE = [
 ].join(" ");
 
 router.get('/start', (req, res) => {
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent`;
+    const { platform } = req.query;
+    const state = platform === 'mobile' ? 'mobile' : 'web';
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent&state=${state}`;
     res.redirect(url);
 });
 
 router.get("/callback", async (req, res) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
+    const isMobile = state === "mobile";
 
     if (!code) {
-        return res.status(400).send("Authorization code missing");
+        return isMobile
+            ? res.status(400).json({ error: "Authorization code missing" })
+            : res.status(400).send("Authorization code missing");
     }
 
     try {
@@ -122,22 +128,27 @@ router.get("/callback", async (req, res) => {
 
         // Issue JWT with same payload structure as normal auth
         const token = jwt.sign(
-            { userId: profileId },
+            { userId: profileId, role: account.role },
             process.env.SECRET_KEY,
             { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
         );
 
         // Set httpOnly cookie (same as normal login)
-        const isLive = process.env.MODE === "production";
+        // const isLive = process.env.MODE === "production";
+        // res.cookie("accessToken", token, {
+        //     httpOnly: true,
+        //     secure: isLive,
+        //     sameSite: isLive ? "none" : "lax",
+        //     maxAge: 1000 * 60 * 60 * 24
+        // });
+        setAuthCookie(res, req, token);
 
-        res.cookie("accessToken", token, {
-            httpOnly: true,
-            secure: isLive,
-            sameSite: isLive ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 24
-        });
+        if (isMobile) {
+            // Mobile: redirect to app deep link with token
+            return res.redirect(`reback://auth?token=${encodeURIComponent(token)}&role=${account.role}`);
+        }
 
-        // Send back to frontend via postMessage
+        // Web: send back to frontend via postMessage
         const safeToken = JSON.stringify(token);
         const targetOrigin = JSON.stringify(CLIENT_URL);
         res.status(200).send(`
@@ -156,6 +167,9 @@ router.get("/callback", async (req, res) => {
             "Google OAuth error:",
             error.response?.data || error.message
         );
+        if (isMobile) {
+            return res.redirect(`reback://auth?error=${encodeURIComponent("Google OAuth failed")}`);
+        }
         res.status(500).send("OAuth Error");
     }
 });

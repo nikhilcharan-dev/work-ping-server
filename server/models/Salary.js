@@ -18,7 +18,13 @@ const salarySchema = new mongoose.Schema(
 
         role: { type: String, required: true },
 
-        month: { type: String, required: true, index: true },
+        // Format: "YYYY-MM" e.g. "2024-03"
+        month: {
+            type: String,
+            required: true,
+            index: true,
+            match: [/^\d{4}-(0[1-9]|1[0-2])$/, "month must be in YYYY-MM format"]
+        },
 
         daysPresent: { type: Number, required: true },
         lopDays: { type: Number, required: true },
@@ -42,9 +48,6 @@ const salarySchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-salarySchema.index(
-    { userId: 1, month: 1 },
-    { unique: true }
-);
+salarySchema.index({ userId: 1, month: 1 }, { unique: true });
 
 export default mongoose.model("Salary", salarySchema);

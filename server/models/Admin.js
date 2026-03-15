@@ -20,7 +20,10 @@ const adminSchema = new mongoose.Schema(
             ref: "Plan"
         },
 
-        paymentId : {}
+        paymentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Payment"
+        }
     },
     { timestamps: true }
 );

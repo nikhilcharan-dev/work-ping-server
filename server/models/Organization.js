@@ -1,19 +1,22 @@
 import mongoose from "mongoose";
 
 const organizationSchema = new mongoose.Schema(
-    {   
-        name: { type: String, required: true, index: true },
+    {
+        name: { type: String, required: true, unique: true, index: true },
 
-        type: { type: String },
+        type: { type: String, trim: true },
 
         clDays: { type: Number, default: 12 },
 
         description: { type: String },
 
-        IPWhitelist: [{ type: String, required: true,index: true }],
+        IPWhitelist: [{ type: String }],
 
-        foundedAt: { type: Date }
+        foundedAt: { type: Date },
 
+        coordinates: [{ type: Number }],
+
+        msl: { type: String }
     },
     { timestamps: true }
 );

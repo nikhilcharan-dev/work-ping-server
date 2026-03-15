@@ -14,8 +14,24 @@ const app = express();
 
 app.get("/", (req, res) => {
     res.status(200).json({
-        status: "success",
-        message: "Server is updated"
+        status: "Running",
+        contributors: [
+            {
+                name: "Nikhil Charan",
+                role: "Developer",
+                github: "https://github.com/nikhilcharan-dev"
+            },
+            {
+                name: "Lova Reddy",
+                role: "Developer",
+                github: "https://github.com/Lova-Reddy"
+            },
+            {
+                name: "Umar",
+                role: "Developer",
+                github: "https://github.com/shaikumar0"
+            }
+        ]
     });
 });
 

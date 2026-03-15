@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-
 /*
     @password & authentication is moved to Account Schema
  */
@@ -10,9 +9,9 @@ const userSchema = new mongoose.Schema(
 
         email: { type: String, required: true, unique: true, index: true },
 
-        phone: { type: String, unique: true, required: true, sparse: true },
+        phone: { type: String, unique: true, required: true },
 
-        employeeId: { type: String, unique: true, required: true },
+        employeeId: { type: String, required: true },
 
         gender: {
             type: String,
@@ -29,7 +28,7 @@ const userSchema = new mongoose.Schema(
 
         profileImage: {
             type: String,
-            default: null,
+            default: null
         },
 
         salary: { type: Number, default: 0 },
@@ -46,7 +45,6 @@ const userSchema = new mongoose.Schema(
             index: true
         },
 
-        // skills links experience
         role: {
             type: String,
             enum: ["manager", "teamLead", "employee"],
@@ -54,15 +52,17 @@ const userSchema = new mongoose.Schema(
             index: true
         },
 
-        isActive: { type: Boolean, default: true, index: true }
+        isActive: { type: Boolean, default: true, index: true },
 
+        workType: {
+            type: String,
+            enum: ["remote", "onsite", "hybrid"],
+            required: true
+        }
     },
     { timestamps: true }
 );
 
-userSchema.index(
-    { _id: 1, teamId: 1 },
-    { unique: true }
-);
+userSchema.index({ organizationId: 1, employeeId: 1 }, { unique: true });
 
 export default mongoose.model("User", userSchema);

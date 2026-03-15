@@ -1,6 +1,7 @@
 import AdminOrg from "#models/Admin.Org.js";
 import Team from "#models/Team.js";
 import mongoose from "mongoose";
+import { successResponse } from "#utils/response.helper.js";
 
 const getOrganizationInfo = asyncHandler(async (req, res) => {
     console.log("you are in getOrgInfo");
@@ -46,7 +47,7 @@ const getOrganizationInfo = asyncHandler(async (req, res) => {
         }
     }
 
-    res.status(200).json(organizationInfo);
+    return successResponse(res, "Organization info fetched", organizationInfo);
 
 }, "ADMIN_GET_ORG_INFO_ERROR");
 

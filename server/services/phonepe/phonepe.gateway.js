@@ -1,59 +1,70 @@
 import Order from "#models/Order.js";
 import Plan from "#models/Plan.js";
-import {Router} from "express";
+import { Router } from "express";
 import axios from "axios";
+import { successResponse, errorResponse } from "#utils/response.helper.js";
 
 const router = Router();
 
 const PHONEPE_URI = process.env.PHONE_PE;
 
 const phonepeGateway = asyncHandler(
-    async(req, res) => {
-        const {planId} = req.body;
-        const {userId} = req.user;
-        if(!planId) {
-            return res.status(401).json({
-                error : "planId required"
-            })
+    async (req, res) => {
+        const { planId } = req.body;
+        const { userId } = req.user;
+
+        if (!planId) {
+            return errorResponse(res, "planId required", 400);
         }
 
         const plan = await Plan.findById(planId);
+        if (!plan) {
+            return errorResponse(res, "Invalid planId", 404);
+        }
 
-        if(!plan){
-            return res.status(401).json({
-                error: "invalid planId"
-            })
+        if (!plan.isActive) {
+            return errorResponse(res, "Plan is no longer available", 410);
         }
 
         const newOrder = await Order.create({
             userId,
             planId,
-            amount : plan.amount,
-            date: Date.now(),
+            amount: plan.amount,
+            date: Date.now()
         });
 
-        const phonepeRes =  axios.post(`${PHONEPE_URI}/api/payments/initiate-payment`, {
-            orderId : newOrder._id,
+        const phonepeRes = (await axios.post(`${PHONEPE_URI}/api/payments/initiate-payment`, {
+            orderId: newOrder._id,
             userId,
-            amount: planId.amount
-        }).data; // {orderId, state, expireAt : TimeStamp, redirectUrl}
+            amount: plan.amountInPaise   // PhonePe expects paise
+        })).data; // { orderId, state, expireAt, redirectUrl }
 
         newOrder.phonepeOrderId = phonepeRes.orderId;
-
         await newOrder.save();
 
-        await redis.set(`payment:${userId}`, {
+        const paymentMeta = {
             expireAt: phonepeRes.expireAt,
-            status: "Pending"
+            orderId:  newOrder._id,
+            planName: plan.name,
+            amount:   plan.amount,
+            status:   "Pending"
+        };
+
+        await redis.set(`payment:${userId}`, JSON.stringify(paymentMeta));
+
+        // Notify client — "Processing your payment..."
+        io.to(`payment:${userId}`).emit("payment:processing", {
+            orderId:  newOrder._id,
+            planName: plan.name,
+            amount:   plan.amount,
+            expireAt: phonepeRes.expireAt
         });
 
-
-        return res.status(200).json({
-            success: true,
-            redirectUrl: phonepeRes.data.redirectUrl
-        });     
-
-    }, "PHONEPE_GATEWAY_ERROR"
-)
+        return successResponse(res, "Payment initiated", { redirectUrl: phonepeRes.redirectUrl });
+    },
+    "PHONEPE_GATEWAY_ERROR"
+);
 
 router.post("/initiate-payment", phonepeGateway);
+
+export default router;

@@ -5,6 +5,7 @@ import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js
 
 import attendanceRoutes from "#webRoutes/user/attendance/router.js";
 import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
+import phonepeWebhookRouter from "#services/phonepe/phonepe.webhook.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import jwt from "jsonwebtoken";
@@ -19,18 +20,14 @@ export default function centralRoutes(app) {
         try {
             const cookie = req.cookies?.accessToken;
             if (!cookie) {
-                return res.status(403).json({
-                    error: "Unauthorized",
-                })
+                return res.status(403).json({ type: "error", message: "Unauthorized" });
             }
 
             let decoded;
             try {
                 decoded = jwt.verify(cookie, process.env.SECRET_KEY);
             } catch (jwtErr) {
-                return res.status(403).json({
-                    error: "Unauthorized",
-                })
+                return res.status(403).json({ type: "error", message: "Unauthorized" });
             }
             const { userId } = decoded;
 
@@ -44,19 +41,16 @@ export default function centralRoutes(app) {
             }
 
             if (!profile) {
-                return res.status(404).json({ error: "User not found" });
+                return res.status(404).json({ type: "error", message: "User not found" });
             }
 
-            const authData = await Account.findOne({ email: profile.email}).lean();
+            const authData = await Account.findOne({ email: profile.email }).lean();
 
-
-            res.status(200).json({ ...authData, ...profile, role });
+            res.status(200).json({ type: "success", message: "Verified", data: { ...authData, ...profile, role } });
 
         } catch (err) {
             console.log(err)
-            return res.status(500).send({
-                error: "Internal Server Error",
-            })
+            return res.status(500).json({ type: "error", message: "Internal Server Error" });
         }
     });
 
@@ -73,4 +67,7 @@ export default function centralRoutes(app) {
 
     // Attendance
     app.use("/api/attendance", validateCookie, attendanceRoutes);
+
+    // PhonePe webhook — no auth (PhonePe calls this directly, verified by signature)
+    app.use("/api/phonepe", phonepeWebhookRouter);
 }
