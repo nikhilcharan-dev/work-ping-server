@@ -16,8 +16,8 @@ import getEmployee from "#webRoutes/admin/employee/router.js";
 import projectRoutes from "#webRoutes/admin/project/router.js"
 import deleteEmployeesById from "#webController/admin/deleteEmployees/deleteEmployeesByid.js";
 import paymentsRouter from "#webRoutes/admin/payments/router.js";
-import ordersRouter from "#webRoutes/admin/orders/router.js";
 import phonepeGatewayRouter from "#services/phonepe/phonepe.gateway.js";
+import holidayRouter from "#webRoutes/admin/holiday/router.js";
 
 const adminOnly = [validateCookie, requireRole("admin")];
 
@@ -52,4 +52,6 @@ export default function adminRoutes(app) {
     // Admin Profile
     app.use("/api/admin/profile", ...adminOnly, profileRoutes);
 
+    // Holiday
+    app.use("/api/admin/holiday", ...adminOnly, holidayRouter);
 }
