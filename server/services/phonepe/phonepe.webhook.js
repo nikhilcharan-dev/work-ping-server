@@ -3,9 +3,11 @@ import Payment from "#models/Payment.js";
 import Subscription from "#models/Subscription.js";
 import Plan from "#models/Plan.js";
 import OrgAdmin from "#models/Admin.Org.js";
+import Admin from "#models/Admin.js";
 import { Router } from "express";
 import crypto from "crypto";
 import mongoose from "mongoose";
+import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
 const router = Router();
 
@@ -144,6 +146,15 @@ const phonepeWebhook = asyncHandler(
                         billingCycle: plan.billingCycle,
                         subscriptionEnds: endDate
                     });
+
+                    // WhatsApp payment confirmation — fire-and-log
+                    const admin = await Admin.findById(order.userId).lean();
+                    if (admin?.phone) {
+                        sendWhatsApp(
+                            admin.phone,
+                            `*Payment Successful* 💳\nHi ${admin.name}, your payment of *₹${amount / 100}* for the *${plan.name}* plan has been confirmed.\nSubscription active till *${endDate.toLocaleDateString("en-IN")}*.`
+                        ).catch(err => console.error("[WhatsApp] Payment notification failed:", err.message));
+                    }
                 }
 
                 // Clear Redis pending-payment key

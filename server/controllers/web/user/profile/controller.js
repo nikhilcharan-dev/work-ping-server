@@ -2,6 +2,7 @@ import User from '#models/User.js';
 import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+import { uploadFile, deleteObject } from "#services/storage/oracle.service.js";
 import { formatUserDates } from "#helpers/data.reducer.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { clearAuthCookie } from "#utils/cookie.helper.js";
@@ -156,6 +157,30 @@ export const updateProfile = asyncHandler(
 
         return successResponse(res, "Profile updated successfully", formatUserDates(enrichedUser));
     }, "USER_UPDATE_PROFILE_ERROR"
+);
+
+export const uploadProfilePhoto = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        if (!req.file) return errorResponse(res, "photo is required");
+
+        const user = await User.findById(userId);
+        if (!user) return errorResponse(res, "User not found", 404);
+
+        if (user.profileImage) {
+            deleteObject(process.env.ORACLE_BUCKET_PROFILES, user.profileImage);
+        }
+
+        const { objectName } = await uploadFile(
+            process.env.ORACLE_BUCKET_PROFILES,
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype
+        );
+
+        await User.findByIdAndUpdate(userId, { profileImage: objectName });
+        return successResponse(res, "Profile photo uploaded", { profileImage: objectName });
+    }, "USER_UPLOAD_PHOTO_ERROR"
 );
 
 export const changePassword = asyncHandler(

@@ -18,6 +18,8 @@ import projectRoutes from "#webRoutes/admin/project/router.js"
 import deleteEmployeesById from "#webController/admin/deleteEmployees/deleteEmployeesByid.js";
 import paymentsRouter from "#webRoutes/admin/payments/router.js";
 import ordersRouter from "#webRoutes/admin/orders/router.js";
+import plansRouter from "#webRoutes/admin/plans/router.js";
+import faceEnrollRouter from "#webRoutes/admin/faceEnroll/router.js";
 import phonepeGatewayRouter from "#services/phonepe/phonepe.gateway.js";
 import holidayRouter from "#webRoutes/admin/holiday/router.js";
 
@@ -48,6 +50,12 @@ export default function adminRoutes(app) {
     // Payments & Orders (read)
     app.use("/api/admin/payments", ...adminOnly, paymentsRouter);
     app.use("/api/admin/orders", ...adminOnly, ordersRouter);
+
+    // Face enrollment
+    app.use("/api/admin/employees", ...adminOnly, faceEnrollRouter);
+
+    // Plans
+    app.use("/api/admin/plans", ...adminOnly, plansRouter);
 
     // PhonePe — initiate payment (admin only)
     app.use("/api/admin/phonepe", ...adminOnly, phonepeGatewayRouter);

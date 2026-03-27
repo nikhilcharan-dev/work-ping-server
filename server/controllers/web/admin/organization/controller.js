@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import Organization from '#models/Organization.js';
 import OrgAdmin from '#models/Admin.Org.js';
-import Admin from '#models/Admin.js'
+import Admin from '#models/Admin.js';
+import { uploadFile, deleteObject } from "#services/storage/oracle.service.js";
 import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -377,6 +378,32 @@ const removeAdmin = asyncHandler(async (req, res) => {
     return successResponse(res, "Admin removed successfully");
 }, "ADMIN_REMOVE_ADMIN_ERROR");
 
+const uploadOrgLogo = asyncHandler(async (req, res) => {
+    const { organizationId } = req.body;
+
+    const idValidation = validateObjectId(organizationId, "Organization ID");
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+    if (!req.file) return errorResponse(res, "logo is required");
+
+    const org = await Organization.findById(organizationId);
+    if (!org) return errorResponse(res, "Organization not found", 404);
+
+    if (org.logo) {
+        deleteObject(process.env.ORACLE_BUCKET_ORG_LOGOS, org.logo);
+    }
+
+    const { objectName } = await uploadFile(
+        process.env.ORACLE_BUCKET_ORG_LOGOS,
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+    );
+
+    await Organization.findByIdAndUpdate(organizationId, { logo: objectName });
+    return successResponse(res, "Organization logo uploaded", { logo: objectName });
+}, "ADMIN_UPLOAD_ORG_LOGO_ERROR");
+
 export {
     addOrganization,
     updateOrganization,
@@ -388,4 +415,5 @@ export {
     findAdminByEmail,
     inviteAdmin,
     removeAdmin,
+    uploadOrgLogo,
 }

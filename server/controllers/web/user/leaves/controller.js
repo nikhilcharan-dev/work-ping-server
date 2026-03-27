@@ -1,6 +1,7 @@
 import Leave from "#models/Leave.js";
 import User from "#models/User.js";
 import Organization from "#models/Organization.js";
+import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -50,6 +51,16 @@ export const applyLeave = asyncHandler(
             appliedBy: userId,
             status: "pending"
         });
+
+        // WhatsApp confirmation — fire-and-log
+        const dateList = normalizedDates
+            .slice(0, 3)
+            .map(d => new Date(d).toLocaleDateString("en-IN"))
+            .join(", ") + (normalizedDates.length > 3 ? ` +${normalizedDates.length - 3} more` : "");
+        sendWhatsApp(
+            user.phone,
+            `*Leave Application Submitted* 📋\nHi ${user.name}, your leave request for *${normalizedDates.length} day(s)* (${dateList}) has been submitted and is pending approval.`
+        ).catch(err => console.error("[WhatsApp] Leave notification failed:", err.message));
 
         return successResponse(res, "Leave application submitted successfully", leave, 201);
     }, "USER_APPLY_LEAVE_ERROR"

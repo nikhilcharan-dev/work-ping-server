@@ -23,7 +23,9 @@ const adminSchema = new mongoose.Schema(
         paymentId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Payment"
-        }
+        },
+
+        profileImage: { type: String }
     },
     { timestamps: true }
 );

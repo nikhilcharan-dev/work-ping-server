@@ -7,6 +7,8 @@ import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validateEmail } from "#utils/validators.js";
+import { enrollFace } from "#services/face_recognition/enroll.js";
+import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
 const insertByForm = asyncHandler(
 async (req, res) => {
@@ -194,7 +196,7 @@ async (req, res) => {
 
         await Account.create([accountData], { session });
 
-        // Create govt proof � always created when aadhaar is provided
+        // Create govt proof � always created when aadhaar is provided
         const govtProofData = {
             aadhaarNumber: String(aadhaar).trim(),
             userId: newUser._id
@@ -207,6 +209,19 @@ async (req, res) => {
         await GovtProof.create([govtProofData], { session });
 
         await session.commitTransaction();
+
+        // Optional face enrollment — fire-and-log, does not affect employee creation
+        if (req.file) {
+            enrollFace(req.file.buffer, String(employeeId).trim()).catch(err => {
+                console.error(`[FaceAPI] Enrollment failed for ${employeeId}:`, err?.response?.data || err.message);
+            });
+        }
+
+        // WhatsApp welcome — fire-and-log
+        sendWhatsApp(
+            String(phone).trim(),
+            `*Welcome to ${organization.name}!* 🎉\nHi ${String(name).trim()}, your WorkPing account is ready.\n\n*Login:* ${normalizedEmail}\n*Password:* ${process.env.USER_DEFAULT_PASSWORD || "WorkPing@123"}\n*Employee ID:* ${String(employeeId).trim()}\n\nPlease change your password after first login.`
+        ).catch(err => console.error("[WhatsApp] Welcome message failed:", err.message));
 
         return successResponse(res, "Employee added successfully", {
             _id: newUser._id,

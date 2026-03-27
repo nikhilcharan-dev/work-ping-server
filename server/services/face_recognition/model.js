@@ -1,33 +1,25 @@
 import axios from "axios";
-import FormData from "form-data";
-import https from "https";
-import 'dotenv/config';
 
-// Remove after hosting flask
-const agent = new https.Agent({
-    rejectUnauthorized: false // allow self-signed
-});
+const FACE_API_URI = process.env.IMAGE_CLASSIFICATION_URI;
 
-const IMAGE_IDENTIFICATION_URI = process.env.IMAGE_CLASSIFICATION_URI;
-
-const recognize = async (req) => {
-    const formData = new FormData();
-    formData.append("image", req.file.buffer, {
-        filename: "frame.jpg",
-        contentType: req.file.mimetype
-    });
+/**
+ * Detect a face from an image buffer.
+ * Returns the face-api response: { success, person, confidence, ... }
+ */
+const recognize = async (imageBuffer, deviceId, locationId = "main-entrance") => {
+    const image_base64 = imageBuffer.toString("base64");
 
     const response = await axios.post(
-        `${IMAGE_IDENTIFICATION_URI}/recognize`, // 👈 Flask detect API
-        formData,
+        `${FACE_API_URI}/api/v1/detect`,
         {
-            headers: formData.getHeaders(),
-            timeout: 100000
+            image_base64,
+            device_id: deviceId,
+            location_id: locationId
         },
-        { httpsAgent: agent }
+        { timeout: 30000 }
     );
-    console.log(response.data);
+
     return response.data;
-}
+};
 
 export default recognize;

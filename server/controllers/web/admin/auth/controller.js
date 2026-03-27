@@ -3,8 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import mongoose from "mongoose";
 import Account from "#models/Account.js";
-import mailClient from "#utils/mailClient.js";
-import axios from "axios";
+import { sendEmailOTP, verifyEmailOTP } from "#services/mailer/mail.service.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { setAuthCookie, clearAuthCookie } from "#utils/cookie.helper.js";
 import {
@@ -159,14 +158,13 @@ export const forgot_password_send_otp = asyncHandler(
         const admin = await Admin.findOne({ email: emailValidation.normalized });
         if (!admin) return errorResponse(res, "Admin not found", 404);
 
-        const send_otp_end_point = process.env.MAIL_SERVICE_URI + "/send-email-otp";
-        let send_otp;
+        let result;
         try {
-            send_otp = await axios.post(send_otp_end_point, { email: emailValidation.normalized });
+            result = await sendEmailOTP(emailValidation.normalized);
         } catch (err) {
             return errorResponse(res, "Failed to send OTP", 500);
         }
-        if (!send_otp.data || send_otp.data.status !== "success") {
+        if (!result || result.status !== "success") {
             return errorResponse(res, "Something went wrong", 401);
         }
         return successResponse(res, "OTP sent successfully");
@@ -182,14 +180,13 @@ export const forgot_password_verify_otp = asyncHandler(
         const emailValidation = validateEmail(email);
         if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
 
-        const verify_otp_end_point = process.env.MAIL_SERVICE_URI + "/verify-email-otp";
-        let verify_otp;
+        let result;
         try {
-            verify_otp = await axios.post(verify_otp_end_point, { email: emailValidation.normalized, otp });
+            result = await verifyEmailOTP(emailValidation.normalized, otp);
         } catch (err) {
             return errorResponse(res, "Failed to verify OTP", 500);
         }
-        if (!verify_otp.data || verify_otp.data.status !== "success") {
+        if (!result || result.status !== "success") {
             return errorResponse(res, "Invalid OTP", 401);
         }
         return successResponse(res, "OTP Verification Successful");
@@ -211,14 +208,13 @@ export const forgot_password_reset = asyncHandler(
         const passwordValidation = validatePassword(newPassword);
         if (!passwordValidation.valid) return errorResponse(res, passwordValidation.error);
 
-        const verify_otp_end_point = process.env.MAIL_SERVICE_URI + "/verify-email-otp";
-        let verify_otp;
+        let result;
         try {
-            verify_otp = await axios.post(verify_otp_end_point, { email: emailValidation.normalized, otp });
+            result = await verifyEmailOTP(emailValidation.normalized, otp);
         } catch (err) {
             return errorResponse(res, "Failed to verify OTP", 500);
         }
-        if (!verify_otp.data || verify_otp.data.status !== "success") {
+        if (!result || result.status !== "success") {
             return errorResponse(res, "Invalid OTP", 401);
         }
 

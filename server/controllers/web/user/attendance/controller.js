@@ -1,5 +1,3 @@
-import axios from "axios";
-import FormData from "form-data";
 import Attendance from "#models/Attendance.js";
 import User from "#models/User.js";
 import Organization from "#models/Organization.js";
@@ -7,6 +5,8 @@ import { validateArray } from "#utils/validators.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validate3DLocation } from "#utils/location.js";
 import mongoose from "mongoose";
+import recognize from "#services/face_recognition/model.js";
+import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
 /**
  * Perform 3D Location Validation before marking attendance
@@ -72,29 +72,21 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
         }
     }
 
-    const formData = new FormData();
-    frames.forEach((file, idx) => {
-        formData.append("frames", file.buffer, {
-            filename: `frame_${idx}.jpg`,
-            contentType: file.mimetype
-        });
-    });
-    formData.append("user_id", userId);
+    // Use the first frame for face recognition
+    const deviceId = req.body.device_id || req.headers["x-device-id"] || "web";
+    const locationId = req.body.location_id || "main-entrance";
 
-    const flaskRes = await axios.post(
-        (process.env.FLASK_SERVICE_URI || "http://127.0.0.1:5000") + "/verify-attendance",
-        formData,
-        {
-            headers: formData.getHeaders(),
-            timeout: 15000
-        }
-    );
+    const faceRes = await recognize(frames[0].buffer, deviceId, locationId);
 
-    const { verified, confidence } = flaskRes.data;
-
-    if (!verified || confidence < 0.75) {
-        return errorResponse(res, "Attendance verification failed", 403);
+    if (!faceRes.success || faceRes.confidence < 0.6) {
+        return errorResponse(res, "Face not recognised. Please try again in better lighting", 403);
     }
+
+    if (faceRes.person?.id !== user.employeeId) {
+        return errorResponse(res, "Identity mismatch. Your face does not match this account", 403);
+    }
+
+    const confidence = faceRes.confidence;
 
     // 4. Log Attendance in DB
     const today = new Date();
@@ -120,7 +112,15 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
         await attendance.save();
     }
 
-    return successResponse(res, "Attendance marked", { 
+    // WhatsApp check-in / check-out notification — fire-and-log
+    const action = attendance.checkOut ? "Check-Out" : "Check-In";
+    const timeStr = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+    sendWhatsApp(
+        user.phone,
+        `*WorkPing Attendance* ✅\nHi ${user.name}, your *${action}* at *${timeStr}* has been marked successfully.\n_Employee ID: ${user.employeeId}_`
+    ).catch(err => console.error("[WhatsApp] Attendance notification failed:", err.message));
+
+    return successResponse(res, "Attendance marked", {
         confidence,
         name: user?.name || "User",
         employeeId: user?.employeeId,

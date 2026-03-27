@@ -5,6 +5,7 @@ import TeamMembership from "#models/TeamMembership.js";
 import mongoose from "mongoose";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validateObjectId } from "#utils/validators.js";
+import { deleteFace } from "#services/face_recognition/enroll.js";
 
 const deleteEmployeesById = asyncHandler(
     async (req, res) => {
@@ -21,7 +22,7 @@ const deleteEmployeesById = asyncHandler(
 
         const objectIds = data.map(id => new mongoose.Types.ObjectId(id));
 
-        const employees = await User.find({ _id: { $in: objectIds } }, { email: 1 }).lean();
+        const employees = await User.find({ _id: { $in: objectIds } }, { email: 1, employeeId: 1 }).lean();
         if (employees.length === 0) return errorResponse(res, "No employees found with the given IDs", 404);
 
         const emails = employees.map(e => e.email);
@@ -39,6 +40,11 @@ const deleteEmployeesById = asyncHandler(
             throw err;
         } finally {
             session.endSession();
+        }
+
+        // Remove faces from FAISS index — fire-and-log
+        for (const emp of employees) {
+            if (emp.employeeId) deleteFace(emp.employeeId);
         }
 
         return successResponse(res, "Employees deleted successfully", { deletedCount: employees.length });

@@ -16,7 +16,9 @@ const organizationSchema = new mongoose.Schema(
 
         coordinates: [{ type: Number }],
 
-        msl: { type: String }
+        msl: { type: String },
+
+        logo: { type: String }
     },
     { timestamps: true }
 );

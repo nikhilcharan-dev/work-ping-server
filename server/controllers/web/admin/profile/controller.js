@@ -3,6 +3,7 @@ import Account from "#models/Account.js";
 import AdminOrg from "#models/Admin.Org.js";
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+import { uploadFile, deleteObject } from "#services/storage/oracle.service.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import {
     validateEmail,
@@ -109,6 +110,30 @@ export const updateProfile = asyncHandler(
 
         return successResponse(res, "Admin profile updated successfully", updatedAdmin);
     }, "ADMIN_UPDATE_PROFILE_ERROR"
+);
+
+export const uploadProfilePhoto = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        if (!req.file) return errorResponse(res, "photo is required");
+
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        if (admin.profileImage) {
+            deleteObject(process.env.ORACLE_BUCKET_PROFILES, admin.profileImage);
+        }
+
+        const { objectName } = await uploadFile(
+            process.env.ORACLE_BUCKET_PROFILES,
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype
+        );
+
+        await Admin.findByIdAndUpdate(userId, { profileImage: objectName });
+        return successResponse(res, "Profile photo uploaded", { profileImage: objectName });
+    }, "ADMIN_UPLOAD_PHOTO_ERROR"
 );
 
 export const changePassword = asyncHandler(
