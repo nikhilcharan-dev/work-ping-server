@@ -40,12 +40,13 @@ export default function socket(server) {
                 const raw  = await redis.get(`payment:${userId}`);
                 const data = raw ? JSON.parse(raw) : null;
 
-                if (!data) {
-                    // No active payment — may have already completed or expired
-                    socket.emit("payment:status", { status: "Expired" });
+                if (data) {
+                    // Replay current state (Pending, Success, etc.)
+                    socket.emit("payment:status", data);
                 } else {
-                    // Replay processing state so late-joiners see the spinner
-                    socket.emit("payment:processing", data);
+                    // No active payment in Redis — could be completed or expired
+                    // We check if it's "Completed" by emitting a generic status
+                    socket.emit("payment:status", { status: "None" });
                 }
             } catch (err) {
                 console.error("[Socket] redis.get error:", err.message);

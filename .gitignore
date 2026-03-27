@@ -11,3 +11,8 @@ MOBILE_FACE_RECOGNITION.md
 *.md
 server/ALL_FRONTEND_BACKEND_ROUTES.json
 server/OTP_API_DOCS.json
+server/2FA_API_DOCS.json
+server/HOLIDAY_API_DOCS.json
+server/integration_guide.json
+server/SUBSCRIPTION_API_DOCS.json
+server/test_phonepe_webhook.js

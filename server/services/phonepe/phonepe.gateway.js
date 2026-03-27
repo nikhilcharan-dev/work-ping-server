@@ -1,5 +1,6 @@
 import Order from "#models/Order.js";
 import Plan from "#models/Plan.js";
+import OrgAdmin from "#models/Admin.Org.js";
 import { Router } from "express";
 import axios from "axios";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -26,17 +27,21 @@ const phonepeGateway = asyncHandler(
             return errorResponse(res, "Plan is no longer available", 410);
         }
 
+        const orgAdmin = await OrgAdmin.findOne({ primaryAdmin: userId }).lean();
+        const organizationId = orgAdmin?.organizationId ?? null;
+
         const newOrder = await Order.create({
             userId,
             planId,
             amount: plan.amount,
-            date: Date.now()
+            date: Date.now(),
+            organizationId
         });
 
         const phonepeRes = (await axios.post(`${PHONEPE_URI}/api/payments/initiate-payment`, {
             orderId: newOrder._id,
             userId,
-            amount: plan.amountInPaise   // PhonePe expects paise
+            amount: plan.amount   // microservice converts to paise
         })).data; // { orderId, state, expireAt, redirectUrl }
 
         newOrder.phonepeOrderId = phonepeRes.orderId;

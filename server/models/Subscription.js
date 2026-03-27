@@ -69,6 +69,10 @@ const SubscriptionSchema = new mongoose.Schema(
     autoRenew: {
         type: Boolean,
         default: true
+    },
+
+    cancelledAt: {
+        type: Date
     }
 
 },

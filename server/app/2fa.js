@@ -34,6 +34,14 @@ export default function twoFactorRoutes(app) {
             });
         },
 
+        reset2FA: async (userId) => {
+            const user = await Admin.findById(userId);
+            await Account.findOneAndUpdate({email: user.email}, {
+                twoFactorEnabled: false,
+                twoFactorSecret: null
+            });
+        },
+
     });
     console.log("[2FA] Initialised")
     return router;

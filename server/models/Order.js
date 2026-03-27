@@ -44,6 +44,18 @@ const orderSchema = new mongoose.Schema(
             type: String,
             unique: true,
             sparse: true
+        },
+
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organization",
+            index: true
+        },
+
+        paymentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Payment",
+            sparse: true
         }
     },
     { timestamps: true }

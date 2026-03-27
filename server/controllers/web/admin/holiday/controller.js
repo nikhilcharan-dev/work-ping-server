@@ -8,7 +8,7 @@ import {
 } from "#utils/validators.js";
 
 const addHoliday = asyncHandler(async (req, res) => {
-    let { name, type, date, description, organizationId, isWorkingDay } = req.body;
+    let { name, type, date, description, organizationId } = req.body;
 
     const orgIdValidation = validateObjectId(organizationId, "Organization ID");
     if (!orgIdValidation.valid) return errorResponse(res, orgIdValidation.error);
@@ -27,8 +27,7 @@ const addHoliday = asyncHandler(async (req, res) => {
         name: nameValidation.normalized,
         type: typeValidation.normalized,
         date: dateValidation.normalized,
-        description: description ? String(description).trim() : "",
-        isWorkingDay: !!isWorkingDay
+        description: description ? String(description).trim() : ""
     };
 
     const holiday = await Holiday.create(holidayData);
@@ -100,7 +99,6 @@ const updateHoliday = asyncHandler(async (req, res) => {
     }
 
     if (req.body.description !== undefined) updates.description = String(req.body.description).trim();
-    if (req.body.isWorkingDay !== undefined) updates.isWorkingDay = !!req.body.isWorkingDay;
 
     const updatedHoliday = await Holiday.findByIdAndUpdate(_id, updates, { new: true, runValidators: true }).lean();
     if (!updatedHoliday) return errorResponse(res, "Holiday not found", 404);

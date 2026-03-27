@@ -1,5 +1,6 @@
 import authRoutes from "#webRoutes/admin/auth/router.js";
 import otpRoutes from "#webRoutes/admin/otp/router.js";
+import subscriptionRouter from "#webRoutes/admin/subscriptions/router.js";
 import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
 import mailRouter from "#webRoutes/admin/mail/router.js";
 import organizationRouter from "#webRoutes/admin/organization/router.js"
@@ -16,6 +17,7 @@ import getEmployee from "#webRoutes/admin/employee/router.js";
 import projectRoutes from "#webRoutes/admin/project/router.js"
 import deleteEmployeesById from "#webController/admin/deleteEmployees/deleteEmployeesByid.js";
 import paymentsRouter from "#webRoutes/admin/payments/router.js";
+import ordersRouter from "#webRoutes/admin/orders/router.js";
 import phonepeGatewayRouter from "#services/phonepe/phonepe.gateway.js";
 import holidayRouter from "#webRoutes/admin/holiday/router.js";
 
@@ -25,6 +27,7 @@ export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
     app.use("/api/admin", ...adminOnly, profileRoutes);
     app.use("/api/admin/organization", ...adminOnly, organizationRouter);
+    app.use("/api/admin/subscriptions", ...adminOnly, subscriptionRouter);
     // OTP
     app.use("/api/admin/otp", otpRoutes);
     app.use("/api/admin/forgot-password", forgotPasswordRouter);
