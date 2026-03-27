@@ -7,6 +7,7 @@ import twoFactorRoutes from "./2fa.js";
 import centralWebRoutes from "./routes/web/routes.central.js";
 import adminWebRoutes from "./routes/web/routes.admin.js";
 import userWebRoutes from "./routes/web/routes.user.js";
+import internalRouter from "../routes/internal/router.js";
 
 import errorHandler from "../middleware/errorHandler.js";
 
@@ -41,6 +42,7 @@ twoFactorRoutes(app);
 centralWebRoutes(app);
 adminWebRoutes(app);
 userWebRoutes(app);
+app.use("/internal", internalRouter);
 
 app.use(errorHandler);
 
