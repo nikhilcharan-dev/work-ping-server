@@ -4,7 +4,6 @@ import Organization from "#models/Organization.js";
 import { validateArray } from "#utils/validators.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validate3DLocation } from "#utils/location.js";
-import mongoose from "mongoose";
 import recognize from "#services/face_recognition/model.js";
 import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
@@ -76,7 +75,7 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
     const deviceId = req.body.device_id || req.headers["x-device-id"] || "web";
     const locationId = req.body.location_id || "main-entrance";
 
-    const faceRes = await recognize(frames[0].buffer, deviceId, locationId);
+    const faceRes = await recognize(frames[0].buffer, deviceId, locationId, user.organizationId._id);
 
     if (!faceRes.success || faceRes.confidence < 0.6) {
         return errorResponse(res, "Face not recognised. Please try again in better lighting", 403);

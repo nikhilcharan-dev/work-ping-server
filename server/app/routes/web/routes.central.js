@@ -1,4 +1,5 @@
 import otpRoutes from "#webRoutes/admin/otp/router.js";
+import publicStatsRouter from "#webRoutes/public/stats.router.js";
 
 import googleServicesRoutes from "../../../services/google/google.signin.js"
 import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js"
@@ -70,4 +71,7 @@ export default function centralRoutes(app) {
 
     // PhonePe webhook — no auth (PhonePe calls this directly, verified by signature)
     app.use("/api/phonepe", phonepeWebhookRouter);
+
+    // Public stats — no auth
+    app.use("/api/public", publicStatsRouter);
 }

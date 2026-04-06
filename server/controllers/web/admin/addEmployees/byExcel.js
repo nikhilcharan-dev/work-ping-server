@@ -8,6 +8,7 @@ import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { validatePhone } from "#utils/validators.js";
 
 const insertByExcel = asyncHandler(
     async (req, res) => {
@@ -69,6 +70,13 @@ const insertByExcel = asyncHandler(
                     rowNumber,
                     rowData: row
                 });
+                continue;
+            }
+
+            // Validate phone format
+            const phoneValidation = validatePhone(row.phone);
+            if (!phoneValidation.valid) {
+                failedRecords.push({ error: phoneValidation.error, rowNumber, rowData: row });
                 continue;
             }
 
@@ -245,7 +253,7 @@ const insertByExcel = asyncHandler(
             const existingUser = await User.findOne({
                 $or: [
                     { email: email },
-                    { phone: String(row.phone).trim() },
+                    { phone: phoneValidation.normalized },
                     { employeeId: String(row.employeeId).trim(), organizationId: organization._id }
                 ]
             });
@@ -278,7 +286,7 @@ const insertByExcel = asyncHandler(
                 const userData = {
                     name: String(row.name).trim(),
                     email: email,
-                    phone: String(row.phone).trim(),
+                    phone: phoneValidation.normalized,
                     employeeId: String(row.employeeId).trim(),
                     organizationId: organization._id,
                     dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),

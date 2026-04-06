@@ -6,7 +6,7 @@ import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
-import { validateEmail } from "#utils/validators.js";
+import { validateEmail, validatePhone } from "#utils/validators.js";
 import { enrollFace } from "#services/face_recognition/enroll.js";
 import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
@@ -113,11 +113,14 @@ async (req, res) => {
     }
     console.log("Checkpoint 11");
 
+    const phoneValidation = validatePhone(phone);
+    if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
+
     // Check existing user (email/phone globally, employeeId within org)
     const existingUser = await User.findOne({
         $or: [
             { email: normalizedEmail },
-            { phone: String(phone).trim() },
+            { phone: phoneValidation.normalized },
             { employeeId: String(employeeId).trim(), organizationId: organization._id }
         ]
     });
@@ -141,7 +144,7 @@ async (req, res) => {
     const userData = {
         name: String(name).trim(),
         email: normalizedEmail,
-        phone: String(phone).trim(),
+        phone: phoneValidation.normalized,
         employeeId: String(employeeId).trim(),
         organizationId: organization._id,
         dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),

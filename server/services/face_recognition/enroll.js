@@ -3,27 +3,37 @@ import axios from "axios";
 const FACE_API_URI = process.env.IMAGE_CLASSIFICATION_URI;
 
 /**
- * Enroll a face into the FAISS index.
- * Label should be the employee's employeeId string.
- * Throws on failure.
+ * Enroll a face for an employee.
+ * Sends the raw image to the face-api which extracts the embedding
+ * and persists it in MongoDB.
+ *
+ * @param {Buffer} imageBuffer
+ * @param {object} user  Needs: employeeId, organizationId
  */
-export const enrollFace = async (imageBuffer, label) => {
+export const enrollFace = async (imageBuffer, user) => {
     const image_base64 = imageBuffer.toString("base64");
-    const response = await axios.post(`${FACE_API_URI}/api/v1/faiss/add`, {
+
+    const { data } = await axios.post(`${FACE_API_URI}/api/v1/enroll`, {
         image_base64,
-        label
+        employee_id: user.employeeId,
+        organization_id: user.organizationId.toString(),
     });
-    return response.data; // { success, label, total }
+
+    if (!data.success) {
+        throw new Error("Face API failed to enroll face");
+    }
+
+    return data;
 };
 
 /**
- * Remove a face from the FAISS index by label (employeeId).
+ * Remove a face embedding by employeeId.
  * Fire-and-forget safe — does not throw.
  */
-export const deleteFace = async (label) => {
+export const deleteFace = async (employeeId) => {
     try {
-        await axios.delete(`${FACE_API_URI}/api/v1/faiss/delete/${encodeURIComponent(label)}`);
+        await axios.delete(`${FACE_API_URI}/api/v1/embeddings/${encodeURIComponent(employeeId)}`);
     } catch (err) {
-        console.error(`[FaceAPI] Failed to delete face for label "${label}":`, err?.response?.data || err.message);
+        console.error(`[FaceAPI] Failed to delete face for "${employeeId}":`, err?.response?.data || err.message);
     }
 };

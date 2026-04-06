@@ -1,4 +1,5 @@
 import authRoutes from "#webRoutes/admin/auth/router.js";
+import { verifyPassword } from "#webController/admin/auth/controller.js";
 import otpRoutes from "#webRoutes/admin/otp/router.js";
 import subscriptionRouter from "#webRoutes/admin/subscriptions/router.js";
 import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
@@ -65,4 +66,7 @@ export default function adminRoutes(app) {
 
     // Holiday
     app.use("/api/admin/holiday", ...adminOnly, holidayRouter);
+
+    // Lock screen password verification (requires valid session cookie)
+    app.post("/api/admin/auth/verify-password", ...adminOnly, verifyPassword);
 }

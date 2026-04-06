@@ -62,8 +62,18 @@ const addOrganization = asyncHandler(async (req, res) => {
         orgData.foundedAt = foundedAtValidation.normalized;
     }
     if (IPWhitelist !== undefined) orgData.IPWhitelist = Array.isArray(IPWhitelist) ? IPWhitelist : [IPWhitelist];
-    if (req.body.coordinates !== undefined) orgData.coordinates = req.body.coordinates;
-    if (req.body.msl !== undefined) orgData.msl = String(req.body.msl).trim();
+    if (req.body.coordinates !== undefined) {
+        const coords = req.body.coordinates;
+        if (!Array.isArray(coords) || coords.length !== 2 || coords.some(v => typeof v !== "number" || isNaN(v)) || coords[0] < -90 || coords[0] > 90 || coords[1] < -180 || coords[1] > 180) {
+            return errorResponse(res, "coordinates must be [lat, lng] with lat -90..90 and lng -180..180");
+        }
+        orgData.coordinates = coords;
+    }
+    if (req.body.msl !== undefined) {
+        const msl = String(req.body.msl).trim();
+        if (!msl) return errorResponse(res, "msl cannot be empty");
+        orgData.msl = msl;
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -181,8 +191,18 @@ const updateOrganization = asyncHandler(async (req, res) => {
         updates.foundedAt = foundedAtValidation.normalized;
     }
     if (req.body.IPWhitelist !== undefined) updates.IPWhitelist = Array.isArray(req.body.IPWhitelist) ? req.body.IPWhitelist : [req.body.IPWhitelist];
-    if (req.body.coordinates !== undefined) updates.coordinates = req.body.coordinates;
-    if (req.body.msl !== undefined) updates.msl = String(req.body.msl).trim();
+    if (req.body.coordinates !== undefined) {
+        const coords = req.body.coordinates;
+        if (!Array.isArray(coords) || coords.length !== 2 || coords.some(v => typeof v !== "number" || isNaN(v)) || coords[0] < -90 || coords[0] > 90 || coords[1] < -180 || coords[1] > 180) {
+            return errorResponse(res, "coordinates must be [lat, lng] with lat -90..90 and lng -180..180");
+        }
+        updates.coordinates = coords;
+    }
+    if (req.body.msl !== undefined) {
+        const msl = String(req.body.msl).trim();
+        if (!msl) return errorResponse(res, "msl cannot be empty");
+        updates.msl = msl;
+    }
 
     const existingOrganization = await Organization.findById(_id);
     if (!existingOrganization) return errorResponse(res, "Organization doesn't exist", 404);

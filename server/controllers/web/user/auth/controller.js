@@ -10,6 +10,7 @@ import {
     validateEmail,
     validatePassword,
     validateName,
+    validatePhone,
     validateObjectId,
     validateRequiredFields
 } from "#utils/validators.js";
@@ -51,9 +52,9 @@ export const register = asyncHandler(
             return errorResponse(res, "Invalid dateOfJoining");
         }
 
-        // We assume valid phone uses regex like /^\d{10}$/ etc.
-        const phoneTrimmed = String(phone).trim();
-        const existingPhone = await User.findOne({ phone: phoneTrimmed });
+        const phoneValidation = validatePhone(phone);
+        if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
+        const existingPhone = await User.findOne({ phone: phoneValidation.normalized });
         if (existingPhone) return errorResponse(res, "Phone number already in use", 409);
 
         const empIdTrimmed = String(employeeId).trim();
@@ -72,7 +73,7 @@ export const register = asyncHandler(
             ([user] = await User.create([{
                 name: nameValidation.normalized,
                 email: emailValidation.normalized,
-                phone: phoneTrimmed,
+                phone: phoneValidation.normalized,
                 employeeId: empIdTrimmed,
                 workType: workType.toLowerCase(),
                 dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),

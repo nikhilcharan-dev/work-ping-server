@@ -2,15 +2,20 @@ import User from "#models/User.js";
 import Attendance from "#models/Attendance.js";
 import Leave from "#models/Leave.js";
 import Organization from "#models/Organization.js";
+import { validatePhone } from "#utils/validators.js";
 
 // ── GET /internal/employee/by-phone/:phone ────────────────────────────────────
 export const getEmployeeByPhone = asyncHandler(async (req, res) => {
     const { phone } = req.params;
-    const user = await User.findOne({ phone: String(phone).trim() })
+    const phoneValidation = validatePhone(phone);
+    if (!phoneValidation.valid) return res.status(400).json({ found: false, error: phoneValidation.error });
+
+    const user = await User.findOne({ phone: phoneValidation.normalized })
         .populate("organizationId", "name clDays")
         .lean();
 
     if (!user) return res.status(404).json({ found: false });
+    if (!user.organizationId) return res.status(404).json({ found: false, error: "Employee organization not found" });
 
     return res.json({
         found: true,
@@ -77,7 +82,7 @@ export const getLeaveBalance = asyncHandler(async (req, res) => {
 
     let usedDays = 0;
     approvedLeaves.forEach(leave => {
-        leave.dates.forEach(d => {
+        (leave.dates || []).forEach(d => {
             const date = new Date(d);
             if (date >= startOfYear && date <= endOfYear) usedDays++;
         });

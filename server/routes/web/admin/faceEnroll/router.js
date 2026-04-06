@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { enrollEmployeeFace } from "#webController/admin/faceEnroll/controller.js";
+import { enrollEmployeeFace, deleteEmployeeFace } from "#webController/admin/faceEnroll/controller.js";
 
 const router = Router();
 
@@ -10,5 +10,6 @@ const faceUpload = multer({
 });
 
 router.post("/:id/enroll-face", faceUpload.single("face_photo"), enrollEmployeeFace);
+router.delete("/:id/face", deleteEmployeeFace);
 
 export default router;

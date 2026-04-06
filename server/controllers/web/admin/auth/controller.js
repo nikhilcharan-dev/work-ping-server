@@ -370,3 +370,23 @@ export const deactivateAccount = asyncHandler(
         return successResponse(res, "Account deactivated successfully");
     }, "ADMIN_DEACTIVATE_ACCOUNT_ERROR"
 );
+
+export const verifyPassword = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { password } = req.body;
+
+        if (!password) return errorResponse(res, "Password is required");
+
+        const admin = await Admin.findById(userId);
+        if (!admin) return errorResponse(res, "Admin not found", 404);
+
+        const account = await Account.findOne({ email: admin.email, role: "admin" });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) return errorResponse(res, "Incorrect password", 401);
+
+        return successResponse(res, "Password verified");
+    }, "ADMIN_VERIFY_PASSWORD_ERROR"
+);

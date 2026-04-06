@@ -149,9 +149,9 @@ const phonepeWebhook = asyncHandler(
 
                     // WhatsApp payment confirmation — fire-and-log
                     const admin = await Admin.findById(order.userId).lean();
-                    if (admin?.phone) {
+                    if (admin?.phoneNumber) {
                         sendWhatsApp(
-                            admin.phone,
+                            admin.phoneNumber,
                             `*Payment Successful* 💳\nHi ${admin.name}, your payment of *₹${amount / 100}* for the *${plan.name}* plan has been confirmed.\nSubscription active till *${endDate.toLocaleDateString("en-IN")}*.`
                         ).catch(err => console.error("[WhatsApp] Payment notification failed:", err.message));
                     }
