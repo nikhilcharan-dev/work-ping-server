@@ -13,7 +13,6 @@ export const createController = (config) => {
         async setup(req, res) {
             try {
                 const userId = req.user ? req.user.userId : req.body.userId; // adjust based on auth
-                console.log("ID: ", userId);
                 if (!userId) {
                     return res.status(400).json({ error: 'User ID is required' });
                 }
@@ -56,7 +55,6 @@ export const createController = (config) => {
                 // GENERIC ERROR: Don't reveal if user exists or has 2FA specific error
                 // Unless we really want to, but security audit said no.
                 // However, if secret is null, verification fails naturally.
-                console.log(secret)
                 const verified = secret ? speakeasy.totp.verify({
                     secret: secret,
                     encoding: 'base32',

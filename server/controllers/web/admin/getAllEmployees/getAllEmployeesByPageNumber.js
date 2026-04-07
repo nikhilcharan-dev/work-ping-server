@@ -62,15 +62,12 @@ const getAllEmployeesByPageNumber = asyncHandler(
       });
     }
     else {
-      console.log("user id ", req.user)
       const orgAdmins = await OrgAdmin.find(
         { primaryAdmin: new mongoose.Types.ObjectId(req.user.userId) },
         { organizationId: 1 }
       );
 
       const organizationIds = orgAdmins.map(org => org.organizationId);
-
-      console.log("org" , organizationIds);
 
       filter.push({
         $match: {
@@ -188,8 +185,6 @@ const getAllEmployeesByPageNumber = asyncHandler(
     });
 
     const pagination = await Pagination(User, page, limit, filter);
-
-    console.log("pagination result ", pagination.documents[0]);
 
     return successResponse(res, "Employees fetched", {
       totalPages: pagination.totalPages,

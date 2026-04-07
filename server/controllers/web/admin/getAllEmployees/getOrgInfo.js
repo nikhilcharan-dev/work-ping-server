@@ -4,8 +4,6 @@ import mongoose from "mongoose";
 import { successResponse } from "#utils/response.helper.js";
 
 const getOrganizationInfo = asyncHandler(async (req, res) => {
-    console.log("you are in getOrgInfo");
-
     const adminId = new mongoose.Types.ObjectId(req.user.userId);
 
     const adminOrgs = await AdminOrg.aggregate([

@@ -12,9 +12,6 @@ import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
 const insertByForm = asyncHandler(
 async (req, res) => {
-
-    console.log("Checkpoint 1");
-
     // Extract fields
     const {
         userName: name,
@@ -40,7 +37,6 @@ async (req, res) => {
         bankId
     } = req.body;
 
-    console.log("Checkpoint 2");
     // Mandatory validation
     if (!name || !email || !phone || !employeeId || !dateOfJoining || !aadhaar || !workType) {
         return errorResponse(res, "Mandatory fields are missing (name, email, phone, userId, doj, aadhaar, workType)");
@@ -50,7 +46,6 @@ async (req, res) => {
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) return errorResponse(res, emailValidation.error);
     const normalizedEmail = emailValidation.normalized;
-    console.log("Checkpoint 3");
     // Validate role
     const validRoles = ["manager", "teamLead", "employee"];
     if (role && !validRoles.includes(role)) {
@@ -64,23 +59,16 @@ async (req, res) => {
             return errorResponse(res, `Invalid gender. Must be one of: ${validGenders.join(", ")}`);
         }
     }
-    console.log("Checkpoint 5");
-
-    // Email already validated above via validateEmail()
-    console.log("Checkpoint 6");
-
     const validWorkTypes = ["remote", "onsite", "hybrid"];
     if (!validWorkTypes.includes(workType.toLowerCase())) {
         return errorResponse(res, `Invalid workType. Must be one of: ${validWorkTypes.join(", ")}`);
     }
-    console.log("Checkpoint 6.1");
 
     // Aadhaar validation
     const aadhaarRegex = /^\d{12}$/;
     if (!aadhaarRegex.test(String(aadhaar).trim())) {
         return errorResponse(res, "Invalid aadhaar format. Must be exactly 12 digits");
     }
-    console.log("Checkpoint 7");
 
     // PAN validation
     if (pan) {
@@ -97,13 +85,11 @@ async (req, res) => {
             return errorResponse(res, "Invalid passport format. Expected 4-15 alphanumeric characters");
         }
     }
-    console.log("Checkpoint 9");
 
     // Find organization
     if (!organizationName) return errorResponse(res, "organizationName is required");
     const organization = await Organization.findOne({ name: String(organizationName).trim() });
     if (!organization) return errorResponse(res, `Organization '${organizationName}' not found`, 404);
-    console.log("Checkpoint 10");
 
     // Find team
     let team = null;
@@ -111,7 +97,6 @@ async (req, res) => {
         team = await Team.findOne({ teamName: String(teamName).trim(), organizationId: organization._id });
         if (!team) return errorResponse(res, `Team '${teamName}' not found in organization '${organizationName}'`, 404);
     }
-    console.log("Checkpoint 11");
 
     const phoneValidation = validatePhone(phone);
     if (!phoneValidation.valid) return errorResponse(res, phoneValidation.error);
@@ -133,7 +118,6 @@ async (req, res) => {
     if ((pan && !bankId) || (!pan && bankId)) {
         return errorResponse(res, "pan and bankId must be provided together");
     }
-    console.log("Checkpoint 15");
 
     // Validate dateOfJoining
     const dojDate = new Date(dateOfJoining);
@@ -160,7 +144,6 @@ async (req, res) => {
         if (isNaN(salaryNum) || salaryNum < 0) return errorResponse(res, "Invalid salary value");
         userData.salary = salaryNum;
     }
-    console.log("Checkpoint 16");
 
     if (dob) {
         const dobDate = new Date(dob);
@@ -168,7 +151,6 @@ async (req, res) => {
         if (dobDate > new Date()) return errorResponse(res, "Date of birth cannot be a future date");
         userData.dob = new Date(dobDate.toISOString().split('T')[0]);
     }
-    console.log("Checkpoint 17");
 
     if (address) userData.address = address;
     if (team) userData.teamId = team._id;
@@ -180,7 +162,6 @@ async (req, res) => {
     try {
 
         // Create user
-        console.log("newUse" ,userData)
         const [newUser] = await User.create([userData], { session });
         // Create account
         const password = process.env.USER_DEFAULT_PASSWORD || "WorkPing@123";
@@ -195,7 +176,6 @@ async (req, res) => {
         if(role) {
             accountData.role = role.toLowerCase();
         }
-        console.log(accountData)
 
         await Account.create([accountData], { session });
 
