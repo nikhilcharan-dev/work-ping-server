@@ -30,6 +30,37 @@ const existingOrganizationWithSameName = async (organizationName) => {
     return await Organization.findOne({ name: organizationName });
 };
 
+const validateAreaPins = (areaPins) => {
+    if (areaPins === undefined) return { valid: true };
+    if (!Array.isArray(areaPins)) {
+        return { valid: false, error: "areaPins must be an array" };
+    }
+
+    const normalized = [];
+    for (const pin of areaPins) {
+        let lat;
+        let lng;
+
+        if (Array.isArray(pin) && pin.length >= 2) {
+            lat = Number(pin[0]);
+            lng = Number(pin[1]);
+        } else if (pin && typeof pin === "object") {
+            lat = Number(pin.lat);
+            lng = Number(pin.lng);
+        } else {
+            return { valid: false, error: "Each area pin must be [lat, lng] or { lat, lng }" };
+        }
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return { valid: false, error: "Each area pin must have valid lat -90..90 and lng -180..180" };
+        }
+
+        normalized.push({ lat, lng });
+    }
+
+    return { valid: true, normalized };
+};
+
 const addOrganization = asyncHandler(async (req, res) => {
     let { name, type, description, clDays, foundedAt, IPWhitelist } = req.body;
 
@@ -68,6 +99,18 @@ const addOrganization = asyncHandler(async (req, res) => {
             return errorResponse(res, "coordinates must be [lat, lng] with lat -90..90 and lng -180..180");
         }
         orgData.coordinates = coords;
+    }
+    if (req.body.areaPins !== undefined) {
+        const areaPinsValidation = validateAreaPins(req.body.areaPins);
+        if (!areaPinsValidation.valid) return errorResponse(res, areaPinsValidation.error);
+
+        orgData.areaPins = areaPinsValidation.normalized;
+        if (orgData.coordinates === undefined && areaPinsValidation.normalized.length > 0) {
+            orgData.coordinates = [
+                areaPinsValidation.normalized[0].lat,
+                areaPinsValidation.normalized[0].lng,
+            ];
+        }
     }
     if (req.body.msl !== undefined) {
         const msl = String(req.body.msl).trim();
@@ -197,6 +240,18 @@ const updateOrganization = asyncHandler(async (req, res) => {
             return errorResponse(res, "coordinates must be [lat, lng] with lat -90..90 and lng -180..180");
         }
         updates.coordinates = coords;
+    }
+    if (req.body.areaPins !== undefined) {
+        const areaPinsValidation = validateAreaPins(req.body.areaPins);
+        if (!areaPinsValidation.valid) return errorResponse(res, areaPinsValidation.error);
+
+        updates.areaPins = areaPinsValidation.normalized;
+        if (updates.coordinates === undefined && areaPinsValidation.normalized.length > 0) {
+            updates.coordinates = [
+                areaPinsValidation.normalized[0].lat,
+                areaPinsValidation.normalized[0].lng,
+            ];
+        }
     }
     if (req.body.msl !== undefined) {
         const msl = String(req.body.msl).trim();
