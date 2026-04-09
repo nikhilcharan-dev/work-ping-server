@@ -4,7 +4,7 @@ import Organization from "#models/Organization.js";
 import { validateArray } from "#utils/validators.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validate3DLocation } from "#utils/location.js";
-import recognize from "#services/face_recognition/model.js";
+import { submitRecognitionTask, checkRecognitionStatus } from "#services/face_recognition/model.js";
 import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
 /**
@@ -71,12 +71,34 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
         }
     }
 
-    // Use the first frame for face recognition
-    const deviceId = req.body.device_id || req.headers["x-device-id"] || "web";
-    const locationId = req.body.location_id || "main-entrance";
+    // 3. Submit Queue task
+    const taskRes = await submitRecognitionTask(frames[0].buffer, user.employeeId, user.organizationId._id);
 
-    const faceRes = await recognize(frames[0].buffer, deviceId, locationId, user.organizationId._id);
+    return successResponse(res, "Face detection queued", {
+        ticketId: taskRes.ticket_id,
+        status: taskRes.status,
+        position: taskRes.position
+    });
+}, "USER_VERIFY_MARK_ATTENDANCE_ERROR");
 
+export const verify_mark_attendance_status = asyncHandler(async (req, res) => {
+    const userId = req.user.userId;
+    const { ticketId } = req.params;
+
+    const user = await User.findById(userId).populate("organizationId");
+    if (!user) return errorResponse(res, "User not found", 404);
+
+    const faceResParent = await checkRecognitionStatus(ticketId);
+    
+    if (faceResParent.status !== "completed") {
+        return successResponse(res, "Processing", { 
+            status: faceResParent.status, 
+            ticketId 
+        });
+    }
+
+    const faceRes = faceResParent.result;
+    
     if (!faceRes.success || faceRes.confidence < 0.6) {
         return errorResponse(res, "Face not recognised. Please try again in better lighting", 403);
     }
@@ -121,10 +143,12 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
 
     return successResponse(res, "Attendance marked", {
         confidence,
+        status: "completed",
         name: user?.name || "User",
         employeeId: user?.employeeId,
         workType: user?.workType,
         profileImage: user?.profileImage,
         attendance
     });
-}, "USER_VERIFY_MARK_ATTENDANCE_ERROR");
+
+}, "USER_VERIFY_MARK_ATTENDANCE_STATUS_ERROR");

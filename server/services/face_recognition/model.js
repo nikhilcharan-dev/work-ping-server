@@ -3,24 +3,16 @@ import axios from "axios";
 const FACE_API_URI = process.env.IMAGE_CLASSIFICATION_URI;
 
 /**
- * Recognise a face against all enrolled embeddings for the given organisation.
- * The face-api owns MongoDB + Redis caching internally — no DB work here.
- *
- * @param {Buffer} imageBuffer
- * @param {string} deviceId
- * @param {string} locationId
- * @param {string|ObjectId} organizationId
- * @returns {object} { success, person, confidence, ... }
+ * Submit face recognition task to queue
  */
-const recognize = async (imageBuffer, deviceId, locationId = "main-entrance", organizationId) => {
+export const submitRecognitionTask = async (imageBuffer, userId, organizationId) => {
     const image_base64 = imageBuffer.toString("base64");
 
     const { data } = await axios.post(
         `${FACE_API_URI}/api/v1/detect`,
         {
             image_base64,
-            device_id: deviceId,
-            location_id: locationId,
+            user_id: userId,
             organization_id: organizationId.toString(),
         },
         { timeout: 30000 }
@@ -29,4 +21,15 @@ const recognize = async (imageBuffer, deviceId, locationId = "main-entrance", or
     return data;
 };
 
-export default recognize;
+/**
+ * Poll face recognition task status
+ */
+export const checkRecognitionStatus = async (ticketId) => {
+    try {
+        const { data } = await axios.get(`${FACE_API_URI}/api/v1/ticket/${ticketId}`, { timeout: 5000 });
+        return data;
+    } catch (err) {
+        if (err.response?.status === 404) return { status: "failed", error: "Ticket not found" };
+        throw err;
+    }
+};
