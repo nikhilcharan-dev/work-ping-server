@@ -26,10 +26,20 @@ export const getMyTeam = asyncHandler(
         const user = await User.findById(userId);
         if (!user) return errorResponse(res, "User not found", 404);
 
-        if (!user.teamId) return errorResponse(res, "You are not assigned to any team", 404);
+        // Fall back to TeamMembership if User.teamId is not set
+        let teamId = user.teamId;
+        if (!teamId) {
+            const membership = await TeamMembership.findOne({ userId: user._id, isActive: true });
+            if (membership) {
+                teamId = membership.teamId;
+                // Sync back to User document for future lookups
+                await User.findByIdAndUpdate(userId, { teamId });
+            }
+        }
+        if (!teamId) return errorResponse(res, "You are not assigned to any team", 404);
 
         const [team] = await Team.aggregate([
-            { $match: { _id: new mongoose.Types.ObjectId(String(user.teamId)) } },
+            { $match: { _id: new mongoose.Types.ObjectId(String(teamId)) } },
             {
                 $lookup: {
                     from: "users",
@@ -80,10 +90,19 @@ export const getMyTeamMembers = asyncHandler(
         const user = await User.findById(userId);
         if (!user) return errorResponse(res, "User not found", 404);
 
-        if (!user.teamId) return errorResponse(res, "You are not assigned to any team", 404);
+        // Fall back to TeamMembership if User.teamId is not set
+        let teamId = user.teamId;
+        if (!teamId) {
+            const membership = await TeamMembership.findOne({ userId: user._id, isActive: true });
+            if (membership) {
+                teamId = membership.teamId;
+                await User.findByIdAndUpdate(userId, { teamId });
+            }
+        }
+        if (!teamId) return errorResponse(res, "You are not assigned to any team", 404);
 
         const members = await TeamMembership.aggregate([
-            { $match: { teamId: new mongoose.Types.ObjectId(String(user.teamId)), isActive: true } },
+            { $match: { teamId: new mongoose.Types.ObjectId(String(teamId)), isActive: true } },
             {
                 $lookup: {
                     from: "users",
