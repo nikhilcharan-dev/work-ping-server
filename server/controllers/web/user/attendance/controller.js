@@ -35,7 +35,7 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
     // 1. Initial Validations
     const framesValidation = validateArray(frames, "Frames", {
         required: true,
-        minLength: 2
+        minLength: 1
     });
     if (!framesValidation.valid) return errorResponse(res, framesValidation.error);
 
