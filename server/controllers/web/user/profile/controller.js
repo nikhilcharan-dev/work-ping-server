@@ -120,7 +120,7 @@ export const updateProfile = asyncHandler(
             updates.profileImage = profileImageValidation.normalized;
         }
 
-        const account = await Account.findOne({ email: user.email, role: "user" });
+        const account = await Account.findOne({ email: user.email, role: { $ne: "admin" } });
         if (!account) return errorResponse(res, "Account not found", 404);
 
         const accountUpdates = {};
@@ -200,7 +200,7 @@ export const changePassword = asyncHandler(
         const user = await User.findById(userId);
         if (!user) return errorResponse(res, "User not found", 404);
 
-        const account = await Account.findOne({ email: user.email, role: "user" });
+        const account = await Account.findOne({ email: user.email, role: { $ne: "admin" } });
         if (!account) return errorResponse(res, "Account not found", 404);
 
         const isMatch = await bcrypt.compare(currentPassword, account.password);
@@ -226,7 +226,7 @@ export const deactivateAccount = asyncHandler(
         const user = await User.findById(userId);
         if (!user) return errorResponse(res, "User not found", 404);
 
-        const account = await Account.findOne({ email: user.email, role: "user" });
+        const account = await Account.findOne({ email: user.email, role: { $ne: "admin" } });
         if (!account) return errorResponse(res, "Account not found", 404);
 
         const isMatch = await bcrypt.compare(password, account.password);
