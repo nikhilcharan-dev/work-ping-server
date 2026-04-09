@@ -1,11 +1,11 @@
 import Admin from "#models/Admin.js";
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import mongoose from "mongoose";
 import Account from "#models/Account.js";
 import { sendEmailOTP, verifyEmailOTP } from "#services/mailer/mail.service.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { setAuthCookie, clearAuthCookie } from "#utils/cookie.helper.js";
+import { generateTokenPair, revokeAllTokens } from "#utils/token.helper.js";
 import {
     validateEmail,
     validatePhone,
@@ -70,27 +70,19 @@ export const register = asyncHandler(
             session.endSession();
         }
 
-        const token = jwt.sign(
-            { userId: user._id, role: "admin" },
-            process.env.SECRET_KEY,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
+        const { accessToken, refreshToken } = await generateTokenPair(
+            { userId: user._id, role: "admin" }, req
         );
 
-        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-        // res.cookie("accessToken", token, {
-        //     httpOnly: false,
-        //     secure: isSecure,
-        //     sameSite: isSecure ? "none" : "lax",
-        //     maxAge: 1000 * 60 * 60 * 24
-        // });
-        setAuthCookie(res, req, token, { httpOnly: false });
+        setAuthCookie(res, req, accessToken, { httpOnly: false });
 
         return successResponse(res, "Register Successful", {
             id: user._id,
             name: user.name,
             email: user.email,
             phoneNumber: user.phoneNumber,
-            token: token,
+            token: accessToken,
+            refreshToken,
         }, 201);
     }, "REGISTER_ADMIN_CONTROLLER_ERROR");
 
@@ -113,37 +105,28 @@ export const login = asyncHandler(
         const admin = await Admin.findOne({ email: emailValidation.normalized });
         if (!admin) return errorResponse(res, "Admin profile not found", 401);
 
-        const token = jwt.sign({ userId: admin._id, role: "admin" }, process.env.SECRET_KEY, {
-            expiresIn: process.env.JWT_EXPIRES_IN,
-        });
+        const { accessToken, refreshToken } = await generateTokenPair(
+            { userId: admin._id, role: "admin" }, req
+        );
 
-        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-        // res.cookie("accessToken", token, {
-        //     httpOnly: true,
-        //     secure: isSecure,
-        //     sameSite: isSecure ? "none" : "lax",
-        //     maxAge: 1000 * 60 * 60 * 24
-        // });
-        setAuthCookie(res, req, token);
+        setAuthCookie(res, req, accessToken);
 
         return successResponse(res, "Login Successful", {
             id: admin._id,
             name: admin.name,
             email: admin.email,
             phoneNumber: admin.phoneNumber,
-            token: token,
+            token: accessToken,
+            refreshToken,
         });
     }, "LOGIN_ADMIN_ERROR");
 
 export const logout = asyncHandler(
     async (req, res) => {
-        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-        // res.clearCookie("accessToken", {
-        //     httpOnly: true,
-        //     secure: isSecure,
-        //     sameSite: isSecure ? "none" : "lax",
-        //     path: "/"
-        // });
+        // Revoke all refresh tokens for this admin
+        if (req.user?.userId) {
+            await revokeAllTokens(req.user.userId);
+        }
         clearAuthCookie(res, req);
         return successResponse(res, "Logout successful");
     }, "ADMIN_LOGOUT_ERROR");

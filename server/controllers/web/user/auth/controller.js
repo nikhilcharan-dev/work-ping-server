@@ -1,11 +1,11 @@
 import User from "#models/User.js";
 import Account from "#models/Account.js";
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import mongoose from "mongoose";
 import { formatUserDates } from "#helpers/data.reducer.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { setAuthCookie } from "#utils/cookie.helper.js";
+import { generateTokenPair } from "#utils/token.helper.js";
 import {
     validateEmail,
     validatePassword,
@@ -95,9 +95,11 @@ export const register = asyncHandler(
             session.endSession();
         }
 
-        const token = jwt.sign({ userId: user._id, role }, process.env.SECRET_KEY, {
-            expiresIn: process.env.JWT_EXPIRES_IN || "1h",
-        });
+        const { accessToken, refreshToken } = await generateTokenPair(
+            { userId: user._id, role }, req
+        );
+
+        setAuthCookie(res, req, accessToken);
 
         return successResponse(res, "Register Successful", {
             id: user._id,
@@ -105,7 +107,8 @@ export const register = asyncHandler(
             email: user.email,
             organizationId: user.organizationId,
             role: user.role,
-            token,
+            token: accessToken,
+            refreshToken,
         }, 201);
     }, "USER_AUTH_REGISTER_ERROR");
 
@@ -128,21 +131,15 @@ export const login = asyncHandler(
         const userMetaDetails = await User.findOne({ email: emailValidation.normalized });
         if (!userMetaDetails) return errorResponse(res, "User profile does not exist", 401);
 
-        const token = jwt.sign({ userId: userMetaDetails._id, role: account.role }, process.env.SECRET_KEY, {
-            expiresIn: process.env.JWT_EXPIRES_IN,
-        });
+        const { accessToken, refreshToken } = await generateTokenPair(
+            { userId: userMetaDetails._id, role: account.role }, req
+        );
 
-        // const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-        // res.cookie("accessToken", token, {
-        //     httpOnly: true,
-        //     secure: isSecure,
-        //     sameSite: isSecure ? "none" : "lax",
-        //     maxAge: 1000 * 60 * 60 * 24
-        // });
-        setAuthCookie(res, req, token);
+        setAuthCookie(res, req, accessToken);
 
         return successResponse(res, "Login Successful", {
             ...formatUserDates(userMetaDetails),
-            token
+            token: accessToken,
+            refreshToken,
         });
     }, "USER_AUTH_LOGIN_ERROR");

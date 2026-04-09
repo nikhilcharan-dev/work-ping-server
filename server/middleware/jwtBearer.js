@@ -11,12 +11,16 @@ const validateCookie = (req, res, next) => {
         }
 
         if (!token) {
-            return res.status(403).json({ type: "error", message: "Unauthorized" });
+            return res.status(401).json({ type: "error", message: "Unauthorized", code: "NO_TOKEN" });
         }
 
         jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
             if (err) {
-                return res.status(403).json({ type: "error", message: "Unauthorized" });
+                // Distinguish expired tokens from invalid ones so clients can attempt a refresh
+                if (err.name === "TokenExpiredError") {
+                    return res.status(401).json({ type: "error", message: "Token expired", code: "TOKEN_EXPIRED" });
+                }
+                return res.status(401).json({ type: "error", message: "Unauthorized", code: "INVALID_TOKEN" });
             }
             req.user = decoded;
             next();
