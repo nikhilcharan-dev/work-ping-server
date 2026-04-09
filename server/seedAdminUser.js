@@ -9,6 +9,7 @@ import User from './models/User.js';
 import Team from './models/Team.js';
 import TeamMembership from './models/TeamMembership.js';
 import Project from './models/Project.js';
+import ProjectMember from './models/ProjectMember.js';
 import ProjectTeam from './models/ProjectTeam.js';
 import Attendance from './models/Attendance.js';
 import Leave from './models/Leave.js';
@@ -369,6 +370,7 @@ async function cleanupDemoData() {
     Leave.deleteMany({ organizationId: { $in: existingDemoOrgIds } }),
     Holiday.deleteMany({ organizationId: { $in: existingDemoOrgIds } }),
     ProjectTeam.deleteMany({ organizationId: { $in: existingDemoOrgIds } }),
+    ProjectMember.deleteMany({ organizationId: { $in: existingDemoOrgIds } }),
     Project.deleteMany({ organizationId: { $in: existingDemoOrgIds } }),
     Team.deleteMany({ organizationId: { $in: existingDemoOrgIds } }),
     Organization.deleteMany({ name: { $in: orgBlueprints.map((org) => org.name) } }),
@@ -475,6 +477,12 @@ async function seed() {
           joinedAt: new Date('2026-01-01'),
           isActive: true,
         });
+
+        // Sync teamId to User document (only set if not already assigned to a team)
+        await User.updateOne(
+          { _id: memberId, $or: [{ teamId: null }, { teamId: { $exists: false } }] },
+          { $set: { teamId: team._id } }
+        );
       }
     }
 
@@ -505,6 +513,17 @@ async function seed() {
         teamLeaderId: users[1]._id,
         users: projectBlueprint.memberIndexes.map((memberIndex) => users[memberIndex]._id),
       });
+
+      // Create individual ProjectMember records (used by getMyProjects API)
+      for (const memberIndex of projectBlueprint.memberIndexes) {
+        await ProjectMember.create({
+          projectId: project._id,
+          userId: users[memberIndex]._id,
+          organizationId: org._id,
+          assignedDate: projectBlueprint.assignedDate,
+          isActive: true,
+        });
+      }
     }
 
     createdProjectsByOrg.set(orgBlueprint.key, projects);
