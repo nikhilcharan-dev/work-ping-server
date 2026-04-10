@@ -1,6 +1,5 @@
 import Attendance from "#models/Attendance.js";
 import User from "#models/User.js";
-import Organization from "#models/Organization.js";
 import { validateArray } from "#utils/validators.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validate3DLocation } from "#utils/location.js";
@@ -22,133 +21,40 @@ export const verify_location = asyncHandler(async (req, res) => {
     }
 
     const validation = validate3DLocation(locationLock, user.organizationId);
-    
-    return successResponse(res, validation.message, { 
-        allowed: validation.allowed 
+
+    return successResponse(res, validation.message, {
+        allowed: validation.allowed
     });
 });
 
-export const verify_mark_attendance = asyncHandler(async (req, res) => {
-    const userId = req.user.userId;
-    const frames = req.files;
-    const locationLockRaw = req.query.locationLock || req.body.locationLock;
-
-    trace('REQUEST', `verify_mark_attendance started for user: ${userId}`);
-
-    // 1. Initial Validations
-    const framesValidation = validateArray(frames, "Frames", {
-        required: true,
-        minLength: 1
-    });
-    if (!framesValidation.valid) {
-        trace('FAILURE', `Frames validation failed: ${framesValidation.error}`);
-        return errorResponse(res, framesValidation.error);
-    }
-    trace('CHECK', 'Frames validation passed');
-
-    // 2. Server-Side 3D Location Security check
-    const user = await User.findById(userId).populate("organizationId");
-    if (!user) {
-        trace('FAILURE', `User not found: ${userId}`);
-        return errorResponse(res, "User not found", 404);
-    }
-    trace('CHECK', `User identified: ${user.name} (${user.employeeId})`);
-
-    if (locationLockRaw) {
-        try {
-            const locationLock = typeof locationLockRaw === 'string' 
-                ? JSON.parse(locationLockRaw) 
-                : locationLockRaw;
-            
-            if (user.organizationId) {
-                const validation = validate3DLocation(locationLock, user.organizationId);
-                if (!validation.allowed) {
-                    trace('FAILURE', `Location security block: ${validation.message}`);
-                    return errorResponse(res, `Security Block: ${validation.message}`, 403);
-                }
-                trace('CHECK', 'Location validation passed');
-            }
-        } catch (err) {
-            trace('FAILURE', `Location Lock Parse Error: ${err.message}`);
-            console.error("[Attendance] Location Lock Parse Error:", err.message);
-        }
-    } else {
-        trace('CHECK', 'No locationLock provided, skipping security check');
+/**
+ * Shared: validate a face recognition result and record attendance.
+ * Called from both direct-result mode and ticket-poll mode.
+ *
+ * faceRes shape (direct):  { success, confidence, person: { id }, error? }
+ * faceRes shape (ticket):  same, nested under ticket.result
+ *
+ * NOTE: face embeddings are stored by MongoDB _id (userId), not by employeeId string.
+ */
+async function recordAttendance(faceRes, user, userId, res) {
+    if (!faceRes.success || (faceRes.confidence ?? 0) < 0.6) {
+        const errMsg = faceRes.error || 'Face not recognised. Please try again in better lighting';
+        trace('FAILURE', `Face not recognised: ${errMsg} (confidence=${faceRes.confidence})`);
+        return errorResponse(res, errMsg, 403);
     }
 
-    const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    for (let i = 0; i < frames.length; i++) {
-        if (!validMimeTypes.includes(frames[i].mimetype)) {
-            trace('FAILURE', `Frame ${i + 1} has invalid file type: ${frames[i].mimetype}`);
-            return errorResponse(res, `Frame ${i + 1} has invalid file type. Only JPEG and PNG are allowed`);
-        }
-        if (frames[i].size > 5 * 1024 * 1024) {
-            trace('FAILURE', `Frame ${i + 1} exceeds maximum size: ${frames[i].size}`);
-            return errorResponse(res, `Frame ${i + 1} exceeds maximum size of 5MB`);
-        }
-    }
-    trace('CHECK', 'Frame mime-types and sizes validated');
-
-    // 3. Submit Queue task
-    const taskRes = await submitRecognitionTask(frames[0].buffer, user.employeeId, user.organizationId._id);
-    console.log('[FaceRecognition] submitRecognitionTask raw response:', JSON.stringify(taskRes).slice(0, 500));
-
-    // Unwrap potential envelope from Python service (e.g. { data: { ticket_id, status, position } })
-    const taskData = taskRes?.data ?? taskRes;
-    trace('SUCCESS', `Face detection queued. Ticket: ${taskData.ticket_id || taskData.ticketId}`);
-
-    const responseData = {
-        ticketId: taskData.ticket_id || taskData.ticketId || taskData.id,
-        status: taskData.status,
-        position: taskData.position ?? taskData.queue_position ?? 0
-    };
-    trace('DATA', `Response sent: ${JSON.stringify(responseData)}`);
-
-    return successResponse(res, "Face detection queued", responseData);
-}, "USER_VERIFY_MARK_ATTENDANCE_ERROR");
-
-export const verify_mark_attendance_status = asyncHandler(async (req, res) => {
-    const userId = req.user.userId;
-    const { ticketId } = req.params;
-
-    trace('REQUEST', `verify_mark_attendance_status started for ticket: ${ticketId}`);
-
-    const user = await User.findById(userId).populate("organizationId");
-    if (!user) {
-        trace('FAILURE', `User not found: ${userId}`);
-        return errorResponse(res, "User not found", 404);
-    }
-
-    const faceResParent = await checkRecognitionStatus(ticketId);
-    trace('CHECK', `Face recognition status: ${faceResParent.status}`);
-    
-    if (faceResParent.status !== "completed") {
-        return successResponse(res, "Processing", { 
-            status: faceResParent.status, 
-            ticketId 
-        });
-    }
-
-    const faceRes = faceResParent.result;
-    trace('CHECK', `Face recognition completed. Success: ${faceRes.success}, Confidence: ${faceRes.confidence}`);
-    
-    if (!faceRes.success || faceRes.confidence < 0.6) {
-        trace('FAILURE', `Face not recognised. Success: ${faceRes.success}, Confidence: ${faceRes.confidence}`);
-        return errorResponse(res, "Face not recognised. Please try again in better lighting", 403);
-    }
-
-    if (faceRes.person?.id !== user.employeeId) {
-        trace('FAILURE', `Identity mismatch. Expected: ${user.employeeId}, Found: ${faceRes.person?.id}`);
+    // Embeddings are keyed by MongoDB userId, not by human-readable employeeId
+    if (faceRes.person?.id !== userId) {
+        trace('FAILURE', `Identity mismatch. Expected userId: ${userId}, Got: ${faceRes.person?.id}`);
         return errorResponse(res, "Identity mismatch. Your face does not match this account", 403);
     }
     trace('CHECK', 'Identity verified');
 
     const confidence = faceRes.confidence;
 
-    // 4. Log Attendance in DB
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    const endOfDay   = new Date(today.setHours(23, 59, 59, 999));
 
     let attendance = await Attendance.findOne({
         userId,
@@ -164,17 +70,17 @@ export const verify_mark_attendance_status = asyncHandler(async (req, res) => {
             checkIn: new Date(),
             remarks: `Verified with confidence ${confidence.toFixed(2)}`
         });
-        trace('SUCCESS', `New Check-In created for user: ${userId}`);
+        trace('SUCCESS', `Check-In created for user: ${userId}`);
     } else if (!attendance.checkOut) {
         attendance.checkOut = new Date();
         await attendance.save();
         trace('SUCCESS', `Check-Out recorded for user: ${userId}`);
     } else {
-        trace('CHECK', `Attendance already completed for today for user: ${userId}`);
+        trace('CHECK', `Attendance already completed today for user: ${userId}`);
     }
 
-    // WhatsApp check-in / check-out notification — fire-and-log
-    const action = attendance.checkOut ? "Check-Out" : "Check-In";
+    // WhatsApp notification — fire-and-forget
+    const action  = attendance.checkOut ? "Check-Out" : "Check-In";
     const timeStr = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
     sendWhatsApp(
         user.phone,
@@ -187,14 +93,121 @@ export const verify_mark_attendance_status = asyncHandler(async (req, res) => {
     const finalResponse = {
         confidence,
         status: "completed",
-        name: user?.name || "User",
-        employeeId: user?.employeeId,
-        workType: user?.workType,
-        profileImage: user?.profileImage,
-        attendance
+        name:          user?.name         || "User",
+        employeeId:    user?.employeeId,
+        workType:      user?.workType,
+        profileImage:  user?.profileImage,
+        attendance,
     };
-    trace('DATA', `Attendance marked successfully. Sending data: ${JSON.stringify(finalResponse)}`);
-
+    trace('DATA', `Attendance marked. Response: ${JSON.stringify(finalResponse)}`);
     return successResponse(res, "Attendance marked", finalResponse);
+}
+
+export const verify_mark_attendance = asyncHandler(async (req, res) => {
+    const userId        = req.user.userId;
+    const frames        = req.files;
+    const locationLockRaw = req.query.locationLock || req.body.locationLock;
+
+    trace('REQUEST', `verify_mark_attendance started for user: ${userId}`);
+
+    // 1. Frame validation
+    const framesValidation = validateArray(frames, "Frames", { required: true, minLength: 1 });
+    if (!framesValidation.valid) {
+        trace('FAILURE', `Frames validation failed: ${framesValidation.error}`);
+        return errorResponse(res, framesValidation.error);
+    }
+    trace('CHECK', 'Frames validation passed');
+
+    // 2. User + 3D location check
+    const user = await User.findById(userId).populate("organizationId");
+    if (!user) {
+        trace('FAILURE', `User not found: ${userId}`);
+        return errorResponse(res, "User not found", 404);
+    }
+    trace('CHECK', `User identified: ${user.name} (${user.employeeId})`);
+
+    if (locationLockRaw) {
+        try {
+            const locationLock = typeof locationLockRaw === 'string'
+                ? JSON.parse(locationLockRaw)
+                : locationLockRaw;
+
+            if (user.organizationId) {
+                const validation = validate3DLocation(locationLock, user.organizationId);
+                if (!validation.allowed) {
+                    trace('FAILURE', `Location security block: ${validation.message}`);
+                    return errorResponse(res, `Security Block: ${validation.message}`, 403);
+                }
+                trace('CHECK', 'Location validation passed');
+            }
+        } catch (err) {
+            trace('FAILURE', `Location Lock parse error: ${err.message}`);
+            console.error("[Attendance] Location Lock parse error:", err.message);
+        }
+    } else {
+        trace('CHECK', 'No locationLock provided, skipping security check');
+    }
+
+    const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    for (let i = 0; i < frames.length; i++) {
+        if (!validMimeTypes.includes(frames[i].mimetype)) {
+            trace('FAILURE', `Frame ${i + 1} invalid type: ${frames[i].mimetype}`);
+            return errorResponse(res, `Frame ${i + 1} has invalid file type. Only JPEG and PNG are allowed`);
+        }
+        if (frames[i].size > 5 * 1024 * 1024) {
+            trace('FAILURE', `Frame ${i + 1} exceeds 5MB: ${frames[i].size}`);
+            return errorResponse(res, `Frame ${i + 1} exceeds maximum size of 5MB`);
+        }
+    }
+    trace('CHECK', 'Frame validation passed');
+
+    // 3. Submit to face recognition service
+    // Use MongoDB userId as the face API key — embeddings are stored by _id, not employeeId string
+    const taskRes = await submitRecognitionTask(frames[0].buffer, userId, user.organizationId._id);
+    console.log('[FaceRecognition] raw response:', JSON.stringify(taskRes).slice(0, 500));
+
+    // Unwrap potential envelope ({ data: {...} })
+    const taskData = taskRes?.data ?? taskRes;
+
+    // ── Mode A: Queued (ticket-based) ───────────────────────────────────────────
+    // Python service queued the job and returned a ticket_id for polling.
+    const ticketId = taskData.ticket_id || taskData.ticketId || taskData.id;
+    if (ticketId) {
+        trace('SUCCESS', `Face detection queued. Ticket: ${ticketId}`);
+        return successResponse(res, "Face detection queued", {
+            ticketId,
+            status:   taskData.status   || 'queued',
+            position: taskData.position ?? taskData.queue_position ?? 0,
+        });
+    }
+
+    // ── Mode B: Direct result (synchronous service) ─────────────────────────────
+    // Python service processed the image inline and returned the result directly.
+    trace('CHECK', `Direct result received — success=${taskData.success}, confidence=${taskData.confidence}`);
+    return recordAttendance(taskData, user, userId, res);
+
+}, "USER_VERIFY_MARK_ATTENDANCE_ERROR");
+
+
+export const verify_mark_attendance_status = asyncHandler(async (req, res) => {
+    const userId = req.user.userId;
+    const { ticketId } = req.params;
+
+    trace('REQUEST', `verify_mark_attendance_status for ticket: ${ticketId}`);
+
+    const user = await User.findById(userId).populate("organizationId");
+    if (!user) {
+        trace('FAILURE', `User not found: ${userId}`);
+        return errorResponse(res, "User not found", 404);
+    }
+
+    const ticketData = await checkRecognitionStatus(ticketId);
+    trace('CHECK', `Ticket status: ${ticketData.status}`);
+
+    if (ticketData.status !== "completed") {
+        return successResponse(res, "Processing", { status: ticketData.status, ticketId });
+    }
+
+    return recordAttendance(ticketData.result, user, userId, res);
 
 }, "USER_VERIFY_MARK_ATTENDANCE_STATUS_ERROR");

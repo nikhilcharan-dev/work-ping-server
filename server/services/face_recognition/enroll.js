@@ -8,14 +8,15 @@ const FACE_API_URI = process.env.IMAGE_CLASSIFICATION_URI;
  * and persists it in MongoDB.
  *
  * @param {Buffer} imageBuffer
- * @param {object} user  Needs: employeeId, organizationId
+ * @param {object} user  Needs: _id, organizationId
  */
 export const enrollFace = async (imageBuffer, user) => {
     const image_base64 = imageBuffer.toString("base64");
 
+    // Embeddings are keyed by MongoDB _id (consistent with detect calls)
     const { data } = await axios.post(`${FACE_API_URI}/api/v1/enroll`, {
         image_base64,
-        employee_id: user.employeeId,
+        employee_id: user._id.toString(),
         organization_id: user.organizationId.toString(),
     });
 
@@ -27,13 +28,13 @@ export const enrollFace = async (imageBuffer, user) => {
 };
 
 /**
- * Remove a face embedding by employeeId.
+ * Remove a face embedding by MongoDB userId (_id string).
  * Fire-and-forget safe — does not throw.
  */
-export const deleteFace = async (employeeId) => {
+export const deleteFace = async (userId) => {
     try {
-        await axios.delete(`${FACE_API_URI}/api/v1/embeddings/${encodeURIComponent(employeeId)}`);
+        await axios.delete(`${FACE_API_URI}/api/v1/embeddings/${encodeURIComponent(userId)}`);
     } catch (err) {
-        console.error(`[FaceAPI] Failed to delete face for "${employeeId}":`, err?.response?.data || err.message);
+        console.error(`[FaceAPI] Failed to delete face for userId "${userId}":`, err?.response?.data || err.message);
     }
 };
