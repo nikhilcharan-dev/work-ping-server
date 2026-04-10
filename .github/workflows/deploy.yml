@@ -34,12 +34,12 @@ jobs:
 
             echo "--- Reloading PM2 process ---"
 
-            if pm2 list | grep -q "agentic-ai"; then
-              pm2 reload agentic-ai --update-env
+            if pm2 list | grep -q "server"; then
+              pm2 reload server --update-env
             else
               cd $APP_DIR
               pm2 start server/server.js \
-                --name agentic-ai \
+                --name server \
                 --node-args="--experimental-vm-modules" \
                 --env production \
                 --max-memory-restart 512M \
@@ -48,4 +48,4 @@ jobs:
             fi
 
             echo "--- PM2 status ---"
-            pm2 status agentic-ai
+            pm2 status server
