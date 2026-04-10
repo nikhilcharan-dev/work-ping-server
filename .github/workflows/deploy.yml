@@ -34,18 +34,18 @@ jobs:
 
             echo "--- Reloading PM2 process ---"
 
-            if pm2 list | grep -q "server"; then
-              pm2 reload server --update-env
+            if sudo pm2 list | grep -q "server"; then
+              sudo pm2 reload server --update-env
             else
               cd $APP_DIR
-              pm2 start server/server.js \
+              sudo pm2 start server/server.js \
                 --name server \
                 --node-args="--experimental-vm-modules" \
                 --env production \
                 --max-memory-restart 512M \
                 --restart-delay 3000
-              pm2 save
+              sudo pm2 save
             fi
 
             echo "--- PM2 status ---"
-            pm2 status server
+            sudo pm2 status server
