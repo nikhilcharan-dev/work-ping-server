@@ -38,11 +38,15 @@ export function validate3DLocation(provided, allowed) {
 
     // 1. IP Whitelist Check
     if (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) {
-        if (!provided.publicIp || !allowed.IPWhitelist.includes(provided.publicIp)) {
-            return { 
-                allowed: false, 
-                message: `Unauthorized network (IP: ${provided.publicIp || 'Unknown'}). Please use company WiFi.` 
-            };
+        const isUniversalAccess = allowed.IPWhitelist.includes("0.0.0.0");
+        
+        if (!isUniversalAccess) {
+            if (!provided.publicIp || !allowed.IPWhitelist.includes(provided.publicIp)) {
+                return { 
+                    allowed: false, 
+                    message: `Unauthorized network (IP: ${provided.publicIp || 'Unknown'}). Please use company WiFi.` 
+                };
+            }
         }
     }
 

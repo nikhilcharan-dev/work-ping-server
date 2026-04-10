@@ -1,23 +1,38 @@
 import mongoose from 'mongoose';
 
-const mongooseConfig = async () => {
-    try {
-        mongoose.set('autoCreate', false);
-        await mongoose.connect(process.env.MONGODB_URI, {});
-        console.log("[MongoDB] Connected");
+const backoff = (retries, base = 1000, cap = 30000) =>
+    Math.min(cap, base * Math.pow(2, retries));
 
-        // Clear stale MongoDB server-side validators left by previous autoCreate
-        const db = mongoose.connection.db;
-        const collections = await db.listCollections().toArray();
-        for (const { name } of collections) {
-            if (name.startsWith('system.')) continue;
-            try {
-                await db.command({ collMod: name, validator: {} });
-            } catch (e) { }
-        }
-    } catch (err) {
-        console.error("MongoDB connection error:", err);
+let retries = 0;
+
+const clearValidators = async () => {
+    const db = mongoose.connection.db;
+    const collections = await db.listCollections().toArray();
+    for (const { name } of collections) {
+        if (name.startsWith('system.')) continue;
+        try { await db.command({ collMod: name, validator: {} }); } catch {}
     }
-}
+};
 
-export default mongooseConfig;
+const connect = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI);
+        await clearValidators();
+        console.log("[MongoDB] Connected");
+        retries = 0;
+    } catch (err) {
+        const delay = backoff(retries++);
+        console.error(`[MongoDB] Connection failed, retrying in ${delay}ms`);
+        setTimeout(connect, delay);
+    }
+};
+
+mongoose.set('autoCreate', false);
+
+mongoose.connection.on('disconnected', () => {
+    const delay = backoff(retries++);
+    console.warn(`[MongoDB] Disconnected, retrying in ${delay}ms`);
+    setTimeout(connect, delay);
+});
+
+export default connect;
