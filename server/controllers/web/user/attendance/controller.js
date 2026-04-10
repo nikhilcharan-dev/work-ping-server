@@ -91,12 +91,16 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
 
     // 3. Submit Queue task
     const taskRes = await submitRecognitionTask(frames[0].buffer, user.employeeId, user.organizationId._id);
-    trace('SUCCESS', `Face detection queued. Ticket: ${taskRes.ticket_id}`);
+    console.log('[FaceRecognition] submitRecognitionTask raw response:', JSON.stringify(taskRes).slice(0, 500));
+
+    // Unwrap potential envelope from Python service (e.g. { data: { ticket_id, status, position } })
+    const taskData = taskRes?.data ?? taskRes;
+    trace('SUCCESS', `Face detection queued. Ticket: ${taskData.ticket_id || taskData.ticketId}`);
 
     const responseData = {
-        ticketId: taskRes.ticket_id,
-        status: taskRes.status,
-        position: taskRes.position
+        ticketId: taskData.ticket_id || taskData.ticketId || taskData.id,
+        status: taskData.status,
+        position: taskData.position ?? taskData.queue_position ?? 0
     };
     trace('DATA', `Response sent: ${JSON.stringify(responseData)}`);
 
