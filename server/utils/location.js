@@ -21,6 +21,25 @@ function getDistance(lat1, lon1, lat2, lon2) {
 }
 
 /**
+ * Check if a point is inside a polygon using Ray Casting algorithm
+ * @param {object} point - { lat, lng }
+ * @param {Array} polygon - Array of { lat, lng } objects
+ * @returns {boolean}
+ */
+function isPointInPolygon(point, polygon) {
+    let x = point.lat, y = point.lng;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        let xi = polygon[i].lat, yi = polygon[i].lng;
+        let xj = polygon[j].lat, yj = polygon[j].lng;
+        
+        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+/**
  * Validate 3D location against organization settings
  * @param {object} provided - { wifi, gps, altitude, publicIp }
  * @param {object} allowed - { IPWhitelist, coordinates, msl }
@@ -60,8 +79,21 @@ export function validate3DLocation(provided, allowed) {
         let minDistance = Infinity;
         let closestPin = null;
 
-        // Check primary coordinates [lon, lat]
-        if (allowed.coordinates && allowed.coordinates.length >= 2) {
+        // A. Check Polygon (if 3+ pins exist)
+        if (allowed.areaPins && allowed.areaPins.length >= 3) {
+            const isInside = isPointInPolygon(
+                { lat: provided.gps.latitude, lng: provided.gps.longitude }, 
+                allowed.areaPins
+            );
+            
+            if (isInside) {
+                isWithinAnyRange = true;
+                closestPin = "Geofencing Polygon (Inside)";
+            }
+        }
+
+        // B. Individual Radius Checks (Backup/Single Pin mode)
+        if (!isWithinAnyRange) {
             const distance = getDistance(
                 provided.gps.latitude, 
                 provided.gps.longitude, 
