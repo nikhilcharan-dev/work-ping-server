@@ -51,23 +51,58 @@ export function validate3DLocation(provided, allowed) {
     }
 
     // 2. Geo-fencing Check (GPS)
-    if (allowed.coordinates && allowed.coordinates.length >= 2) {
+    if ((allowed.coordinates && allowed.coordinates.length >= 2) || (allowed.areaPins && allowed.areaPins.length > 0)) {
         if (!provided.gps || provided.gps.latitude == null || provided.gps.longitude == null) {
             return { allowed: false, message: "GPS coordinates required for verification" };
         }
 
-        const distance = getDistance(
-            provided.gps.latitude, 
-            provided.gps.longitude, 
-            allowed.coordinates[1], // [lon, lat] or [lat, lon]? Mongoose GeoJSON usually [lon, lat]
-            allowed.coordinates[0]
-        );
+        let isWithinAnyRange = false;
+        let minDistance = Infinity;
+        let closestPin = null;
 
-        // Allow within 500m radius
-        if (distance > 500) {
+        // Check primary coordinates [lon, lat]
+        if (allowed.coordinates && allowed.coordinates.length >= 2) {
+            const distance = getDistance(
+                provided.gps.latitude, 
+                provided.gps.longitude, 
+                allowed.coordinates[1],
+                allowed.coordinates[0]
+            );
+            minDistance = Math.min(minDistance, distance);
+            if (distance <= 500) {
+                isWithinAnyRange = true;
+                closestPin = "Primary Coordinates";
+            }
+        }
+
+        // Check additional area pins {lat, lng}
+        if (!isWithinAnyRange && allowed.areaPins && allowed.areaPins.length > 0) {
+            for (const [index, pin] of allowed.areaPins.entries()) {
+                if (pin.lat == null || pin.lng == null) continue;
+                
+                const distance = getDistance(
+                    provided.gps.latitude, 
+                    provided.gps.longitude, 
+                    pin.lat, 
+                    pin.lng
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                }
+
+                if (distance <= 500) {
+                    isWithinAnyRange = true;
+                    closestPin = `Area Pin ${index + 1}`;
+                    break;
+                }
+            }
+        }
+
+        if (!isWithinAnyRange) {
             return { 
                 allowed: false, 
-                message: `Outside allowed region (Distance: ${Math.round(distance)}m).` 
+                message: `Outside allowed region (Closest pin: ${Math.round(minDistance)}m away).` 
             };
         }
     }
