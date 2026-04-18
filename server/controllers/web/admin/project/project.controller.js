@@ -12,6 +12,7 @@ import {
     validatePagination,
     validateDate
 } from "#utils/validators.js";
+import { scheduleShiftReminders } from "#services/shiftReminder/shiftReminder.cron.js";
 
 export const createProject = asyncHandler(
     async (req, res) => {
@@ -62,6 +63,10 @@ export const createProject = asyncHandler(
             });
             project.shiftId = shift._id;
             await project.save();
+
+            // Schedule today's reminders for existing project members (fire-and-forget)
+            scheduleShiftReminders(undefined, String(project._id))
+                .catch(err => console.error("[ShiftReminder] createProject schedule failed:", err.message));
         }
 
         return successResponse(res, "Project created successfully", project, 201);
@@ -241,6 +246,10 @@ export const updateProject = asyncHandler(
                 const shift = await Shift.create({ ...shiftData, organizationId: updatedProject.organizationId });
                 await Project.findByIdAndUpdate(id, { shiftId: shift._id });
             }
+
+            // Reschedule today's reminders with updated shift times (fire-and-forget)
+            scheduleShiftReminders(undefined, String(id))
+                .catch(err => console.error("[ShiftReminder] updateProject reschedule failed:", err.message));
         }
 
         return successResponse(res, "Project updated successfully", updatedProject);

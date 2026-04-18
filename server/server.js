@@ -41,6 +41,9 @@ if (cluster.isPrimary) {
     const { startRenewalCron } = await import("#services/subscription/renewal.cron.js");
     startRenewalCron();
 
+    const { startShiftReminderCron } = await import("#services/shiftReminder/shiftReminder.cron.js");
+    startShiftReminderCron();
+
     server.listen(PORT, "0.0.0.0", () => {
         console.log(`[Server] Running on http://0.0.0.0:${PORT}`);
     });

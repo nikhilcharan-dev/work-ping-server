@@ -35,3 +35,35 @@ export const startApprovalFlow = async (phone, data) => {
     });
     return res.data;
 };
+
+/**
+ * Schedule (or reschedule) a 15-min pre-shift WhatsApp reminder.
+ * Safe to call on shift create/update — replaces any existing reminder for that user+date.
+ *
+ * @param {object} opts
+ * @param {string} opts.userId
+ * @param {string} opts.shiftDate  - "YYYY-MM-DD"
+ * @param {string} opts.phone
+ * @param {string} opts.name
+ * @param {string} opts.role       - "employee" | "manager"
+ * @param {{ name, startTime, endTime, breakMinutes }} opts.shift
+ */
+export const scheduleShiftReminder = async ({ userId, shiftDate, phone, name, role, shift }) => {
+    const res = await waClient.post("/api/secure/whatsapp/schedule-reminder", {
+        userId,
+        shiftDate,
+        phone: formatWANumber(phone),
+        name,
+        role,
+        shift,
+    });
+    return res.data;
+};
+
+/**
+ * Cancel a pending shift reminder (e.g. employee removed from project or shift deleted).
+ */
+export const cancelShiftReminder = async (userId, shiftDate) => {
+    const res = await waClient.post("/api/secure/whatsapp/cancel-reminder", { userId, shiftDate });
+    return res.data;
+};

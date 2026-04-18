@@ -1,51 +1,55 @@
-name: Deploy to Server
+  name: Deploy to Server
 
-on:
-  push:
-    branches:
-      - main
+  on:
+    push:
+      branches:
+        - main
 
-jobs:
-  deploy:
-    name: CI/CD Pipeline
-    runs-on: ubuntu-latest
+  jobs:
+    deploy:
+      name: CI/CD Pipeline
+      runs-on: ubuntu-latest
 
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.WORKPING_SERVER_HOST }}
-          username: ${{ secrets.WORKPING_SERVER_USER }}
-          key: ${{ secrets.WORKPING_SERVER_SSH_KEY }}
-          port: ${{ secrets.WORKPING_SERVER_PORT }}
+      steps:
+        - name: Deploy via SSH
+          uses: appleboy/ssh-action@v1.0.3
+          with:
+            host: ${{ secrets.WORKPING_SERVER_HOST }}
+            username: ${{ secrets.WORKPING_SERVER_USER }}
+            key: ${{ secrets.WORKPING_SERVER_SSH_KEY }}
+            port: ${{ secrets.WORKPING_SERVER_PORT }}
 
-          script: |
-            set -e
+            script: |
+                set -e
 
-            APP_DIR="/var/www/work-ping-server"
+                APP_DIR="/var/www/work-ping-server"
 
-            echo "--- Pulling latest code ---"
-            cd $APP_DIR
-            git pull origin main
+                echo "--- Preparing repo (clean state) ---"
+                cd $APP_DIR
+                git reset --hard
+                git clean -fd
 
-            echo "--- Installing dependencies ---"
-            cd $APP_DIR/server
-            npm ci --omit=dev
+                echo "--- Pulling latest code ---"
+                git pull origin main
 
-            echo "--- Reloading PM2 process ---"
+                echo "--- Installing dependencies ---"
+                cd $APP_DIR/server
+                npm ci --omit=dev
 
-            if sudo pm2 list | grep -q "server"; then
-              sudo pm2 reload server --update-env
-            else
-              cd $APP_DIR
-              sudo pm2 start server/server.js \
-                --name server \
-                --node-args="--experimental-vm-modules" \
-                --env production \
-                --max-memory-restart 512M \
-                --restart-delay 3000
-              sudo pm2 save
-            fi
+                echo "--- Reloading PM2 process ---"
 
-            echo "--- PM2 status ---"
-            sudo pm2 status server
+                if sudo pm2 list | grep -q "server"; then
+                  sudo pm2 reload server --update-env
+                else
+                  cd $APP_DIR
+                  sudo pm2 start server/server.js \
+                    --name server \
+                    --node-args="--experimental-vm-modules" \
+                    --env production \
+                    --max-memory-restart 512M \
+                    --restart-delay 3000
+                  sudo pm2 save
+                fi
+
+                echo "--- PM2 status ---"
+                sudo pm2 status server
