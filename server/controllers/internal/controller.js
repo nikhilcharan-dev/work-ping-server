@@ -4,6 +4,10 @@ import Leave from "#models/Leave.js";
 import Organization from "#models/Organization.js";
 import Project from "#models/Project.js";
 import ProjectMember from "#models/ProjectMember.js";
+import Holiday from "#models/Holiday.js";
+import Salary from "#models/Salary.js";
+import Complaint from "#models/Complaint.js";
+import FrsTicket from "#models/FrsTicket.js";
 import { validatePhone } from "#utils/validators.js";
 import { sendWhatsApp, startApprovalFlow } from "#services/whatsapp/whatsapp.service.js";
 
@@ -236,3 +240,83 @@ export const decideLeave = asyncHandler(async (req, res) => {
 
     return res.json({ success: true });
 }, "INTERNAL_DECIDE_LEAVE_ERROR");
+
+// ── GET /internal/shift/:userId ───────────────────────────────────────────────
+export const getUserShift = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    const projectIds = await ProjectMember.find({ userId, isActive: true }).distinct("projectId");
+    if (!projectIds.length) return res.json({ shift: null });
+
+    const project = await Project.findOne({
+        _id: { $in: projectIds },
+        shiftId: { $exists: true, $ne: null }
+    }).populate("shiftId").lean();
+
+    return res.json({ shift: project?.shiftId ?? null });
+}, "INTERNAL_GET_SHIFT_ERROR");
+
+// ── GET /internal/holidays/:organizationId ────────────────────────────────────
+export const getUpcomingHolidays = asyncHandler(async (req, res) => {
+    const { organizationId } = req.params;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() + 60); // next 60 days
+
+    const holidays = await Holiday.find({
+        organizationId,
+        date: { $gte: today, $lte: limit },
+        isWorkingDay: false
+    }).sort({ date: 1 }).limit(10).lean();
+
+    return res.json({ holidays });
+}, "INTERNAL_GET_HOLIDAYS_ERROR");
+
+// ── GET /internal/salary/:userId ──────────────────────────────────────────────
+export const getSalarySlip = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    const salary = await Salary.findOne({ userId }).sort({ month: -1 }).lean();
+    return res.json({ salary: salary ?? null });
+}, "INTERNAL_GET_SALARY_ERROR");
+
+// ── POST /internal/complaint ──────────────────────────────────────────────────
+export const fileComplaint = asyncHandler(async (req, res) => {
+    const { userId, description } = req.body;
+    if (!userId || !description?.trim()) {
+        return res.status(400).json({ error: "userId and description are required" });
+    }
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const ticketId = "COMP-" + Date.now().toString(36).toUpperCase();
+
+    const complaint = await Complaint.create({
+        userId,
+        organizationId: user.organizationId,
+        ticketId,
+        description: description.trim()
+    });
+
+    return res.status(201).json({ success: true, ticketId: complaint.ticketId });
+}, "INTERNAL_FILE_COMPLAINT_ERROR");
+
+// ── POST /internal/frs-ticket ─────────────────────────────────────────────────
+export const raiseFrsTicket = asyncHandler(async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const ticketId = "FRS-" + Date.now().toString(36).toUpperCase();
+
+    const ticket = await FrsTicket.create({
+        userId,
+        organizationId: user.organizationId,
+        ticketId
+    });
+
+    return res.status(201).json({ success: true, ticketId: ticket.ticketId });
+}, "INTERNAL_RAISE_FRS_ERROR");
