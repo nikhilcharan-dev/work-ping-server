@@ -4,8 +4,8 @@ import bcrypt from 'bcrypt';
 import mongoose from "mongoose";
 import { formatUserDates } from "#helpers/data.reducer.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
-import { setAuthCookie } from "#utils/cookie.helper.js";
-import { generateTokenPair } from "#utils/token.helper.js";
+import { setAuthCookie, clearAuthCookie } from "#utils/cookie.helper.js";
+import { generateTokenPair, revokeAllTokens } from "#utils/token.helper.js";
 import {
     validateEmail,
     validatePassword,
@@ -143,3 +143,31 @@ export const login = asyncHandler(
             refreshToken,
         });
     }, "USER_AUTH_LOGIN_ERROR");
+
+export const logout = asyncHandler(
+    async (req, res) => {
+        if (req.user?.userId) {
+            await revokeAllTokens(req.user.userId);
+        }
+        clearAuthCookie(res, req);
+        return successResponse(res, "Logout successful");
+    }, "USER_AUTH_LOGOUT_ERROR");
+
+export const verifyPassword = asyncHandler(
+    async (req, res) => {
+        const { userId } = req.user;
+        const { password } = req.body;
+
+        if (!password) return errorResponse(res, "Password is required");
+
+        const user = await User.findById(userId);
+        if (!user) return errorResponse(res, "User not found", 404);
+
+        const account = await Account.findOne({ email: user.email });
+        if (!account) return errorResponse(res, "Account not found", 404);
+
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) return errorResponse(res, "Incorrect password", 401);
+
+        return successResponse(res, "Password verified");
+    }, "USER_VERIFY_PASSWORD_ERROR");

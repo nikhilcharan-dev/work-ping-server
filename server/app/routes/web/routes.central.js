@@ -40,7 +40,7 @@ export default function centralRoutes(app) {
 
             if (!profile) {
                 profile = await User.findById(userId).lean();
-                role = "user";
+                role = profile?.role ?? "user";
             }
 
             if (!profile) {
