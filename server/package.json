@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "npx nodemon",
-    "seed:demo": "node seedAdminUser.js"
+    "seed:demo": "node seedAdminUser.js",
+    "seed:live": "node seedData.js"
   },
   "author": "",
   "license": "ISC",
@@ -27,6 +28,7 @@
     "mongoose": "^8.17.0",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "nodemon": "^3.1.11",
     "qrcode": "^1.5.4",

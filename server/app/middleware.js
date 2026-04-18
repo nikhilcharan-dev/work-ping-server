@@ -5,19 +5,14 @@ import cookieParser from "cookie-parser";
 const MODE = process.env.MODE;
 
 const allowedOrigins = [
-    "http://localhost:63342",
     "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:4173",
+    "http://localhost:5174",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:5501",
+    "http://127.0.0.1:5174",
     "https://workping.live",
     "https://www.workping.live",
     "https://phonepe.workping.live",
     "https://whatsapp.workping.live",
-    "https://glorious-couscous-97qgvw6xqj79hxj5g-5173.app.github.dev",
-    "http://192.168.1.3:5000",
-    "http://192.168.1.3",
     process.env.CLIENT_URL,
 ].filter(Boolean);
 

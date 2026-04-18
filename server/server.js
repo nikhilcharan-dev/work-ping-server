@@ -37,6 +37,10 @@ if (cluster.isPrimary) {
 
     await mongooseConfig();
     await redis.connect();
+
+    const { startRenewalCron } = await import("#services/subscription/renewal.cron.js");
+    startRenewalCron();
+
     server.listen(PORT, "0.0.0.0", () => {
         console.log(`[Server] Running on http://0.0.0.0:${PORT}`);
     });
