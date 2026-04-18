@@ -132,6 +132,15 @@ const phonepeWebhook = asyncHandler(
                 // Cross-link records outside the transaction (already committed)
                 if (subscription) {
                     await Payment.findByIdAndUpdate(payment._id, { subscriptionId: subscription._id });
+
+                    // Expire any previous active subscriptions for this admin (excluding the new one)
+                    await Subscription.updateMany(
+                        { adminId: order.userId, status: "ACTIVE", _id: { $ne: subscription._id } },
+                        { $set: { status: "EXPIRED" } }
+                    );
+
+                    // Keep Admin.planId in sync so limit checks always reflect the current plan
+                    await Admin.findByIdAndUpdate(order.userId, { planId: plan._id });
                 }
                 await Order.findByIdAndUpdate(order._id, { paymentId: payment._id });
 

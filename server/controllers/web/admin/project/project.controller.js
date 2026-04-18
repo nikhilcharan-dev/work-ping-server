@@ -1,9 +1,11 @@
 import Project, { requiredProjectFields, optionalProjectFields } from "#models/Project.js";
+import Shift from "#models/Shift.js";
 import { pick } from "#helpers/data.reducer.js";
 import Pagination from "#helpers/pagination.js";
 import OrgAdmin from "#models/Admin.Org.js";
 import mongoose from "mongoose";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { checkProjectLimit } from "#utils/plan.limits.js";
 import {
     validateObjectId,
     validateString,
@@ -41,7 +43,27 @@ export const createProject = asyncHandler(
         const isExisting = await Project.findOne({ name: data.name, organizationId: data.organizationId });
         if (isExisting) return errorResponse(res, "Project already exists", 409);
 
+        const projectLimit = await checkProjectLimit(req.user.userId);
+        if (!projectLimit.allowed) return errorResponse(res, projectLimit.message, 403);
+
         const project = await Project.create(data);
+
+        // Create owned shift inline if provided
+        const s = req.body.shift;
+        if (s?.startTime && s?.endTime) {
+            const shift = await Shift.create({
+                name: `${project.name} Shift`,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                ...(s.slotEnd && { slotEnd: s.slotEnd }),
+                ...(s.slotStart && { slotStart: s.slotStart }),
+                breakMinutes: s.breakMinutes ? Number(s.breakMinutes) : 60,
+                organizationId: project.organizationId,
+            });
+            project.shiftId = shift._id;
+            await project.save();
+        }
+
         return successResponse(res, "Project created successfully", project, 201);
     },
     "CREATE_PROJECT_ERROR");
@@ -136,8 +158,17 @@ export const getProject = asyncHandler(
             },
             { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
             {
+                $lookup: {
+                    from: "shifts",
+                    localField: "shiftId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, startTime: 1, endTime: 1, slotStart: 1, slotEnd: 1, breakMinutes: 1 } }],
+                    as: "shiftData"
+                }
+            },
+            { $unwind: { path: "$shiftData", preserveNullAndEmptyArrays: true } },
+            {
                 $addFields: {
-                    // Keep projectManager as the original ObjectId (string) so frontend can use it as an ID
                     projectManagerName: { $ifNull: ["$projectManagerInfo.name", null] },
                     organizationName: { $ifNull: ["$organization.name", null] },
                     assignedDate: { $dateToString: { format: "%Y-%m-%d", date: "$assignedDate" } },
@@ -192,6 +223,26 @@ export const updateProject = asyncHandler(
         }
 
         const updatedProject = await Project.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+
+        // Create or update owned shift inline
+        const s = req.body.shift;
+        if (s?.startTime && s?.endTime) {
+            const shiftData = {
+                name: `${updatedProject.name} Shift`,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                slotEnd: s.slotEnd || undefined,
+                slotStart: s.slotStart || undefined,
+                breakMinutes: s.breakMinutes ? Number(s.breakMinutes) : 60,
+            };
+            if (project.shiftId) {
+                await Shift.findByIdAndUpdate(project.shiftId, shiftData);
+            } else {
+                const shift = await Shift.create({ ...shiftData, organizationId: updatedProject.organizationId });
+                await Project.findByIdAndUpdate(id, { shiftId: shift._id });
+            }
+        }
+
         return successResponse(res, "Project updated successfully", updatedProject);
     },
     "UPDATE_PROJECT_ERROR");

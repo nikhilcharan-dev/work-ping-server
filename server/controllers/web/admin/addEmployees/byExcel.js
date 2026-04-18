@@ -9,6 +9,7 @@ import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validatePhone } from "#utils/validators.js";
+import { checkEmployeeLimit } from "#utils/plan.limits.js";
 
 const insertByExcel = asyncHandler(
     async (req, res) => {
@@ -46,6 +47,9 @@ const insertByExcel = asyncHandler(
 
         const failedRecords = [];
         const successfulRecords = [];
+
+        const empLimit = await checkEmployeeLimit(req.user.userId, jsonData.length);
+        if (!empLimit.allowed) return errorResponse(res, empLimit.message, 403);
 
         for (let i = 0; i < jsonData.length; i++) {
             const row = jsonData[i];

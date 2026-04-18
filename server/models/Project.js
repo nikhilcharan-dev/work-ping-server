@@ -33,6 +33,10 @@ const projectSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        shiftId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Shift",
+        },
         status: {
             type: String,
             enum: ["active", "completed", "onHold"],
@@ -58,7 +62,7 @@ export const optionalProjectFields = [
     "description",
     "dueDate",
     "assignedDate",
-    "contractedBy"
+    "contractedBy",
 ];
 
 export default mongoose.model("Project", projectSchema);

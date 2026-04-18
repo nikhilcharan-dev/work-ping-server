@@ -16,6 +16,12 @@ const attendanceSchema = new mongoose.Schema(
             index: true
         },
 
+        projectId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Project",
+            index: true,
+        },
+
         date: { type: Date, required: true, index: true },
 
         status: {

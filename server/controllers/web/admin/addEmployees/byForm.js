@@ -7,6 +7,7 @@ import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validateEmail, validatePhone } from "#utils/validators.js";
+import { checkEmployeeLimit } from "#utils/plan.limits.js";
 import { enrollFace } from "#services/face_recognition/enroll.js";
 import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
@@ -90,6 +91,9 @@ async (req, res) => {
     if (!organizationName) return errorResponse(res, "organizationName is required");
     const organization = await Organization.findOne({ name: String(organizationName).trim() });
     if (!organization) return errorResponse(res, `Organization '${organizationName}' not found`, 404);
+
+    const empLimit = await checkEmployeeLimit(req.user.userId, 1);
+    if (!empLimit.allowed) return errorResponse(res, empLimit.message, 403);
 
     // Find team
     let team = null;

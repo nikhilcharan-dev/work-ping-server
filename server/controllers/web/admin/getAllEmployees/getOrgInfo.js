@@ -8,7 +8,12 @@ const getOrganizationInfo = asyncHandler(async (req, res) => {
 
     const adminOrgs = await AdminOrg.aggregate([
         {
-            $match: { primaryAdmin: adminId }
+            $match: {
+                $or: [
+                    { primaryAdmin: adminId },
+                    { secondaryAdmin: adminId }
+                ]
+            }
         },
         {
             $lookup: {

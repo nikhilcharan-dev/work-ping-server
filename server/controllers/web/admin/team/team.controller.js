@@ -6,6 +6,7 @@ import TeamMembership from "#models/TeamMembership.js";
 import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { checkTeamLimit } from "#utils/plan.limits.js";
 import {
     validateObjectId,
     validateString,
@@ -62,6 +63,9 @@ async (req, res) => {
         organizationId
     });
     if (teamExists) return errorResponse(res, "Team name already exists in this organization", 409);
+
+    const teamLimit = await checkTeamLimit(req.user.userId);
+    if (!teamLimit.allowed) return errorResponse(res, teamLimit.message, 403);
 
     const detailObject = {
         teamName: nameValidation.normalized,

@@ -5,7 +5,8 @@ import {
     getAttendanceWeek,
     getLeaveBalance,
     getRecentLeaves,
-    applyLeave
+    applyLeave,
+    decideLeave
 } from "../../controllers/internal/controller.js";
 
 const router = Router();
@@ -25,5 +26,6 @@ router.get("/attendance/week/:userId",   getAttendanceWeek);
 router.get("/leave/balance/:userId",     getLeaveBalance);
 router.get("/leave/recent/:userId",      getRecentLeaves);
 router.post("/leave/apply",              applyLeave);
+router.post("/leave/decide",             decideLeave);
 
 export default router;

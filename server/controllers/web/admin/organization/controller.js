@@ -6,6 +6,7 @@ import { uploadFile, deleteObject } from "#services/storage/oracle.service.js";
 import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
+import { checkOrgLimit } from "#utils/plan.limits.js";
 import {
     validateObjectId,
     validateString,
@@ -82,6 +83,9 @@ const addOrganization = asyncHandler(async (req, res) => {
 
     const duplicate = await existingOrganizationWithSameName(nameValidation.normalized);
     if (duplicate) return errorResponse(res, "Organization Name is already taken", 409);
+
+    const orgLimit = await checkOrgLimit(userId);
+    if (!orgLimit.allowed) return errorResponse(res, orgLimit.message, 403);
 
     const orgData = { name: nameValidation.normalized };
     if (type !== undefined) orgData.type = String(type).trim();

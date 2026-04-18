@@ -2,7 +2,10 @@ import User from "#models/User.js";
 import Attendance from "#models/Attendance.js";
 import Leave from "#models/Leave.js";
 import Organization from "#models/Organization.js";
+import Project from "#models/Project.js";
+import ProjectMember from "#models/ProjectMember.js";
 import { validatePhone } from "#utils/validators.js";
+import { sendWhatsApp, startApprovalFlow } from "#services/whatsapp/whatsapp.service.js";
 
 // ── GET /internal/employee/by-phone/:phone ────────────────────────────────────
 export const getEmployeeByPhone = asyncHandler(async (req, res) => {
@@ -137,5 +140,99 @@ export const applyLeave = asyncHandler(async (req, res) => {
         status: "pending"
     });
 
+    const dateList = normalizedDates.slice(0, 3)
+        .map(d => new Date(d).toLocaleDateString("en-IN")).join(", ")
+        + (normalizedDates.length > 3 ? ` +${normalizedDates.length - 3} more` : "");
+    const days = normalizedDates.length;
+    const leaveId = leave._id.toString();
+
+    // Confirm submission to employee
+    if (user.phone) {
+        sendWhatsApp(user.phone,
+            `*Leave Request Submitted* 📋\nHi ${user.name}, your *${leaveType}* leave for *${days} day(s)* (${dateList}) has been submitted and is awaiting approval.`
+        ).catch(() => {});
+    }
+
+    // Determine approver: if applicant is a project manager → notify admin; else → notify their PM
+    const isProjectManager = await Project.exists({ projectManager: userId });
+
+    if (isProjectManager) {
+        // PM applying → find admin of same org
+        const admin = await User.findOne({
+            organizationId: user.organizationId,
+            role: "manager",
+            isActive: true,
+            _id: { $ne: userId }
+        }).select("name phone").lean();
+
+        if (admin?.phone) {
+            sendWhatsApp(admin.phone,
+                `*Leave Approval Required* 📋\n*${user.name}* (Project Manager) has applied for *${leaveType}* leave.\n*Days:* ${days} (${dateList})\n\nReply *yes* to approve or *no* to reject.`
+            ).catch(() => {});
+            startApprovalFlow(admin.phone, { leaveId, employeeName: user.name, days, dateList }).catch(() => {});
+        }
+    } else {
+        // Regular member → notify project manager(s)
+        const projectIds = await ProjectMember.find({ userId, isActive: true }).distinct("projectId");
+        if (projectIds.length > 0) {
+            const projects = await Project.find({ _id: { $in: projectIds } })
+                .populate({ path: "projectManager", select: "name phone" }).lean();
+
+            const notified = new Set();
+            for (const proj of projects) {
+                const pm = proj.projectManager;
+                if (!pm?.phone || notified.has(pm._id.toString())) continue;
+                notified.add(pm._id.toString());
+                sendWhatsApp(pm.phone,
+                    `*Leave Approval Required* 📋\n*${user.name}* has applied for *${leaveType}* leave.\n*Project:* ${proj.name}\n*Days:* ${days} (${dateList})\n\nReply *yes* to approve or *no* to reject.`
+                ).catch(() => {});
+                startApprovalFlow(pm.phone, { leaveId, employeeName: user.name, days, dateList }).catch(() => {});
+            }
+        }
+    }
+
     return res.status(201).json({ success: true, leaveId: leave._id });
 }, "INTERNAL_APPLY_LEAVE_ERROR");
+
+// ── POST /internal/leave/decide ───────────────────────────────────────────────
+export const decideLeave = asyncHandler(async (req, res) => {
+    const { leaveId, decision, decidedByPhone } = req.body;
+
+    if (!leaveId || !decision || !decidedByPhone) {
+        return res.status(400).json({ error: "leaveId, decision, and decidedByPhone are required" });
+    }
+    if (!["approved", "rejected"].includes(decision)) {
+        return res.status(400).json({ error: "decision must be 'approved' or 'rejected'" });
+    }
+
+    // Strip country code to match DB format (10-digit)
+    const rawPhone = String(decidedByPhone).replace(/\D/g, "");
+    const normalizedPhone = rawPhone.length === 12 && rawPhone.startsWith("91") ? rawPhone.slice(2) : rawPhone;
+
+    const decider = await User.findOne({ phone: normalizedPhone }).select("name _id").lean();
+    if (!decider) return res.status(404).json({ error: "Approver not found" });
+
+    const leave = await Leave.findById(leaveId);
+    if (!leave) return res.status(404).json({ error: "Leave request not found" });
+    if (leave.status !== "pending") {
+        return res.status(400).json({ error: `This leave has already been ${leave.status}` });
+    }
+
+    leave.status = decision;
+    leave.approvedBy = decider._id;
+    await leave.save();
+
+    // Notify employee of the outcome
+    const employee = await User.findById(leave.userId).select("name phone").lean();
+    if (employee?.phone) {
+        const dateList = leave.dates.slice(0, 3)
+            .map(d => new Date(d).toLocaleDateString("en-IN")).join(", ")
+            + (leave.dates.length > 3 ? ` +${leave.dates.length - 3} more` : "");
+        const msg = decision === "approved"
+            ? `*Leave Approved* ✅\nHi ${employee.name}, your *${leave.leaveType}* leave for *${leave.dates.length} day(s)* (${dateList}) has been *approved* by ${decider.name}.`
+            : `*Leave Rejected* ❌\nHi ${employee.name}, your *${leave.leaveType}* leave for *${leave.dates.length} day(s)* (${dateList}) has been *rejected* by ${decider.name}.`;
+        sendWhatsApp(employee.phone, msg).catch(() => {});
+    }
+
+    return res.json({ success: true });
+}, "INTERNAL_DECIDE_LEAVE_ERROR");

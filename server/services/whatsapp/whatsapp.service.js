@@ -21,3 +21,17 @@ export const sendWhatsApp = async (to, text) => {
     const res = await waClient.post("/api/secure/whatsapp/send", { to: formatWANumber(to), text });
     return res.data; // { sent: true, to }
 };
+
+/**
+ * Tell the WhatsApp microservice to start a LEAVE_APPROVAL flow for a PM or admin.
+ * They will then be prompted to reply yes/no to approve/reject the leave.
+ */
+export const startApprovalFlow = async (phone, data) => {
+    const res = await waClient.post("/api/secure/whatsapp/start-flow", {
+        phone: formatWANumber(phone),
+        flow: "LEAVE_APPROVAL",
+        step: "AWAITING_DECISION",
+        data
+    });
+    return res.data;
+};

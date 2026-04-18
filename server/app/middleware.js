@@ -41,11 +41,10 @@ export default function middlewares(app) {
 
     app.use((req, res, next) => {
         console.log("------------------------------------------------");
-        console.log(`[Request] ${req.method} ${req.url}`);
+        console.log(`[Request] [${req.ip}] ${req.method} ${req.url}`);
         // console.log("Origin:", req.headers.origin);
         // console.log("Cookies:", req.cookies);
         // console.log("User-Agent:", req.headers['user-agent']);
-        console.log("Origin IP:", req.ip);
         console.log("------------------------------------------------");
         if (req.headers['user-agent']?.includes('PostmanRuntime') && MODE === "production") {
             return res.status(403).json({

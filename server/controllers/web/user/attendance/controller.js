@@ -1,5 +1,8 @@
 import Attendance from "#models/Attendance.js";
 import User from "#models/User.js";
+import ProjectMember from "#models/ProjectMember.js";
+import Project from "#models/Project.js";
+import Shift from "#models/Shift.js";
 import { validateArray } from "#utils/validators.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { validate3DLocation } from "#utils/location.js";
@@ -62,15 +65,38 @@ async function recordAttendance(faceRes, user, userId, res) {
     });
 
     if (!attendance) {
+        // Resolve active project + shift-based status determination
+        let projectId = null;
+        let status = "present";
+
+        const activeMembership = await ProjectMember.findOne({ userId, isActive: true })
+            .sort({ assignedDate: -1 })
+            .lean();
+
+        if (activeMembership) {
+            projectId = activeMembership.projectId;
+            const project = await Project.findById(projectId).select("shiftId").lean();
+            if (project?.shiftId) {
+                const shift = await Shift.findById(project.shiftId).select("startTime slotEnd").lean();
+                if (shift) {
+                    const slotEndStr = shift.slotEnd || shift.startTime;
+                    const [h, m] = slotEndStr.split(":").map(Number);
+                    const now = new Date();
+                    if (now.getHours() * 60 + now.getMinutes() > h * 60 + m) status = "late";
+                }
+            }
+        }
+
         attendance = await Attendance.create({
             userId,
             organizationId: user.organizationId,
+            projectId,
             date: new Date(),
-            status: "present",
+            status,
             checkIn: new Date(),
             remarks: `Verified with confidence ${confidence.toFixed(2)}`
         });
-        trace('SUCCESS', `Check-In created for user: ${userId}`);
+        trace('SUCCESS', `Check-In created for user: ${userId} (status=${status}, project=${projectId})`);
     } else if (!attendance.checkOut) {
         attendance.checkOut = new Date();
         await attendance.save();

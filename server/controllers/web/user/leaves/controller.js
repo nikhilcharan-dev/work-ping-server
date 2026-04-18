@@ -1,7 +1,9 @@
 import Leave from "#models/Leave.js";
 import User from "#models/User.js";
 import Organization from "#models/Organization.js";
-import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
+import ProjectMember from "#models/ProjectMember.js";
+import Project from "#models/Project.js";
+import { sendWhatsApp, startApprovalFlow } from "#services/whatsapp/whatsapp.service.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -16,7 +18,13 @@ import {
 export const applyLeave = asyncHandler(
     async (req, res) => {
         const { userId } = req.user;
-        const { dates, reason } = req.body;
+        const { dates, reason, leaveType } = req.body;
+
+        if (!leaveType) return errorResponse(res, "leaveType is required");
+        const validTypes = ["Casual", "Sick", "Earned", "Unpaid"];
+        if (!validTypes.includes(leaveType)) {
+            return errorResponse(res, `Invalid leave type. Use: ${validTypes.join(", ")}`);
+        }
 
         const datesValidation = validateArray(dates, "Leave dates", {
             required: true,
@@ -46,21 +54,60 @@ export const applyLeave = asyncHandler(
         const leave = await Leave.create({
             userId,
             organizationId: user.organizationId,
+            leaveType,
             dates: normalizedDates,
             reason: reason || "",
             appliedBy: userId,
             status: "pending"
         });
 
-        // WhatsApp confirmation — fire-and-log
-        const dateList = normalizedDates
-            .slice(0, 3)
-            .map(d => new Date(d).toLocaleDateString("en-IN"))
-            .join(", ") + (normalizedDates.length > 3 ? ` +${normalizedDates.length - 3} more` : "");
-        sendWhatsApp(
-            user.phone,
-            `*Leave Application Submitted* 📋\nHi ${user.name}, your leave request for *${normalizedDates.length} day(s)* (${dateList}) has been submitted and is pending approval.`
-        ).catch(err => console.error("[WhatsApp] Leave notification failed:", err.message));
+        const dateList = normalizedDates.slice(0, 3)
+            .map(d => new Date(d).toLocaleDateString("en-IN")).join(", ")
+            + (normalizedDates.length > 3 ? ` +${normalizedDates.length - 3} more` : "");
+        const days = normalizedDates.length;
+        const leaveId = leave._id.toString();
+
+        // Confirm submission to employee
+        if (user.phone) {
+            sendWhatsApp(user.phone,
+                `*Leave Request Submitted* 📋\nHi ${user.name}, your *${leaveType}* leave for *${days} day(s)* (${dateList}) has been submitted and is awaiting approval.`
+            ).catch(err => console.error("[WhatsApp] Employee leave notification failed:", err.message));
+        }
+
+        // Determine approver: PM → notify admin; member → notify their PM(s)
+        const isProjectManager = await Project.exists({ projectManager: userId });
+
+        if (isProjectManager) {
+            User.findOne({
+                organizationId: user.organizationId,
+                role: "manager",
+                isActive: true,
+                _id: { $ne: userId }
+            }).select("name phone").lean().then(admin => {
+                if (!admin?.phone) return;
+                sendWhatsApp(admin.phone,
+                    `*Leave Approval Required* 📋\n*${user.name}* (Project Manager) has applied for *${leaveType}* leave.\n*Days:* ${days} (${dateList})\n\nReply *yes* to approve or *no* to reject.`
+                ).catch(() => {});
+                startApprovalFlow(admin.phone, { leaveId, employeeName: user.name, days, dateList }).catch(() => {});
+            }).catch(() => {});
+        } else {
+            ProjectMember.find({ userId, isActive: true }).distinct("projectId")
+                .then(async (projectIds) => {
+                    if (!projectIds.length) return;
+                    const projects = await Project.find({ _id: { $in: projectIds } })
+                        .populate({ path: "projectManager", select: "name phone" }).lean();
+                    const notified = new Set();
+                    for (const proj of projects) {
+                        const pm = proj.projectManager;
+                        if (!pm?.phone || notified.has(pm._id.toString())) continue;
+                        notified.add(pm._id.toString());
+                        sendWhatsApp(pm.phone,
+                            `*Leave Approval Required* 📋\n*${user.name}* has applied for *${leaveType}* leave.\n*Project:* ${proj.name}\n*Days:* ${days} (${dateList})\n\nReply *yes* to approve or *no* to reject.`
+                        ).catch(() => {});
+                        startApprovalFlow(pm.phone, { leaveId, employeeName: user.name, days, dateList }).catch(() => {});
+                    }
+                }).catch(() => {});
+        }
 
         return successResponse(res, "Leave application submitted successfully", leave, 201);
     }, "USER_APPLY_LEAVE_ERROR"

@@ -33,10 +33,24 @@ const planSchema = new mongoose.Schema(
             default: "MONTHLY"
         },
 
-        // Max employees allowed under this plan
         maxEmployees: {
             type: Number,
             default: 10
+        },
+
+        maxOrganizations: {
+            type: Number,
+            default: 1
+        },
+
+        maxTeams: {
+            type: Number,
+            default: 3
+        },
+
+        maxProjects: {
+            type: Number,
+            default: 5
         },
 
         // Human-readable feature list shown on pricing page

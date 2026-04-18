@@ -23,6 +23,9 @@ import plansRouter from "#webRoutes/admin/plans/router.js";
 import faceEnrollRouter from "#webRoutes/admin/faceEnroll/router.js";
 import phonepeGatewayRouter from "#services/phonepe/phonepe.gateway.js";
 import holidayRouter from "#webRoutes/admin/holiday/router.js";
+import attendanceRouter from "#webRoutes/admin/attendance/router.js";
+import leavesRouter from "#webRoutes/admin/leaves/router.js";
+import shiftRouter from "#webRoutes/admin/shift/router.js";
 
 const adminOnly = [validateCookie, requireRole("admin")];
 
@@ -66,6 +69,15 @@ export default function adminRoutes(app) {
 
     // Holiday
     app.use("/api/admin/holiday", ...adminOnly, holidayRouter);
+
+    // Attendance
+    app.use("/api/admin/attendance", ...adminOnly, attendanceRouter);
+
+    // Leaves
+    app.use("/api/admin/leaves", ...adminOnly, leavesRouter);
+
+    // Shifts
+    app.use("/api/admin/shifts", ...adminOnly, shiftRouter);
 
     // Lock screen password verification (requires valid session cookie)
     app.post("/api/admin/auth/verify-password", ...adminOnly, verifyPassword);
