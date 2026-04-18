@@ -32,27 +32,31 @@ export default function centralRoutes(app) {
             } catch (jwtErr) {
                 return res.status(401).json({ type: "error", message: "Unauthorized" });
             }
-            const { userId } = decoded;
+
+            // Role is embedded in the JWT at login time — most reliable source
+            const { userId, role: tokenRole } = decoded;
 
             // Try Admin first, then User
             let profile = await Admin.findById(userId).lean();
-            let role = "admin";
 
             if (!profile) {
                 profile = await User.findById(userId).lean();
-                role = profile?.role ?? "user";
             }
 
             if (!profile) {
                 return res.status(404).json({ type: "error", message: "User not found" });
             }
 
-            const authData = await Account.findOne({ email: profile.email }).lean();
+            // JWT role is authoritative; fall back to profile.role only if missing
+            const role = tokenRole ?? profile.role ?? "user";
 
-            res.status(200).json({ type: "success", message: "Verified", data: { ...authData, ...profile, role } });
+            // Strip password before sending to client
+            const { password: _pw, ...safeProfile } = profile;
+
+            res.status(200).json({ type: "success", message: "Verified", data: { ...safeProfile, role } });
 
         } catch (err) {
-            console.log(err)
+            console.log(err);
             return res.status(500).json({ type: "error", message: "Internal Server Error" });
         }
     });
