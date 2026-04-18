@@ -50,10 +50,13 @@ export default function centralRoutes(app) {
             // JWT role is authoritative; fall back to profile.role only if missing
             const role = tokenRole ?? profile.role ?? "user";
 
-            // Strip password before sending to client
-            const { password: _pw, ...safeProfile } = profile;
+            const authData = await Account.findOne({ email: profile.email }).lean();
 
-            res.status(200).json({ type: "success", message: "Verified", data: { ...safeProfile, role } });
+            // Strip password from both documents before sending to client
+            const { password: _p1, ...safeAuthData } = authData ?? {};
+            const { password: _p2, ...safeProfile  } = profile;
+
+            res.status(200).json({ type: "success", message: "Verified", data: { ...safeAuthData, ...safeProfile, role } });
 
         } catch (err) {
             console.log(err);

@@ -27,7 +27,8 @@ import attendanceRouter from "#webRoutes/admin/attendance/router.js";
 import leavesRouter from "#webRoutes/admin/leaves/router.js";
 import shiftRouter from "#webRoutes/admin/shift/router.js";
 
-const adminOnly = [validateCookie, requireRole("admin")];
+const adminOnly        = [validateCookie, requireRole("admin")];
+const adminOrManager   = [validateCookie, requireRole("admin", "manager")];
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
@@ -70,11 +71,11 @@ export default function adminRoutes(app) {
     // Holiday
     app.use("/api/admin/holiday", ...adminOnly, holidayRouter);
 
-    // Attendance
-    app.use("/api/admin/attendance", ...adminOnly, attendanceRouter);
+    // Attendance — managers can view team attendance
+    app.use("/api/admin/attendance", ...adminOrManager, attendanceRouter);
 
-    // Leaves
-    app.use("/api/admin/leaves", ...adminOnly, leavesRouter);
+    // Leaves — managers can view and action team leaves
+    app.use("/api/admin/leaves", ...adminOrManager, leavesRouter);
 
     // Shifts
     app.use("/api/admin/shifts", ...adminOnly, shiftRouter);
