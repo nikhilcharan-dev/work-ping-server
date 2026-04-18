@@ -7,6 +7,8 @@ import {
     validateObjectId,
     validateRequiredFields
 } from "#utils/validators.js";
+import { scheduleShiftReminders } from "#services/shiftReminder/shiftReminder.cron.js";
+import { cancelShiftReminder } from "#services/whatsapp/whatsapp.service.js";
 
 export const addProjectMember = asyncHandler(
     async (req, res) => {
@@ -60,9 +62,14 @@ export const addProjectMember = asyncHandler(
         }
 
         const members = await ProjectMember.insertMany(newMembersToInsert);
-        return successResponse(res, "Members added to project", { 
+
+        // Schedule today's shift reminder for newly added members (fire-and-forget)
+        scheduleShiftReminders(undefined, String(projectId))
+            .catch(err => console.error("[ShiftReminder] addMember schedule failed:", err.message));
+
+        return successResponse(res, "Members added to project", {
             addedCount: members.length,
-            members 
+            members
         }, 201);
     },
     "ADD_PROJECT_MEMBER_ERROR");
@@ -206,11 +213,24 @@ export const removeProjectMembers = asyncHandler(
             if (!v.valid) return errorResponse(res, v.error);
         }
 
+        // Fetch members before deletion to get userIds for reminder cancellation
+        const toDelete = await ProjectMember.find({
+            _id: { $in: ids.map(id => new mongoose.Types.ObjectId(id)) }
+        }).lean();
+
         const result = await ProjectMember.deleteMany({
             _id: { $in: ids.map(id => new mongoose.Types.ObjectId(id)) }
         });
 
         if (result.deletedCount === 0) return errorResponse(res, "No matching members found to delete", 404);
+
+        // Cancel today's shift reminders for removed members (fire-and-forget)
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        for (const m of toDelete) {
+            cancelShiftReminder(String(m.userId), today)
+                .catch(err => console.error("[ShiftReminder] removeMember cancel failed:", err.message));
+        }
+
         return successResponse(res, `${result.deletedCount} member(s) removed successfully`, { deletedCount: result.deletedCount });
     },
     "REMOVE_PROJECT_MEMBERS_ERROR");

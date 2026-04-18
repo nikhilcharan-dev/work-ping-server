@@ -46,11 +46,11 @@ export default function adminRoutes(app) {
     app.use("/api/admin/employee", ...adminOnly, getEmployee);
     app.use("/api/admin/get-all-employees", ...adminOnly, getAllEmployeesRouter);
     app.use("/api/admin/employees", ...adminOnly, deleteEmployeesById);
-    app.use("/api/admin/team", ...adminOnly, teamRoutes);
+    app.use("/api/admin/team", ...adminOrManager, teamRoutes);
     app.use("/api/admin/add-employees", ...adminOnly, addEmployeesRouter);
 
-    // Project
-    app.use("/api/admin/project", ...adminOnly, projectRoutes);
+    // Project — managers can manage projects and assignments
+    app.use("/api/admin/project", ...adminOrManager, projectRoutes);
 
     // Payments & Orders (read)
     app.use("/api/admin/payments", ...adminOnly, paymentsRouter);
