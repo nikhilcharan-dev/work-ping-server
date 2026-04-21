@@ -14,15 +14,16 @@ import {
     getEligibleEmployeesForProject
 } from "#webController/admin/project/teams.controller.js";
 import { Router } from "express";
+import requireRole from "#middleware/requireRole.js";
 
 const router = Router();
 
 router.get("/", getProjects);
-router.post("/create-project", createProject);
+router.post("/create-project", requireRole("admin"), createProject);
 router.get("/get-projects", getProjects);
 router.get("/get-project", getProject);
 router.post("/update-project", updateProject);
-router.post("/delete-projects", deleteProject);
+router.post("/delete-projects", requireRole("admin"), deleteProject);
 
 // Project Members
 router.post("/add-member", addProjectMember);

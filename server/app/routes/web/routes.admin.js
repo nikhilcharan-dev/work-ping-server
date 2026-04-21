@@ -9,6 +9,7 @@ import teamRoutes from "#webRoutes/admin/team/routes.js";
 import profileRoutes from "#webRoutes/admin/profile/router.js";
 import validateCookie from "#middleware/jwtBearer.js";
 import requireRole from "#middleware/requireRole.js";
+import authorizeManager from "#middleware/authorizeManager.js";
 import addEmployeesRouter from "#webRoutes/admin/addEmployees/router.js"
 import getAllEmployeesRouter from "#webRoutes/admin/getAllEmployees/router.js"
 // import teamMemberRoutes from "#webRoutes/admin/teamMembers/routes.js";
@@ -28,7 +29,7 @@ import leavesRouter from "#webRoutes/admin/leaves/router.js";
 import shiftRouter from "#webRoutes/admin/shift/router.js";
 
 const adminOnly        = [validateCookie, requireRole("admin")];
-const adminOrManager   = [validateCookie, requireRole("admin", "manager")];
+const adminOrManager   = [validateCookie, requireRole("admin", "manager"), authorizeManager];
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);

@@ -96,7 +96,7 @@ export const register = asyncHandler(
         }
 
         const { accessToken, refreshToken } = await generateTokenPair(
-            { userId: user._id, role }, req
+            { userId: user._id, role, organizationId }, req
         );
 
         setAuthCookie(res, req, accessToken);
@@ -132,7 +132,7 @@ export const login = asyncHandler(
         if (!userMetaDetails) return errorResponse(res, "User profile does not exist", 401);
 
         const { accessToken, refreshToken } = await generateTokenPair(
-            { userId: userMetaDetails._id, role: account.role }, req
+            { userId: userMetaDetails._id, role: account.role, organizationId: userMetaDetails.organizationId }, req
         );
 
         setAuthCookie(res, req, accessToken);
