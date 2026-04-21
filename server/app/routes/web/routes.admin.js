@@ -32,7 +32,6 @@ const adminOrManager   = [validateCookie, requireRole("admin", "manager")];
 
 export default function adminRoutes(app) {
     app.use("/api/admin/auth", authRoutes);
-    app.use("/api/admin", ...adminOnly, profileRoutes);
     app.use("/api/admin/organization", ...adminOnly, organizationRouter);
     app.use("/api/admin/subscriptions", ...adminOnly, subscriptionRouter);
     // OTP
@@ -43,8 +42,8 @@ export default function adminRoutes(app) {
     // Forgot Password
 
     //create-team
-    app.use("/api/admin/employee", ...adminOnly, getEmployee);
-    app.use("/api/admin/get-all-employees", ...adminOnly, getAllEmployeesRouter);
+    app.use("/api/admin/employee", ...adminOrManager, getEmployee);
+    app.use("/api/admin/get-all-employees", ...adminOrManager, getAllEmployeesRouter);
     app.use("/api/admin/employees", ...adminOnly, deleteEmployeesById);
     app.use("/api/admin/team", ...adminOrManager, teamRoutes);
     app.use("/api/admin/add-employees", ...adminOnly, addEmployeesRouter);
@@ -66,10 +65,10 @@ export default function adminRoutes(app) {
     app.use("/api/admin/phonepe", ...adminOnly, phonepeGatewayRouter);
 
     // Admin Profile
-    app.use("/api/admin/profile", ...adminOnly, profileRoutes);
+    app.use("/api/admin/profile", ...adminOrManager, profileRoutes);
 
     // Holiday
-    app.use("/api/admin/holiday", ...adminOnly, holidayRouter);
+    app.use("/api/admin/holiday", ...adminOrManager, holidayRouter);
 
     // Attendance — managers can view team attendance
     app.use("/api/admin/attendance", ...adminOrManager, attendanceRouter);
@@ -78,7 +77,7 @@ export default function adminRoutes(app) {
     app.use("/api/admin/leaves", ...adminOrManager, leavesRouter);
 
     // Shifts
-    app.use("/api/admin/shifts", ...adminOnly, shiftRouter);
+    app.use("/api/admin/shifts", ...adminOrManager, shiftRouter);
 
     // Lock screen password verification (requires valid session cookie)
     app.post("/api/admin/auth/verify-password", ...adminOnly, verifyPassword);
