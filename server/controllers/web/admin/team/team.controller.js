@@ -10,7 +10,8 @@ import { checkTeamLimit } from "#utils/plan.limits.js";
 import {
     validateObjectId,
     validateString,
-    validateRequiredFields
+    validateRequiredFields,
+    validatePagination
 } from "#utils/validators.js";
 
 export const createTeam = asyncHandler(
@@ -410,3 +411,94 @@ export const deleteTeam = asyncHandler(
     },
     "ADMIN_DELETE_TEAM_ERROR"
 );
+
+export const getManagerTeams = asyncHandler(async (req, res) => {
+    let { search = "", page = 1, limit = 10 } = req.query;
+    let { userId: managerId, organizationId } = req.user;
+
+    // Fallback if JWT is stale and doesn't contain organizationId
+    if (!organizationId) {
+        const User = mongoose.model("User");
+        const userRec = await User.findById(managerId).select("organizationId").lean();
+        organizationId = userRec?.organizationId;
+    }
+
+    if (!organizationId) return errorResponse(res, "Organization context missing. Please log out and back in.", 403);
+
+    const paginationValidation = validatePagination(page, limit);
+    if (!paginationValidation.valid) return errorResponse(res, paginationValidation.error);
+
+    page = Number(page);
+    limit = Number(limit);
+
+    let filter = [
+        { $match: { managerId: new mongoose.Types.ObjectId(managerId), organizationId: new mongoose.Types.ObjectId(organizationId) } }
+    ];
+
+    if (search) {
+        const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        filter.push({ $match: { teamName: { $regex: escaped, $options: "i" } } });
+    }
+
+    filter.push({
+        $lookup: {
+            from: "users",
+            localField: "managerId",
+            foreignField: "_id",
+            pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
+            as: "manager"
+        }
+    });
+    filter.push({ $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } });
+
+    filter.push({
+        $lookup: {
+            from: "users",
+            localField: "leaderIds",
+            foreignField: "_id",
+            pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
+            as: "leaders"
+        }
+    });
+
+    filter.push({
+        $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "teamId",
+            as: "members"
+        }
+    });
+
+    filter.push({
+        $lookup: {
+            from: "organizations",
+            localField: "organizationId",
+            foreignField: "_id",
+            as: "organization"
+        }
+    });
+    filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
+
+    filter.push({
+        $addFields: {
+            memberCount: { $size: "$members" },
+            organizationName: { $ifNull: ["$organization.name", null] }
+        }
+    });
+
+    filter.push({
+        $project: {
+            members: 0,
+            organization: 0
+        }
+    });
+
+    const results = await pagination(Team, page, limit, filter);
+    return successResponse(res, "Manager teams fetched", {
+        teamList: results.documents,
+        totalRecords: results.totalRecords,
+        totalPages: results.totalPages
+    });
+}, "GET_MANAGER_TEAMS_ERROR");
+

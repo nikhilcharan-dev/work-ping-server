@@ -3,7 +3,8 @@ import {
     getProjects,
     getProject,
     updateProject,
-    deleteProject
+    deleteProject,
+    getManagerProjects
 } from "#webController/admin/project/project.controller.js";
 import {
     addProjectMember,
@@ -21,6 +22,7 @@ const router = Router();
 router.get("/", getProjects);
 router.post("/create-project", requireRole("admin"), createProject);
 router.get("/get-projects", getProjects);
+router.get("/manager/all", getManagerProjects);
 router.get("/get-project", getProject);
 router.post("/update-project", updateProject);
 router.post("/delete-projects", requireRole("admin"), deleteProject);

@@ -1,4 +1,5 @@
 import Project, { requiredProjectFields, optionalProjectFields } from "#models/Project.js";
+import User from "#models/User.js";
 import Shift from "#models/Shift.js";
 import { pick } from "#helpers/data.reducer.js";
 import Pagination from "#helpers/pagination.js";
@@ -134,6 +135,74 @@ export const getProjects = asyncHandler(
     },
     "GET_PROJECTS_ERROR");
 
+export const getManagerProjects = asyncHandler(async (req, res) => {
+    let { search = "", page = 1, limit = 10 } = req.query;
+    let { userId: managerId, organizationId } = req.user;
+
+    // Fallback if JWT is stale and doesn't contain organizationId
+    if (!organizationId) {
+        const User = mongoose.model("User");
+        const userRec = await User.findById(managerId).select("organizationId").lean();
+        organizationId = userRec?.organizationId;
+    }
+
+    if (!organizationId) return errorResponse(res, "Organization context missing. Please log out and back in.", 403);
+
+    const paginationValidation = validatePagination(page, limit);
+    if (!paginationValidation.valid) return errorResponse(res, paginationValidation.error);
+
+    page = Number(page);
+    limit = Number(limit);
+
+    let filter = [
+        {
+            $lookup: {
+                from: "projectteams",
+                localField: "_id",
+                foreignField: "projectId",
+                as: "associatedTeams"
+            }
+        },
+        {
+            $match: {
+                organizationId: new mongoose.Types.ObjectId(organizationId),
+                $or: [
+                    { projectManager: new mongoose.Types.ObjectId(managerId) },
+                    { "associatedTeams.teamManagerId": new mongoose.Types.ObjectId(managerId) }
+                ]
+            }
+        }
+    ];
+
+    if (search) {
+        search = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        filter.push({ $match: { name: { $regex: search, $options: "i" } } });
+    }
+
+    filter.push({
+        $lookup: { from: "organizations", localField: "organizationId", foreignField: "_id", as: "organization" }
+    });
+    filter.push({
+        $lookup: { from: "projectmembers", localField: "_id", foreignField: "projectId", as: "members" }
+    });
+    filter.push({
+        $addFields: {
+            organizationName: { $arrayElemAt: ["$organization.name", 0] },
+            memberCount: { $size: "$members" },
+            assignedDate: { $dateToString: { format: "%Y-%m-%d", date: "$assignedDate" } },
+            dueDate: { $cond: { if: "$dueDate", then: { $dateToString: { format: "%Y-%m-%d", date: "$dueDate" } }, else: null } }
+        }
+    });
+    filter.push({ $project: { members: 0, organization: 0 } });
+
+    const pagination = await Pagination(Project, page, limit, filter);
+    return successResponse(res, "Manager projects fetched", {
+        projects: pagination.documents,
+        totalPages: pagination.totalPages,
+        totalRecords: pagination.totalRecords
+    });
+}, "GET_MANAGER_PROJECTS_ERROR");
+
 export const getProject = asyncHandler(
     async (req, res) => {
         const { projectId: id } = req.query;
@@ -197,6 +266,11 @@ export const updateProject = asyncHandler(
 
         const project = await Project.findById(id);
         if (!project) return errorResponse(res, "Project not found", 404);
+
+        // Security: Check if manager has authority over this project
+        if (req.user.role === "manager" && String(project.projectManager) !== String(req.user.userId)) {
+            return errorResponse(res, "Forbidden: You cannot update a project you don't manage", 403);
+        }
 
         const updateData = pick(req.body, [...requiredProjectFields, ...optionalProjectFields]);
 

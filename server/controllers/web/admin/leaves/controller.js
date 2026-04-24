@@ -1,6 +1,7 @@
 import Leave from "#models/Leave.js";
 import User from "#models/User.js";
 import Organization from "#models/Organization.js";
+import Team from "#models/Team.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -68,6 +69,79 @@ export const getAllLeaves = asyncHandler(async (req, res) => {
     });
 }, "ADMIN_GET_ALL_LEAVES");
 
+// GET /api/admin/leaves/team?status=&page=&limit= (Manager scoped)
+export const getManagerTeamLeaves = asyncHandler(async (req, res) => {
+    const { status, page = 1, limit = 10 } = req.query;
+    const { userId: managerId, organizationId } = req.user;
+
+    // 1. Find all teams managed by this user
+    const managedTeams = await Team.find({ managerId, organizationId }).select("_id");
+    const teamIds = managedTeams.map(t => t._id);
+
+    if (!teamIds.length) {
+        return successResponse(res, "No teams managed", { totalRecords: 0, totalPages: 0, leaves: [] });
+    }
+
+    // 2. Find all employees in these teams
+    const managedUsers = await User.find({ teamId: { $in: teamIds }, organizationId }).select("_id");
+    const managedUserIds = managedUsers.map(u => u._id);
+
+    if (!managedUserIds.length) {
+        return successResponse(res, "No employees in managed teams", { totalRecords: 0, totalPages: 0, leaves: [] });
+    }
+
+    if (status) {
+        const statusValidation = validateEnum(status, ["pending", "approved", "rejected"], "Status");
+        if (!statusValidation.valid) return errorResponse(res, statusValidation.error);
+    }
+
+    const pipeline = [
+        { $match: { userId: { $in: managedUserIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+        ...(status ? [{ $match: { status } }] : []),
+        {
+            $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, teamId: 1 } }],
+                as: "employee",
+            },
+        },
+        { $unwind: { path: "$employee", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "teams",
+                localField: "employee.teamId",
+                foreignField: "_id",
+                pipeline: [{ $project: { teamName: 1 } }],
+                as: "team",
+            },
+        },
+        { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "approvedBy",
+                foreignField: "_id",
+                pipeline: [{ $project: { name: 1, email: 1 } }],
+                as: "approvedByUser",
+            },
+        },
+        { $unwind: { path: "$approvedByUser", preserveNullAndEmptyArrays: true } },
+        { $addFields: { teamName: "$team.teamName" } },
+        { $project: { team: 0 } },
+        { $sort: { createdAt: -1 } },
+    ];
+
+    const pagination = await Pagination(Leave, page, limit, pipeline);
+
+    return successResponse(res, "Team leaves fetched", {
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
+        leaves: pagination.documents,
+    });
+}, "GET_MANAGER_TEAM_LEAVES");
+
 // POST /api/admin/leaves/approve/:leaveId
 export const approveLeave = asyncHandler(async (req, res) => {
     const { leaveId } = req.params;
@@ -78,6 +152,14 @@ export const approveLeave = asyncHandler(async (req, res) => {
 
     const leave = await Leave.findById(leaveId);
     if (!leave) return errorResponse(res, "Leave request not found", 404);
+
+    // Security: Check if manager has authority over this leave
+    if (req.user.role === "manager") {
+        const leaveEmployee = await User.findById(leave.userId).select("teamId");
+        if (!leaveEmployee) return errorResponse(res, "Leave employee not found", 404);
+        const isManagedTeam = await Team.exists({ _id: leaveEmployee.teamId, managerId: adminId });
+        if (!isManagedTeam) return errorResponse(res, "Forbidden: You cannot action leaves outside your managed teams", 403);
+    }
 
     if (leave.status !== "pending") return errorResponse(res, `Leave is already ${leave.status}`);
 
@@ -114,6 +196,14 @@ export const rejectLeave = asyncHandler(async (req, res) => {
 
     const leave = await Leave.findById(leaveId);
     if (!leave) return errorResponse(res, "Leave request not found", 404);
+
+    // Security: Check if manager has authority over this leave
+    if (req.user.role === "manager") {
+        const leaveEmployee = await User.findById(leave.userId).select("teamId");
+        if (!leaveEmployee) return errorResponse(res, "Leave employee not found", 404);
+        const isManagedTeam = await Team.exists({ _id: leaveEmployee.teamId, managerId: adminId });
+        if (!isManagedTeam) return errorResponse(res, "Forbidden: You cannot action leaves outside your managed teams", 403);
+    }
 
     if (leave.status !== "pending") return errorResponse(res, `Leave is already ${leave.status}`);
 
