@@ -2,6 +2,7 @@ import Leave from "#models/Leave.js";
 import User from "#models/User.js";
 import Organization from "#models/Organization.js";
 import Team from "#models/Team.js";
+import TeamMembership from "#models/TeamMembership.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -75,16 +76,18 @@ export const getManagerTeamLeaves = asyncHandler(async (req, res) => {
     const { userId: managerId, organizationId } = req.user;
 
     // 1. Find all teams managed by this user
-    const managedTeams = await Team.find({ managerId, organizationId }).select("_id");
+    const managedTeams = await Team.find({ managerId }).select("_id");
     const teamIds = managedTeams.map(t => t._id);
 
     if (!teamIds.length) {
         return successResponse(res, "No teams managed", { totalRecords: 0, totalPages: 0, leaves: [] });
     }
 
-    // 2. Find all employees in these teams
-    const managedUsers = await User.find({ teamId: { $in: teamIds }, organizationId }).select("_id");
-    const managedUserIds = managedUsers.map(u => u._id);
+    // 2. Find all employees in these teams via TeamMembership (User.teamId is not guaranteed to be set)
+    const managedUserIds = await TeamMembership.distinct("userId", {
+        teamId: { $in: teamIds },
+        isActive: true,
+    });
 
     if (!managedUserIds.length) {
         return successResponse(res, "No employees in managed teams", { totalRecords: 0, totalPages: 0, leaves: [] });

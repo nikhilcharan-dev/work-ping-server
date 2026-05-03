@@ -21,14 +21,17 @@ export default function centralRoutes(app) {
     app.get("/verify-cookie", async (req, res) => {
 
         try {
-            const cookie = req.cookies?.accessToken;
-            if (!cookie) {
+            let token = req.cookies?.accessToken;
+            if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+                token = req.headers.authorization.split(' ')[1];
+            }
+            if (!token) {
                 return res.status(401).json({ type: "error", message: "Unauthorized" });
             }
 
             let decoded;
             try {
-                decoded = jwt.verify(cookie, process.env.SECRET_KEY);
+                decoded = jwt.verify(token, process.env.SECRET_KEY);
             } catch (jwtErr) {
                 return res.status(401).json({ type: "error", message: "Unauthorized" });
             }

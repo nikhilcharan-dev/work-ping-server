@@ -8,6 +8,7 @@ import attendanceHistoryRoutes from "#webRoutes/user/attendance/history.router.j
 import attendanceRouter from "#webRoutes/user/attendance/router.js";
 import faceRouter from "#webRoutes/user/face/router.js";
 import holidayRoutes from "#webRoutes/user/holiday/router.js";
+import dashboardRoutes from "#webRoutes/user/dashboard/router.js";
 
 import validateCookie from "#middleware/jwtBearer.js";
 import requireRole from "#middleware/requireRole.js";
@@ -25,4 +26,5 @@ export default function userRoutesSetup(app) {
     app.use("/api/user/attendance", ...userOnly, attendanceRouter);
     app.use("/api/user/face", ...userOnly, faceRouter);
     app.use("/api/user/holiday", ...userOnly, holidayRoutes);
+    app.use("/api/user/dashboard", ...userOnly, dashboardRoutes);
 }

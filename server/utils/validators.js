@@ -141,8 +141,12 @@ export const validateDate = (date, fieldName = "Date", options = {}) => {
     }
     
     // Check if date is in the past (if not allowed)
-    if (options.noPast && dateObj < new Date()) {
-        return { valid: false, error: `${fieldName} cannot be in the past` };
+    if (options.noPast) {
+        const now = new Date();
+        const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        if (dateObj < todayUTC) {
+            return { valid: false, error: `${fieldName} cannot be in the past` };
+        }
     }
     
     // Check minimum age (for DOB)

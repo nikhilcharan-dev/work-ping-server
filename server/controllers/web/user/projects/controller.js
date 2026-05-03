@@ -1,6 +1,5 @@
 import Project from "#models/Project.js";
 import ProjectMember from "#models/ProjectMember.js";
-import User from "#models/User.js";
 import mongoose from "mongoose";
 import Pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
@@ -8,6 +7,43 @@ import {
     validateObjectId,
     validateEnum
 } from "#utils/validators.js";
+
+// Shared pipeline stage: join ProjectTeam and compute project-specific role.
+// Expects the current document to have projectId and userId fields.
+const projectRoleStage = [
+    {
+        $lookup: {
+            from: "projectteams",
+            let: { pid: "$projectId", uid: "$userId" },
+            pipeline: [
+                { $match: { $expr: { $eq: ["$projectId", "$$pid"] } } },
+                {
+                    $project: {
+                        isManager:  { $eq: ["$teamManagerId", "$$uid"] },
+                        isLead:     { $eq: ["$teamLeaderId",  "$$uid"] },
+                        isEmployee: { $in: ["$$uid", { $ifNull: ["$users", []] }] }
+                    }
+                }
+            ],
+            as: "_teamRole"
+        }
+    },
+    { $unwind: { path: "$_teamRole", preserveNullAndEmptyArrays: true } },
+    {
+        $addFields: {
+            projectRole: {
+                $cond: [
+                    { $eq: ["$_teamRole.isManager", true] },  "manager",
+                    { $cond: [
+                        { $eq: ["$_teamRole.isLead", true] }, "teamLead",
+                        "employee"
+                    ]}
+                ]
+            }
+        }
+    },
+    { $project: { _teamRole: 0 } }
+];
 
 export const getMyProjects = asyncHandler(
     async (req, res) => {
@@ -29,7 +65,9 @@ export const getMyProjects = asyncHandler(
                     as: "project"
                 }
             },
-            { $unwind: "$project" }
+            { $unwind: "$project" },
+            // Derive project-specific role from ProjectTeam
+            ...projectRoleStage,
         ];
 
         if (status) filter.push({ $match: { "project.status": status } });
@@ -40,7 +78,7 @@ export const getMyProjects = asyncHandler(
         return successResponse(res, "Projects fetched", {
             totalRecords: pagination.totalRecords,
             totalPages: pagination.totalPages,
-            projects: pagination.documents
+            projects: pagination.documents,
         });
     }, "USER_GET_MY_PROJECTS_ERROR"
 );
@@ -56,33 +94,71 @@ export const getProjectById = asyncHandler(
         const membership = await ProjectMember.findOne({ projectId, userId, isActive: true });
         if (!membership) return errorResponse(res, "You are not a member of this project", 403);
 
-        const [project] = await Project.aggregate([
-            { $match: { _id: new mongoose.Types.ObjectId(projectId) } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "projectManager",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, employeeId: 1, workType: 1, profileImage: 1 } }],
-                    as: "projectManager"
-                }
-            },
-            { $unwind: { path: "$projectManager", preserveNullAndEmptyArrays: true } },
-            {
-                $lookup: {
-                    from: "organizations",
-                    localField: "organizationId",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { name: 1 } }],
-                    as: "organization"
-                }
-            },
-            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } }
+        const projectObjId = new mongoose.Types.ObjectId(projectId);
+
+        const [project, members] = await Promise.all([
+            // Project with populated manager + organisation
+            Project.aggregate([
+                { $match: { _id: projectObjId } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "projectManager",
+                        foreignField: "_id",
+                        pipeline: [{ $project: { name: 1, email: 1, phone: 1, profileImage: 1, employeeId: 1, workType: 1 } }],
+                        as: "projectManager"
+                    }
+                },
+                { $unwind: { path: "$projectManager", preserveNullAndEmptyArrays: true } },
+                {
+                    $lookup: {
+                        from: "organizations",
+                        localField: "organizationId",
+                        foreignField: "_id",
+                        pipeline: [{ $project: { name: 1 } }],
+                        as: "organization"
+                    }
+                },
+                { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } }
+            ]).then(r => r[0]),
+
+            // Members with contact info + project-specific role from ProjectTeam
+            ProjectMember.aggregate([
+                { $match: { projectId: projectObjId, isActive: true } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "userId",
+                        foreignField: "_id",
+                        pipeline: [{ $project: { name: 1, email: 1, phone: 1, profileImage: 1, employeeId: 1, workType: 1 } }],
+                        as: "user"
+                    }
+                },
+                { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+                // Derive project-specific role
+                ...projectRoleStage,
+                // Sort: manager → teamLead → employee → alpha
+                {
+                    $addFields: {
+                        _sortOrder: {
+                            $switch: {
+                                branches: [
+                                    { case: { $eq: ["$projectRole", "manager"]  }, then: 0 },
+                                    { case: { $eq: ["$projectRole", "teamLead"] }, then: 1 },
+                                ],
+                                default: 2
+                            }
+                        }
+                    }
+                },
+                { $sort: { _sortOrder: 1, "user.name": 1 } },
+                { $project: { _sortOrder: 0 } }
+            ])
         ]);
 
         if (!project) return errorResponse(res, "Project not found", 404);
 
-        return successResponse(res, "Project fetched", { project });
+        return successResponse(res, "Project fetched", { project, members });
     }, "USER_GET_PROJECT_BY_ID_ERROR"
 );
 
@@ -97,18 +173,21 @@ export const getProjectMembers = asyncHandler(
         const membership = await ProjectMember.findOne({ projectId, userId, isActive: true });
         if (!membership) return errorResponse(res, "You are not a member of this project", 403);
 
+        const projectObjId = new mongoose.Types.ObjectId(projectId);
+
         const members = await ProjectMember.aggregate([
-            { $match: { projectId: new mongoose.Types.ObjectId(projectId), isActive: true } },
+            { $match: { projectId: projectObjId, isActive: true } },
             {
                 $lookup: {
                     from: "users",
                     localField: "userId",
                     foreignField: "_id",
-                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, role: 1, profileImage: 1, employeeId: 1, workType: 1 } }],
+                    pipeline: [{ $project: { name: 1, email: 1, phone: 1, profileImage: 1, employeeId: 1, workType: 1 } }],
                     as: "user"
                 }
             },
-            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            ...projectRoleStage,
         ]);
 
         return successResponse(res, "Project members fetched", members);
