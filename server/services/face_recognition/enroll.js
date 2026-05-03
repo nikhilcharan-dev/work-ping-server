@@ -28,6 +28,22 @@ export const enrollFace = async (imageBuffer, user) => {
 };
 
 /**
+ * Check whether a face embedding exists for a given user.
+ * Hits the per-user lookup endpoint — does not download the full org list.
+ */
+export const checkFaceStatus = async (userId) => {
+    try {
+        const { data } = await axios.get(
+            `${FACE_API_URI}/api/v1/embeddings/${encodeURIComponent(userId.toString())}`,
+            { timeout: 5000 }
+        );
+        return data.registered === true;
+    } catch {
+        return false;
+    }
+};
+
+/**
  * Remove a face embedding by MongoDB userId (_id string).
  * Fire-and-forget safe — does not throw.
  */

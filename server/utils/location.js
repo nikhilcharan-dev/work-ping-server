@@ -45,25 +45,36 @@ function isPointInPolygon(point, polygon) {
  * @param {object} allowed - { IPWhitelist, coordinates, msl }
  * @returns {object} { allowed: boolean, message: string }
  */
-export function validate3DLocation(provided, allowed) {
+/**
+ * @param {object} provided   - Location snapshot from client { wifi, gps, altitude, publicIp }
+ * @param {object} allowed    - Organization settings { IPWhitelist, coordinates, msl, ... }
+ * @param {string} serverIp   - IP extracted server-side from request headers (fallback when client
+ *                              doesn't send publicIp)
+ */
+export function validate3DLocation(provided, allowed, serverIp = null) {
     // If no validation data is set in the organization, allow by default (as per requirement)
-    const hasOrgConfig = (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) || 
+    const hasOrgConfig = (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) ||
                          (allowed.coordinates && allowed.coordinates.length >= 2) ||
                          allowed.msl;
-    
+
     if (!hasOrgConfig) {
         return { allowed: true, message: "No location restrictions set" };
     }
 
     // 1. IP Whitelist Check
     if (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) {
-        const isUniversalAccess = allowed.IPWhitelist.includes("0.0.0.0");
-        
+        // Accept both "0.0.0.0" and "0.0.0.0/0" as universal-access sentinels
+        const isUniversalAccess = allowed.IPWhitelist.some(
+            ip => ip === "0.0.0.0" || ip === "0.0.0.0/0"
+        );
+
         if (!isUniversalAccess) {
-            if (!provided.publicIp || !allowed.IPWhitelist.includes(provided.publicIp)) {
-                return { 
-                    allowed: false, 
-                    message: `Unauthorized network (IP: ${provided.publicIp || 'Unknown'}). Please use company WiFi.` 
+            // Client-provided IP is preferred; fall back to server-extracted IP
+            const effectiveIp = provided.publicIp || serverIp;
+            if (!effectiveIp || !allowed.IPWhitelist.includes(effectiveIp)) {
+                return {
+                    allowed: false,
+                    message: `Unauthorized network (IP: ${effectiveIp || 'Unknown'}). Please use company WiFi.`
                 };
             }
         }

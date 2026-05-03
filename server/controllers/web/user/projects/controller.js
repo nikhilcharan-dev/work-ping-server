@@ -97,7 +97,7 @@ export const getProjectById = asyncHandler(
         const projectObjId = new mongoose.Types.ObjectId(projectId);
 
         const [project, members] = await Promise.all([
-            // Project with populated manager + organisation
+            // Project with populated manager + organisation + shift
             Project.aggregate([
                 { $match: { _id: projectObjId } },
                 {
@@ -119,7 +119,17 @@ export const getProjectById = asyncHandler(
                         as: "organization"
                     }
                 },
-                { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } }
+                { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+                {
+                    $lookup: {
+                        from: "shifts",
+                        localField: "shiftId",
+                        foreignField: "_id",
+                        pipeline: [{ $project: { name: 1, startTime: 1, endTime: 1, breakMinutes: 1 } }],
+                        as: "shift"
+                    }
+                },
+                { $unwind: { path: "$shift", preserveNullAndEmptyArrays: true } }
             ]).then(r => r[0]),
 
             // Members with contact info + project-specific role from ProjectTeam

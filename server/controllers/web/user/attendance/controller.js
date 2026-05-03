@@ -159,7 +159,15 @@ export const verify_mark_attendance = asyncHandler(async (req, res) => {
                 : locationLockRaw;
 
             if (user.organizationId) {
-                const validation = validate3DLocation(locationLock, user.organizationId);
+                // Extract real client IP server-side as a fallback for when the
+                // mobile client doesn't provide publicIp in the locationLock payload.
+                const serverIp =
+                    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+                    req.headers['x-real-ip'] ||
+                    req.ip ||
+                    null;
+
+                const validation = validate3DLocation(locationLock, user.organizationId, serverIp);
                 if (!validation.allowed) {
                     trace('FAILURE', `Location security block: ${validation.message}`);
                     return errorResponse(res, `Security Block: ${validation.message}`, 403);
