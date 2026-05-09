@@ -75,8 +75,8 @@ export async function scheduleShiftReminders(shiftDate, filterProjectId) {
 
     const results = await Promise.allSettled(
         rows
-            .filter(r => r.phone && r.shift?.startTime)
-            .map(r =>
+            .filter((r) => r.phone && r.shift?.startTime)
+            .map((r) =>
                 scheduleShiftReminder({
                     userId: String(r.userId),
                     shiftDate: date,
@@ -88,7 +88,7 @@ export async function scheduleShiftReminders(shiftDate, filterProjectId) {
             )
     );
 
-    const failed = results.filter(r => r.status === "rejected");
+    const failed = results.filter((r) => r.status === "rejected");
     if (failed.length) {
         console.error(`[ShiftReminderCron] ${failed.length} reminder(s) failed to schedule`);
     }
@@ -100,9 +100,7 @@ async function runDailyReminders() {
     if (!locked) return;
 
     console.log("[ShiftReminderCron] Running daily shift reminder scheduling...");
-    await scheduleShiftReminders().catch(err =>
-        console.error("[ShiftReminderCron] Failed:", err.message)
-    );
+    await scheduleShiftReminders().catch((err) => console.error("[ShiftReminderCron] Failed:", err.message));
 }
 
 export function startShiftReminderCron() {

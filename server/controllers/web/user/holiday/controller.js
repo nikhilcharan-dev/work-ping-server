@@ -1,9 +1,7 @@
 import User from "#models/User.js";
 import Holiday from "#models/Holiday.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
-import {
-    validateEnum,
-} from "#utils/validators.js";
+import { validateEnum } from "#utils/validators.js";
 
 const getHolidays = asyncHandler(async (req, res) => {
     const { userId } = req.user;
@@ -27,7 +25,7 @@ const getHolidays = asyncHandler(async (req, res) => {
         if (!isNaN(y)) {
             query.date = {
                 $gte: new Date(`${y}-01-01`),
-                $lte: new Date(`${y}-12-31`)
+                $lte: new Date(`${y}-12-31`),
             };
         }
     }
@@ -51,7 +49,4 @@ const getHolidayById = asyncHandler(async (req, res) => {
     return successResponse(res, "Holiday fetched successfully", holiday);
 }, "USER_GET_HOLIDAY_BY_ID_ERROR");
 
-export {
-    getHolidays,
-    getHolidayById
-};
+export { getHolidays, getHolidayById };

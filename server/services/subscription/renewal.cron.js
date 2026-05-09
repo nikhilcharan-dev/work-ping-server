@@ -20,8 +20,10 @@ async function notifyAdmins(sub) {
     // Secondary admin — via OrgAdmin join record
     const orgAdmin = await OrgAdmin.findOne({
         organizationId: sub.organizationId,
-        primaryAdmin: sub.adminId
-    }).populate("secondaryAdmin").lean();
+        primaryAdmin: sub.adminId,
+    })
+        .populate("secondaryAdmin")
+        .lean();
 
     const admins = [];
     if (primary) admins.push(primary);
@@ -32,15 +34,16 @@ async function notifyAdmins(sub) {
         const message = `Hi ${admin.name}, your *${sub.planName}* plan (₹${sub.price}/${billingLabel}) will expire on *${endDate}*. Renew now to keep your team running without interruption.`;
 
         if (admin.email) {
-            sendAlertWarning(admin.email, subject, message, RENEWAL_LINK)
-                .catch(err => console.error(`[RenewalCron] Email to ${admin.email} failed:`, err.message));
+            sendAlertWarning(admin.email, subject, message, RENEWAL_LINK).catch((err) =>
+                console.error(`[RenewalCron] Email to ${admin.email} failed:`, err.message)
+            );
         }
 
         if (admin.phoneNumber) {
             sendWhatsApp(
                 admin.phoneNumber,
                 `*WorkPing Renewal Reminder* ⏰\nHi ${admin.name}, your *${sub.planName}* plan expires in *${daysLeft} ${dayWord}* (${endDate}).\nRenew here: ${RENEWAL_LINK}`
-            ).catch(err => console.error(`[RenewalCron] WhatsApp to ${admin.phoneNumber} failed:`, err.message));
+            ).catch((err) => console.error(`[RenewalCron] WhatsApp to ${admin.phoneNumber} failed:`, err.message));
         }
     }
 }
@@ -63,11 +66,11 @@ async function runRenewalReminders() {
         const subs = await Subscription.find({
             status: "ACTIVE",
             autoRenew: true,
-            endDate: { $gte: windowStart, $lte: windowEnd }
+            endDate: { $gte: windowStart, $lte: windowEnd },
         }).lean();
 
         for (const sub of subs) {
-            await notifyAdmins(sub).catch(err =>
+            await notifyAdmins(sub).catch((err) =>
                 console.error(`[RenewalCron] Notify failed for subscription ${sub._id}:`, err.message)
             );
         }

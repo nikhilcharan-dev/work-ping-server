@@ -6,11 +6,11 @@ const getActiveSubscription = asyncHandler(async (req, res) => {
 
     const subscription = await Subscription.findOne({
         adminId: userId,
-        status: "ACTIVE"
+        status: "ACTIVE",
     })
-    .populate("planId")
-    .sort({ createdAt: -1 })
-    .lean();
+        .populate("planId")
+        .sort({ createdAt: -1 })
+        .lean();
 
     return successResponse(res, "Active subscription fetched successfully", subscription ?? null);
 }, "ADMIN_GET_ACTIVE_SUBSCRIPTION_ERROR");
@@ -20,7 +20,7 @@ const cancelSubscription = asyncHandler(async (req, res) => {
 
     const subscription = await Subscription.findOne({
         adminId: userId,
-        status: "ACTIVE"
+        status: "ACTIVE",
     }).sort({ createdAt: -1 });
 
     if (!subscription) {
@@ -46,8 +46,4 @@ const getSubscriptionHistory = asyncHandler(async (req, res) => {
     return successResponse(res, "Subscription history fetched successfully", subscriptions);
 }, "ADMIN_GET_SUBSCRIPTION_HISTORY_ERROR");
 
-export {
-    getActiveSubscription,
-    cancelSubscription,
-    getSubscriptionHistory
-};
+export { getActiveSubscription, cancelSubscription, getSubscriptionHistory };

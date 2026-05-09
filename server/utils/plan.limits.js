@@ -23,7 +23,7 @@ async function getAdminPlan(adminId) {
 
 async function getAdminOrgIds(adminId) {
     const records = await OrgAdmin.find({ primaryAdmin: adminId }, { organizationId: 1 }).lean();
-    return records.map(r => r.organizationId);
+    return records.map((r) => r.organizationId);
 }
 
 function limitMsg(planName, resource, max) {
@@ -35,7 +35,7 @@ export async function checkOrgLimit(adminId) {
     const max = plan.maxOrganizations ?? FREE_TIER.maxOrganizations;
     const count = await OrgAdmin.countDocuments({ primaryAdmin: adminId });
     if (count >= max) {
-        return { allowed: false, message: limitMsg(plan.name, max === 1 ? 'organization' : 'organizations', max) };
+        return { allowed: false, message: limitMsg(plan.name, max === 1 ? "organization" : "organizations", max) };
     }
     return { allowed: true };
 }
@@ -63,7 +63,7 @@ export async function checkTeamLimit(adminId) {
     if (!orgIds.length) return { allowed: true };
     const count = await Team.countDocuments({ organizationId: { $in: orgIds } });
     if (count >= max) {
-        return { allowed: false, message: limitMsg(plan.name, 'teams', max) };
+        return { allowed: false, message: limitMsg(plan.name, "teams", max) };
     }
     return { allowed: true };
 }
@@ -75,7 +75,7 @@ export async function checkProjectLimit(adminId) {
     if (!orgIds.length) return { allowed: true };
     const count = await Project.countDocuments({ organizationId: { $in: orgIds } });
     if (count >= max) {
-        return { allowed: false, message: limitMsg(plan.name, 'projects', max) };
+        return { allowed: false, message: limitMsg(plan.name, "projects", max) };
     }
     return { allowed: true };
 }

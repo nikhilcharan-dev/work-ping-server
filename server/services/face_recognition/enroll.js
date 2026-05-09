@@ -33,10 +33,9 @@ export const enrollFace = async (imageBuffer, user) => {
  */
 export const checkFaceStatus = async (userId) => {
     try {
-        const { data } = await axios.get(
-            `${FACE_API_URI}/api/v1/embeddings/${encodeURIComponent(userId.toString())}`,
-            { timeout: 5000 }
-        );
+        const { data } = await axios.get(`${FACE_API_URI}/api/v1/embeddings/${encodeURIComponent(userId.toString())}`, {
+            timeout: 5000,
+        });
         return data.registered === true;
     } catch {
         return false;

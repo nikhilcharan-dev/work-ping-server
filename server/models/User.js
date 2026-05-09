@@ -16,19 +16,19 @@ const userSchema = new mongoose.Schema(
         gender: {
             type: String,
             enum: ["male", "female", "other"],
-            default: "other"
+            default: "other",
         },
 
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         profileImage: {
             type: String,
-            default: null
+            default: null,
         },
 
         salary: { type: Number, default: 0 },
@@ -42,14 +42,14 @@ const userSchema = new mongoose.Schema(
         teamId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Team",
-            index: true
+            index: true,
         },
 
         role: {
             type: String,
             enum: ["manager", "teamLead", "employee"],
             default: "employee",
-            index: true
+            index: true,
         },
 
         isActive: { type: Boolean, default: true, index: true },
@@ -57,8 +57,8 @@ const userSchema = new mongoose.Schema(
         workType: {
             type: String,
             enum: ["remote", "onsite", "hybrid"],
-            required: true
-        }
+            required: true,
+        },
     },
     { timestamps: true }
 );

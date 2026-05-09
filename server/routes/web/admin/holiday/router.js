@@ -3,7 +3,7 @@ import {
     getHolidays,
     getHolidayById,
     updateHoliday,
-    deleteHolidays
+    deleteHolidays,
 } from "#webController/admin/holiday/controller.js";
 import express from "express";
 

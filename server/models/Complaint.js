@@ -6,34 +6,34 @@ const complaintSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true
+            index: true,
         },
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
         ticketId: {
             type: String,
             required: true,
-            unique: true
+            unique: true,
         },
         description: {
             type: String,
             required: true,
-            trim: true
+            trim: true,
         },
         status: {
             type: String,
             enum: ["open", "in_review", "resolved"],
             default: "open",
-            index: true
+            index: true,
         },
         resolvedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        }
+            ref: "User",
+        },
     },
     { timestamps: true }
 );

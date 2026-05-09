@@ -10,7 +10,7 @@ const teamSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         managerId: {
@@ -18,11 +18,12 @@ const teamSchema = new mongoose.Schema(
             ref: "User",
         },
 
-
-        leaderIds: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        }],
+        leaderIds: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+            },
+        ],
     },
     { timestamps: true }
 );

@@ -11,8 +11,7 @@ import { checkEmployeeLimit } from "#utils/plan.limits.js";
 import { enrollFace } from "#services/face_recognition/enroll.js";
 import { sendWhatsApp } from "#services/whatsapp/whatsapp.service.js";
 
-const insertByForm = asyncHandler(
-async (req, res) => {
+const insertByForm = asyncHandler(async (req, res) => {
     // Extract fields
     const {
         userName: name,
@@ -23,20 +22,10 @@ async (req, res) => {
         teamName,
         doj: dateOfJoining,
         role,
-        workType
+        workType,
     } = req.body;
 
-    const {
-        gender,
-        salary,
-        dob,
-        address,
-        isActive,
-        aadhaar,
-        passport,
-        pan,
-        bankId
-    } = req.body;
+    const { gender, salary, dob, address, isActive, aadhaar, passport, pan, bankId } = req.body;
 
     // Mandatory validation
     if (!name || !email || !phone || !employeeId || !dateOfJoining || !aadhaar || !workType) {
@@ -110,10 +99,15 @@ async (req, res) => {
         $or: [
             { email: normalizedEmail },
             { phone: phoneValidation.normalized },
-            { employeeId: String(employeeId).trim(), organizationId: organization._id }
-        ]
+            { employeeId: String(employeeId).trim(), organizationId: organization._id },
+        ],
     });
-    if (existingUser) return errorResponse(res, "User already exists with this email, phone, or employeeId in this organization", 409);
+    if (existingUser)
+        return errorResponse(
+            res,
+            "User already exists with this email, phone, or employeeId in this organization",
+            409
+        );
 
     const existingAccount = await Account.findOne({ email: normalizedEmail });
     if (existingAccount) return errorResponse(res, "Account already exists with this email", 409);
@@ -135,8 +129,8 @@ async (req, res) => {
         phone: phoneValidation.normalized,
         employeeId: String(employeeId).trim(),
         organizationId: organization._id,
-        dateOfJoining: new Date(dojDate.toISOString().split('T')[0]),
-        workType: workType.toLowerCase()
+        dateOfJoining: new Date(dojDate.toISOString().split("T")[0]),
+        workType: workType.toLowerCase(),
     };
 
     if (gender) userData.gender = gender.toLowerCase();
@@ -153,7 +147,7 @@ async (req, res) => {
         const dobDate = new Date(dob);
         if (isNaN(dobDate.getTime())) return errorResponse(res, "Invalid date of birth");
         if (dobDate > new Date()) return errorResponse(res, "Date of birth cannot be a future date");
-        userData.dob = new Date(dobDate.toISOString().split('T')[0]);
+        userData.dob = new Date(dobDate.toISOString().split("T")[0]);
     }
 
     if (address) userData.address = address;
@@ -164,7 +158,6 @@ async (req, res) => {
     session.startTransaction();
 
     try {
-
         // Create user
         const [newUser] = await User.create([userData], { session });
         // Create account
@@ -174,10 +167,10 @@ async (req, res) => {
         const accountData = {
             email: normalizedEmail,
             password: hashedPassword,
-            emailVerified: false
+            emailVerified: false,
         };
 
-        if(role) {
+        if (role) {
             accountData.role = role.toLowerCase();
         }
 
@@ -186,7 +179,7 @@ async (req, res) => {
         // Create govt proof � always created when aadhaar is provided
         const govtProofData = {
             aadhaarNumber: String(aadhaar).trim(),
-            userId: newUser._id
+            userId: newUser._id,
         };
 
         if (pan) govtProofData.panNumber = String(pan).trim().toUpperCase();
@@ -199,7 +192,7 @@ async (req, res) => {
 
         // Optional face enrollment — fire-and-log, does not affect employee creation
         if (req.file) {
-            enrollFace(req.file.buffer, String(employeeId).trim()).catch(err => {
+            enrollFace(req.file.buffer, String(employeeId).trim()).catch((err) => {
                 console.error(`[FaceAPI] Enrollment failed for ${employeeId}:`, err?.response?.data || err.message);
             });
         }
@@ -208,30 +201,32 @@ async (req, res) => {
         sendWhatsApp(
             String(phone).trim(),
             `*Welcome to ${organization.name}!* 🎉\nHi ${String(name).trim()}, your WorkPing account is ready.\n\n*Login:* ${normalizedEmail}\n*Password:* ${process.env.USER_DEFAULT_PASSWORD || "WorkPing@123"}\n*Employee ID:* ${String(employeeId).trim()}\n\nPlease change your password after first login.`
-        ).catch(err => console.error("[WhatsApp] Welcome message failed:", err.message));
+        ).catch((err) => console.error("[WhatsApp] Welcome message failed:", err.message));
 
-        return successResponse(res, "Employee added successfully", {
-            _id: newUser._id,
-            name: newUser.name,
-            email: newUser.email,
-            phone: newUser.phone,
-            employeeId: newUser.employeeId,
-            role,
-            organizationId: organization._id,
-            organizationName: organization.name,
-            teamId: team?._id,
-            teamName: team?.teamName
-        }, 201);
-
+        return successResponse(
+            res,
+            "Employee added successfully",
+            {
+                _id: newUser._id,
+                name: newUser.name,
+                email: newUser.email,
+                phone: newUser.phone,
+                employeeId: newUser.employeeId,
+                role,
+                organizationId: organization._id,
+                organizationName: organization.name,
+                teamId: team?._id,
+                teamName: team?.teamName,
+            },
+            201
+        );
     } catch (error) {
         await session.abortTransaction();
         console.error("Error inserting employee by form");
         throw error;
-
     } finally {
         session.endSession();
     }
-
 }, "INSERT_BY_FORM_ERROR");
 
 export default insertByForm;

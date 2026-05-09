@@ -31,7 +31,7 @@ export const startApprovalFlow = async (phone, data) => {
         phone: formatWANumber(phone),
         flow: "LEAVE_APPROVAL",
         step: "AWAITING_DECISION",
-        data
+        data,
     });
     return res.data;
 };

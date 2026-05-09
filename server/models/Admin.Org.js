@@ -6,19 +6,19 @@ const orgAdminSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         primaryAdmin: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Admin",
-            required: true
+            required: true,
         },
 
         secondaryAdmin: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Admin"
-        }
+            ref: "Admin",
+        },
     },
     { timestamps: true }
 );

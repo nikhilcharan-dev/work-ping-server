@@ -6,14 +6,14 @@ const workStatusSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true
+            index: true,
         },
 
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         date: { type: Date, required: true, index: true },
@@ -22,19 +22,19 @@ const workStatusSchema = new mongoose.Schema(
             type: String,
             enum: ["WD", "CL", "OD"],
             required: true,
-            index: true
+            index: true,
         },
 
         shiftId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Shift"
+            ref: "Shift",
         },
 
         status: {
             type: String,
             enum: ["Present", "Absent", "Late", "HalfDay", "OnLeave", "Holiday"],
-            required: true
-        }
+            required: true,
+        },
     },
     { timestamps: true }
 );

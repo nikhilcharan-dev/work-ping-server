@@ -1,8 +1,8 @@
-import { Router } from 'express';
-import { getEmployeeDashboard } from '#webController/user/dashboard/controller.js';
+import { Router } from "express";
+import { getEmployeeDashboard } from "#webController/user/dashboard/controller.js";
 
 const router = Router();
 
-router.get('/', getEmployeeDashboard);
+router.get("/", getEmployeeDashboard);
 
 export default router;

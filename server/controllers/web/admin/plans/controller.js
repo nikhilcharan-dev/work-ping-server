@@ -3,22 +3,22 @@ import { successResponse, errorResponse } from "#utils/response.helper.js";
 
 // ── Custom plan feature catalogue (single source of truth) ───────────────────
 export const EMPLOYEE_TIERS = [
-    { label: "Up to 25",    max: 25,   price: 0    },
-    { label: "Up to 50",    max: 50,   price: 100  },
-    { label: "Up to 150",   max: 150,  price: 300  },
-    { label: "Up to 500",   max: 500,  price: 700  },
+    { label: "Up to 25", max: 25, price: 0 },
+    { label: "Up to 50", max: 50, price: 100 },
+    { label: "Up to 150", max: 150, price: 300 },
+    { label: "Up to 500", max: 500, price: 700 },
     { label: "Up to 1,500", max: 1500, price: 1400 },
-    { label: "Unlimited",   max: 9999, price: 2500 },
+    { label: "Unlimited", max: 9999, price: 2500 },
 ];
 
 export const ADD_ONS = [
-    { id: "face_recognition",   label: "Face Recognition Attendance", price: 299 },
-    { id: "team_management",    label: "Team Management",             price: 149 },
-    { id: "project_management", label: "Project Management",          price: 149 },
-    { id: "holiday_management", label: "Holiday Management",          price: 99  },
-    { id: "whatsapp",           label: "WhatsApp Notifications",      price: 199 },
-    { id: "analytics",          label: "Advanced Analytics",          price: 199 },
-    { id: "priority_support",   label: "Priority Support",            price: 299 },
+    { id: "face_recognition", label: "Face Recognition Attendance", price: 299 },
+    { id: "team_management", label: "Team Management", price: 149 },
+    { id: "project_management", label: "Project Management", price: 149 },
+    { id: "holiday_management", label: "Holiday Management", price: 99 },
+    { id: "whatsapp", label: "WhatsApp Notifications", price: 199 },
+    { id: "analytics", label: "Advanced Analytics", price: 199 },
+    { id: "priority_support", label: "Priority Support", price: 299 },
 ];
 
 const BASE_PRICE = 199; // attendance + leave management included
@@ -30,12 +30,7 @@ const DEFAULT_PLANS = [
         amount: 499,
         billingCycle: "MONTHLY",
         maxEmployees: 10,
-        features: [
-            "Up to 10 employees",
-            "Attendance tracking",
-            "Leave management",
-            "Email support"
-        ]
+        features: ["Up to 10 employees", "Attendance tracking", "Leave management", "Email support"],
     },
     {
         name: "Standard",
@@ -48,8 +43,8 @@ const DEFAULT_PLANS = [
             "Everything in Basic",
             "Team & project management",
             "Holiday management",
-            "Priority email support"
-        ]
+            "Priority email support",
+        ],
     },
     {
         name: "Pro",
@@ -63,8 +58,8 @@ const DEFAULT_PLANS = [
             "Face recognition attendance",
             "WhatsApp notifications",
             "Advanced analytics",
-            "Priority support"
-        ]
+            "Priority support",
+        ],
     },
     {
         name: "Enterprise",
@@ -78,9 +73,9 @@ const DEFAULT_PLANS = [
             "Dedicated account manager",
             "Custom integrations",
             "SLA guarantee",
-            "24/7 support"
-        ]
-    }
+            "24/7 support",
+        ],
+    },
 ];
 
 // GET /api/admin/plans/custom-catalogue  — returns pricing catalogue for the builder
@@ -99,14 +94,14 @@ export const createCustomPlan = asyncHandler(async (req, res) => {
     const tier = EMPLOYEE_TIERS[employeeTierIndex];
     if (!tier) return errorResponse(res, "Invalid employee tier", 400);
 
-    const selectedAddOns = ADD_ONS.filter(a => (selectedAddOnIds ?? []).includes(a.id));
+    const selectedAddOns = ADD_ONS.filter((a) => (selectedAddOnIds ?? []).includes(a.id));
 
     const amount = BASE_PRICE + tier.price + selectedAddOns.reduce((s, a) => s + a.price, 0);
 
     const features = [
         `${tier.label} employees`,
         "Attendance & leave management",
-        ...selectedAddOns.map(a => a.label),
+        ...selectedAddOns.map((a) => a.label),
     ];
 
     const plan = await Plan.create({

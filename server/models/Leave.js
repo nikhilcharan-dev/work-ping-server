@@ -6,50 +6,50 @@ const leaveSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true
+            index: true,
         },
 
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         leaveType: {
             type: String,
             enum: ["Sick", "Casual", "Earned", "Unpaid"],
             required: true,
-            index: true
+            index: true,
         },
 
         dates: {
             type: [Date],
             validate: {
                 validator: (v) => Array.isArray(v) && v.length > 0,
-                message: "At least one leave date is required"
-            }
+                message: "At least one leave date is required",
+            },
         },
 
         status: {
             type: String,
             enum: ["pending", "approved", "rejected"],
             default: "pending",
-            index: true
+            index: true,
         },
 
         appliedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
         },
 
         approvedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
+            ref: "User",
         },
 
-        reason: String
+        reason: String,
     },
     { timestamps: true }
 );

@@ -1,8 +1,9 @@
 import otpRoutes from "#webRoutes/admin/otp/router.js";
 import publicStatsRouter from "#webRoutes/public/stats.router.js";
+import { authLimiter } from "../../middleware.js";
 
-import googleServicesRoutes from "../../../services/google/google.signin.js"
-import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js"
+import googleServicesRoutes from "../../../services/google/google.signin.js";
+import microservicesRoutes from "../../../services/microsoft/microsoft.signin.js";
 
 import attendanceRoutes from "#webRoutes/user/attendance/router.js";
 import forgotPasswordRouter from "#webRoutes/admin/forgotPassword/router.js";
@@ -19,11 +20,10 @@ import { setAuthCookie } from "#utils/cookie.helper.js";
 export default function centralRoutes(app) {
     // cookie verify — works for both admin and user roles
     app.get("/verify-cookie", async (req, res) => {
-
         try {
             let token = req.cookies?.accessToken;
-            if (!token && req.headers.authorization?.startsWith('Bearer ')) {
-                token = req.headers.authorization.split(' ')[1];
+            if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+                token = req.headers.authorization.split(" ")[1];
             }
             if (!token) {
                 return res.status(401).json({ type: "error", message: "Unauthorized" });
@@ -57,10 +57,13 @@ export default function centralRoutes(app) {
 
             // Strip password from both documents before sending to client
             const { password: _p1, ...safeAuthData } = authData ?? {};
-            const { password: _p2, ...safeProfile  } = profile;
+            const { password: _p2, ...safeProfile } = profile;
 
-            res.status(200).json({ type: "success", message: "Verified", data: { ...safeAuthData, ...safeProfile, role } });
-
+            res.status(200).json({
+                type: "success",
+                message: "Verified",
+                data: { ...safeAuthData, ...safeProfile, role },
+            });
         } catch (err) {
             console.log(err);
             return res.status(500).json({ type: "error", message: "Internal Server Error" });
@@ -68,7 +71,7 @@ export default function centralRoutes(app) {
     });
 
     // Refresh token — exchange a valid refresh token for a new access + refresh pair
-    app.post("/api/auth/refresh", async (req, res) => {
+    app.post("/api/auth/refresh", authLimiter, async (req, res) => {
         try {
             const { refreshToken } = req.body;
             if (!refreshToken) {
@@ -98,12 +101,12 @@ export default function centralRoutes(app) {
     });
 
     // Verification
-    app.use("/api/otp", otpRoutes);
+    app.use("/api/otp", authLimiter, otpRoutes);
 
-    app.use("/api/admin/forgot-password", forgotPasswordRouter);
+    app.use("/api/admin/forgot-password", authLimiter, forgotPasswordRouter);
 
     // Google SignIn
-    app.use("/auth/google", googleServicesRoutes)
+    app.use("/auth/google", googleServicesRoutes);
 
     // Microsoft SignIn
     app.use("/auth/microsoft", microservicesRoutes);

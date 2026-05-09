@@ -6,64 +6,64 @@ const planSchema = new mongoose.Schema(
             type: String,
             required: true,
             index: true,
-            trim: true
+            trim: true,
         },
 
         description: {
             type: String,
             trim: true,
-            maxlength: 500
+            maxlength: 500,
         },
 
         amount: {
             type: Number,
             required: true,
-            min: 0
+            min: 0,
         },
 
         // Amount in paise for PhonePe (amount * 100)
         amountInPaise: {
             type: Number,
-            required: true
+            required: true,
         },
 
         billingCycle: {
             type: String,
             enum: ["MONTHLY", "YEARLY"],
-            default: "MONTHLY"
+            default: "MONTHLY",
         },
 
         maxEmployees: {
             type: Number,
-            default: 10
+            default: 10,
         },
 
         maxOrganizations: {
             type: Number,
-            default: 1
+            default: 1,
         },
 
         maxTeams: {
             type: Number,
-            default: 3
+            default: 3,
         },
 
         maxProjects: {
             type: Number,
-            default: 5
+            default: 5,
         },
 
         // Human-readable feature list shown on pricing page
         features: {
             type: [String],
-            default: []
+            default: [],
         },
 
         isActive: {
             type: Boolean,
             default: true,
-            index: true
-        }
+            index: true,
+        },
     },
     { timestamps: true }
 );

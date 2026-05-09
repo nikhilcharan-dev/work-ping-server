@@ -10,29 +10,29 @@ const projectTeamSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Project",
             required: true,
-            index: true
+            index: true,
         },
 
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         teamManagerId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            index: true
+            index: true,
         },
 
         teamLeaderId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            index: true
+            index: true,
         },
 
-        users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+        users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     },
     { timestamps: true }
 );

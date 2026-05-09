@@ -7,32 +7,17 @@ import mongoose from "mongoose";
 import pagination from "#helpers/pagination.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
 import { checkTeamLimit } from "#utils/plan.limits.js";
-import {
-    validateObjectId,
-    validateString,
-    validateRequiredFields,
-    validatePagination
-} from "#utils/validators.js";
+import { validateObjectId, validateString, validateRequiredFields, validatePagination } from "#utils/validators.js";
 
-export const createTeam = asyncHandler(
-async (req, res) => {
-    const {
-        teamName,
-        teamManagerId: managerId,
-        description,
-        teamLeaderIds: leaderIds,
-        organizationId
-    } = req.body;
+export const createTeam = asyncHandler(async (req, res) => {
+    const { teamName, teamManagerId: managerId, description, teamLeaderIds: leaderIds, organizationId } = req.body;
 
-    const requiredCheck = validateRequiredFields(
-        { teamName, organizationId },
-        ['teamName', 'organizationId']
-    );
+    const requiredCheck = validateRequiredFields({ teamName, organizationId }, ["teamName", "organizationId"]);
     if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
     const nameValidation = validateString(teamName, "Team name", {
         minLength: 2,
-        maxLength: 100
+        maxLength: 100,
     });
     if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
 
@@ -61,7 +46,7 @@ async (req, res) => {
 
     const teamExists = await Team.findOne({
         teamName: nameValidation.normalized,
-        organizationId
+        organizationId,
     });
     if (teamExists) return errorResponse(res, "Team name already exists in this organization", 409);
 
@@ -72,7 +57,7 @@ async (req, res) => {
         teamName: nameValidation.normalized,
         managerId: managerId || null,
         leaderIds: cleanedLeaderIds,
-        organizationId
+        organizationId,
     };
 
     if (description !== undefined && description !== null) {
@@ -98,7 +83,7 @@ async (req, res) => {
     let successCount = 0;
 
     if (usersToProcess.length > 0) {
-        const userIds = usersToProcess.map(u => u.userId);
+        const userIds = usersToProcess.map((u) => u.userId);
         const existingMemberships = await TeamMembership.find({ userId: { $in: userIds } });
 
         const membershipsToInsert = [];
@@ -106,14 +91,14 @@ async (req, res) => {
         const teamLeadIdsToUpdate = [];
 
         for (const user of usersToProcess) {
-            const userMemberships = existingMemberships.filter(m => m.userId.toString() === user.userId.toString());
+            const userMemberships = existingMemberships.filter((m) => m.userId.toString() === user.userId.toString());
             const inOtherTeam = userMemberships.length > 0; // Since this team is new, any existing membership is in another team
-            
+
             if (!inOtherTeam) {
                 membershipsToInsert.push({
                     userId: user.userId,
                     teamId: createdTeam._id,
-                    organizationId
+                    organizationId,
                 });
 
                 if (user.role === "manager") managerIdsToUpdate.push(user.userId);
@@ -121,7 +106,7 @@ async (req, res) => {
             } else {
                 failedInsertions.push({
                     id: user.userId.toString(),
-                    error: "User is already assigned to another team"
+                    error: "User is already assigned to another team",
                 });
             }
         }
@@ -139,278 +124,275 @@ async (req, res) => {
         }
     }
 
-    return successResponse(res, "Team added successfully", {
-        ...detailObject,
-        teamId: createdTeam._id,
-        successCount,
-        failedCount: failedInsertions.length,
-        failedInsertions
-    }, 201);
-
+    return successResponse(
+        res,
+        "Team added successfully",
+        {
+            ...detailObject,
+            teamId: createdTeam._id,
+            successCount,
+            failedCount: failedInsertions.length,
+            failedInsertions,
+        },
+        201
+    );
 }, "ADMIN_CREATE_TEAM_ERROR");
 
-export const getTeam = asyncHandler(
-    async (req, res) => {
-        const { id: teamId } = req.params;
+export const getTeam = asyncHandler(async (req, res) => {
+    const { id: teamId } = req.params;
 
-        const idValidation = validateObjectId(teamId, "Team ID");
-        if (!idValidation.valid) return errorResponse(res, idValidation.error);
+    const idValidation = validateObjectId(teamId, "Team ID");
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
-        const [team] = await Team.aggregate([
-            { $match: { _id: new mongoose.Types.ObjectId(teamId) } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "managerId",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1, profileImage: 1 } }],
-                    as: "manager"
-                }
+    const [team] = await Team.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(teamId) } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "managerId",
+                foreignField: "_id",
+                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1, profileImage: 1 } }],
+                as: "manager",
             },
-            { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "leaderIds",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1, profileImage: 1 } }],
-                    as: "leaders"
-                }
+        },
+        { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "leaderIds",
+                foreignField: "_id",
+                pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1, profileImage: 1 } }],
+                as: "leaders",
             },
-            {
-                $addFields: {
-                    // Frontend-expected aliases
-                    teamManagerId: "$managerId",
-                    teamLeaderId: { $arrayElemAt: ["$leaderIds", 0] },
-                }
-            }
-        ]);
-
-        if (!team) return errorResponse(res, "Team does not exist with given id", 404);
-        return successResponse(res, "Team fetched", team);
-    }, "ADMIN_GET_TEAM_ERROR");
-
-export const getAllTeams = asyncHandler(
-    async (req, res) => {
-        const { organizationId } = req.body;
-
-        const idValidation = validateObjectId(organizationId, "Organization ID");
-        if (!idValidation.valid) return errorResponse(res, idValidation.error);
-
-        const teamList = await Team.aggregate([
-            { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "managerId",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
-                    as: "manager"
-                }
+        },
+        {
+            $addFields: {
+                // Frontend-expected aliases
+                teamManagerId: "$managerId",
+                teamLeaderId: { $arrayElemAt: ["$leaderIds", 0] },
             },
-            { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "leaderIds",
-                    foreignField: "_id",
-                    pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
-                    as: "leaders"
-                }
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "_id",
-                    foreignField: "teamId",
-                    as: "members"
-                }
-            },
-            {
-                $lookup: {
-                    from: "organizations",
-                    localField: "organizationId",
-                    foreignField: "_id",
-                    as: "organization"
-                }
-            },
-            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
-            {
-                $addFields: {
-                    memberCount: { $size: "$members" },
-                    organizationName: { $ifNull: ["$organization.name", null] }
-                }
-            },
-            {
-                $project: {
-                    members: 0,
-                    organization: 0
-                }
-            }
-        ]);
+        },
+    ]);
 
-        return successResponse(res, "Teams fetched", teamList);
-    }, "ADMIN_GET_TEAMS_ERROR");
+    if (!team) return errorResponse(res, "Team does not exist with given id", 404);
+    return successResponse(res, "Team fetched", team);
+}, "ADMIN_GET_TEAM_ERROR");
 
-export const getTeamsPagination = asyncHandler(
-    async (req, res) => {
-        const { organizationId, page = 1, limit = 10, search = "" } = req.query;
+export const getAllTeams = asyncHandler(async (req, res) => {
+    const { organizationId } = req.body;
 
-        const adminId = req.user.userId;
-        const thefilter = [];
-        const orgList = [];
+    const idValidation = validateObjectId(organizationId, "Organization ID");
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
 
-        if (organizationId) {
-            const orgValidation = validateObjectId(organizationId, "Organization ID");
-            if (!orgValidation.valid) return errorResponse(res, orgValidation.error);
-            orgList.push(new mongoose.Types.ObjectId(organizationId));
-        } else {
-            const orgs = await AdminOrg.find({ primaryAdmin: adminId }).select("organizationId");
-            orgList.push(...orgs.map(org => org.organizationId));
-        }
-
-        thefilter.push({ $match: { organizationId: { $in: orgList } } });
-
-        if (search.trim() !== "") {
-            thefilter.push({
-                $match: {
-                    teamName: {
-                        $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-                        $options: "i"
-                    }
-                }
-            });
-        }
-
-        thefilter.push({
+    const teamList = await Team.aggregate([
+        { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
+        {
             $lookup: {
                 from: "users",
                 localField: "managerId",
                 foreignField: "_id",
                 pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
-                as: "manager"
-            }
-        });
-        thefilter.push({ $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } });
-        thefilter.push({
+                as: "manager",
+            },
+        },
+        { $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } },
+        {
             $lookup: {
                 from: "users",
                 localField: "leaderIds",
                 foreignField: "_id",
                 pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
-                as: "leaders"
-            }
-        });
-
-        thefilter.push({
+                as: "leaders",
+            },
+        },
+        {
             $lookup: {
                 from: "users",
                 localField: "_id",
                 foreignField: "teamId",
-                as: "members"
-            }
-        });
-
-        thefilter.push(
-            {
-                $lookup: {
-                    from: "organizations",
-                    localField: "organizationId",
-                    foreignField: "_id",
-                    as: "organization"
-                }
+                as: "members",
             },
-            { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
-            {
-                $addFields: {
-                    memberCount: { $size: "$members" },
-                    organizationName: { $ifNull: ["$organization.name", null] }
-                }
+        },
+        {
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization",
             },
-            {
-                $project: {
-                    members: 0,
-                    organization: 0
-                }
-            }
-        );
+        },
+        { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+        {
+            $addFields: {
+                memberCount: { $size: "$members" },
+                organizationName: { $ifNull: ["$organization.name", null] },
+            },
+        },
+        {
+            $project: {
+                members: 0,
+                organization: 0,
+            },
+        },
+    ]);
 
-        const results = await pagination(Team, page, limit, thefilter);
-        return successResponse(res, "Teams fetched", {
-            teamList: results.documents,
-            totalRecords: results.totalRecords,
-            totalPages: results.totalPages
+    return successResponse(res, "Teams fetched", teamList);
+}, "ADMIN_GET_TEAMS_ERROR");
+
+export const getTeamsPagination = asyncHandler(async (req, res) => {
+    const { organizationId, page = 1, limit = 10, search = "" } = req.query;
+
+    const adminId = req.user.userId;
+    const thefilter = [];
+    const orgList = [];
+
+    if (organizationId) {
+        const orgValidation = validateObjectId(organizationId, "Organization ID");
+        if (!orgValidation.valid) return errorResponse(res, orgValidation.error);
+        orgList.push(new mongoose.Types.ObjectId(organizationId));
+    } else {
+        const orgs = await AdminOrg.find({ primaryAdmin: adminId }).select("organizationId");
+        orgList.push(...orgs.map((org) => org.organizationId));
+    }
+
+    thefilter.push({ $match: { organizationId: { $in: orgList } } });
+
+    if (search.trim() !== "") {
+        thefilter.push({
+            $match: {
+                teamName: {
+                    $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+                    $options: "i",
+                },
+            },
         });
-    }, "GET_TEAMS_PAGINATION_ERROR");
+    }
 
-export const updateTeam = asyncHandler(
-    async (req, res) => {
-        const { teamId, teamName, description, managerId, leaderIds } = req.body;
+    thefilter.push({
+        $lookup: {
+            from: "users",
+            localField: "managerId",
+            foreignField: "_id",
+            pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
+            as: "manager",
+        },
+    });
+    thefilter.push({ $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } });
+    thefilter.push({
+        $lookup: {
+            from: "users",
+            localField: "leaderIds",
+            foreignField: "_id",
+            pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
+            as: "leaders",
+        },
+    });
 
+    thefilter.push({
+        $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "teamId",
+            as: "members",
+        },
+    });
+
+    thefilter.push(
+        {
+            $lookup: {
+                from: "organizations",
+                localField: "organizationId",
+                foreignField: "_id",
+                as: "organization",
+            },
+        },
+        { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
+        {
+            $addFields: {
+                memberCount: { $size: "$members" },
+                organizationName: { $ifNull: ["$organization.name", null] },
+            },
+        },
+        {
+            $project: {
+                members: 0,
+                organization: 0,
+            },
+        }
+    );
+
+    const results = await pagination(Team, page, limit, thefilter);
+    return successResponse(res, "Teams fetched", {
+        teamList: results.documents,
+        totalRecords: results.totalRecords,
+        totalPages: results.totalPages,
+    });
+}, "GET_TEAMS_PAGINATION_ERROR");
+
+export const updateTeam = asyncHandler(async (req, res) => {
+    const { teamId, teamName, description, managerId, leaderIds } = req.body;
+
+    const idValidation = validateObjectId(teamId, "Team ID");
+    if (!idValidation.valid) return errorResponse(res, idValidation.error);
+
+    const team = await Team.findById(teamId);
+    if (!team) return errorResponse(res, "Team not found", 404);
+
+    const updateData = {};
+
+    if (teamName !== undefined) {
+        const nameValidation = validateString(teamName, "Team name", { minLength: 2, maxLength: 100 });
+        if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
+        updateData.teamName = nameValidation.normalized;
+    }
+
+    if (description !== undefined) {
+        const descValidation = validateString(description, "Description", { maxLength: 500 });
+        if (!descValidation.valid) return errorResponse(res, descValidation.error);
+        updateData.description = descValidation.normalized;
+    }
+
+    if (managerId !== undefined) {
+        if (managerId !== null) {
+            const managerValidation = validateObjectId(managerId, "Manager ID");
+            if (!managerValidation.valid) return errorResponse(res, managerValidation.error);
+        }
+        updateData.managerId = managerId;
+    }
+
+    if (leaderIds !== undefined) {
+        if (!Array.isArray(leaderIds)) return errorResponse(res, "leaderIds must be an array");
+        for (const id of leaderIds) {
+            const v = validateObjectId(id, "Leader ID");
+            if (!v.valid) return errorResponse(res, v.error);
+        }
+        updateData.leaderIds = [...new Set(leaderIds)];
+    }
+
+    if (Object.keys(updateData).length === 0) return errorResponse(res, "No valid fields to update");
+
+    const updater = await Team.findByIdAndUpdate(teamId, updateData, { new: true, runValidators: true });
+    return successResponse(res, "Team details updated", updater);
+}, "ADMIN_UPDATE_TEAM_ERROR");
+
+export const deleteTeam = asyncHandler(async (req, res) => {
+    const { data: teamIds } = req.body;
+
+    if (!Array.isArray(teamIds) || teamIds.length === 0) {
+        return errorResponse(res, "teamIds must be a non-empty array");
+    }
+
+    for (const teamId of teamIds) {
         const idValidation = validateObjectId(teamId, "Team ID");
         if (!idValidation.valid) return errorResponse(res, idValidation.error);
+    }
 
-        const team = await Team.findById(teamId);
-        if (!team) return errorResponse(res, "Team not found", 404);
+    const result = await Team.deleteMany({ _id: { $in: teamIds } });
 
-        const updateData = {};
+    if (result.deletedCount === 0) return errorResponse(res, "No matching teams found to delete", 404);
 
-        if (teamName !== undefined) {
-            const nameValidation = validateString(teamName, "Team name", { minLength: 2, maxLength: 100 });
-            if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
-            updateData.teamName = nameValidation.normalized;
-        }
-
-        if (description !== undefined) {
-            const descValidation = validateString(description, "Description", { maxLength: 500 });
-            if (!descValidation.valid) return errorResponse(res, descValidation.error);
-            updateData.description = descValidation.normalized;
-        }
-
-        if (managerId !== undefined) {
-            if (managerId !== null) {
-                const managerValidation = validateObjectId(managerId, "Manager ID");
-                if (!managerValidation.valid) return errorResponse(res, managerValidation.error);
-            }
-            updateData.managerId = managerId;
-        }
-
-        if (leaderIds !== undefined) {
-            if (!Array.isArray(leaderIds)) return errorResponse(res, "leaderIds must be an array");
-            for (const id of leaderIds) {
-                const v = validateObjectId(id, "Leader ID");
-                if (!v.valid) return errorResponse(res, v.error);
-            }
-            updateData.leaderIds = [...new Set(leaderIds)];
-        }
-
-        if (Object.keys(updateData).length === 0) return errorResponse(res, "No valid fields to update");
-
-        const updater = await Team.findByIdAndUpdate(teamId, updateData, { new: true, runValidators: true });
-        return successResponse(res, "Team details updated", updater);
-    }, "ADMIN_UPDATE_TEAM_ERROR");
-
-export const deleteTeam = asyncHandler(
-    async (req, res) => {
-        const { data: teamIds } = req.body;
-
-        if (!Array.isArray(teamIds) || teamIds.length === 0) {
-            return errorResponse(res, "teamIds must be a non-empty array");
-        }
-
-        for (const teamId of teamIds) {
-            const idValidation = validateObjectId(teamId, "Team ID");
-            if (!idValidation.valid) return errorResponse(res, idValidation.error);
-        }
-
-        const result = await Team.deleteMany({ _id: { $in: teamIds } });
-
-        if (result.deletedCount === 0) return errorResponse(res, "No matching teams found to delete", 404);
-
-        return successResponse(res, `${result.deletedCount} team(s) deleted`, { deletedCount: result.deletedCount });
-    },
-    "ADMIN_DELETE_TEAM_ERROR"
-);
+    return successResponse(res, `${result.deletedCount} team(s) deleted`, { deletedCount: result.deletedCount });
+}, "ADMIN_DELETE_TEAM_ERROR");
 
 export const getManagerTeams = asyncHandler(async (req, res) => {
     let { search = "", page = 1, limit = 10 } = req.query;
@@ -432,11 +414,16 @@ export const getManagerTeams = asyncHandler(async (req, res) => {
     limit = Number(limit);
 
     let filter = [
-        { $match: { managerId: new mongoose.Types.ObjectId(managerId), organizationId: new mongoose.Types.ObjectId(organizationId) } }
+        {
+            $match: {
+                managerId: new mongoose.Types.ObjectId(managerId),
+                organizationId: new mongoose.Types.ObjectId(organizationId),
+            },
+        },
     ];
 
     if (search) {
-        const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         filter.push({ $match: { teamName: { $regex: escaped, $options: "i" } } });
     }
 
@@ -446,8 +433,8 @@ export const getManagerTeams = asyncHandler(async (req, res) => {
             localField: "managerId",
             foreignField: "_id",
             pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
-            as: "manager"
-        }
+            as: "manager",
+        },
     });
     filter.push({ $unwind: { path: "$manager", preserveNullAndEmptyArrays: true } });
 
@@ -457,8 +444,8 @@ export const getManagerTeams = asyncHandler(async (req, res) => {
             localField: "leaderIds",
             foreignField: "_id",
             pipeline: [{ $project: { employeeId: 1, name: 1, email: 1, workType: 1 } }],
-            as: "leaders"
-        }
+            as: "leaders",
+        },
     });
 
     filter.push({
@@ -466,8 +453,8 @@ export const getManagerTeams = asyncHandler(async (req, res) => {
             from: "users",
             localField: "_id",
             foreignField: "teamId",
-            as: "members"
-        }
+            as: "members",
+        },
     });
 
     filter.push({
@@ -475,30 +462,29 @@ export const getManagerTeams = asyncHandler(async (req, res) => {
             from: "organizations",
             localField: "organizationId",
             foreignField: "_id",
-            as: "organization"
-        }
+            as: "organization",
+        },
     });
     filter.push({ $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } });
 
     filter.push({
         $addFields: {
             memberCount: { $size: "$members" },
-            organizationName: { $ifNull: ["$organization.name", null] }
-        }
+            organizationName: { $ifNull: ["$organization.name", null] },
+        },
     });
 
     filter.push({
         $project: {
             members: 0,
-            organization: 0
-        }
+            organization: 0,
+        },
     });
 
     const results = await pagination(Team, page, limit, filter);
     return successResponse(res, "Manager teams fetched", {
         teamList: results.documents,
         totalRecords: results.totalRecords,
-        totalPages: results.totalPages
+        totalPages: results.totalPages,
     });
 }, "GET_MANAGER_TEAMS_ERROR");
-

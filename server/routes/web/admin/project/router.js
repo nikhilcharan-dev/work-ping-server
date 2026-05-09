@@ -4,7 +4,7 @@ import {
     getProject,
     updateProject,
     deleteProject,
-    getManagerProjects
+    getManagerProjects,
 } from "#webController/admin/project/project.controller.js";
 import {
     addProjectMember,
@@ -12,7 +12,7 @@ import {
     getProjectMember,
     updateProjectMember,
     removeProjectMembers,
-    getEligibleEmployeesForProject
+    getEligibleEmployeesForProject,
 } from "#webController/admin/project/teams.controller.js";
 import { Router } from "express";
 import requireRole from "#middleware/requireRole.js";

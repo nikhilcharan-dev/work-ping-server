@@ -13,17 +13,11 @@ const MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET;
 const MS_REDIRECT_URI = process.env.MS_REDIRECT_URI;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
-const SCOPE = [
-    "openid",
-    "profile",
-    "email",
-    "https://graph.microsoft.com/User.Read"
-].join(" ");
-
+const SCOPE = ["openid", "profile", "email", "https://graph.microsoft.com/User.Read"].join(" ");
 
 router.get("/start", (req, res) => {
     const { platform } = req.query;
-    const state = platform === 'mobile' ? 'mobile' : 'web';
+    const state = platform === "mobile" ? "mobile" : "web";
     const authUrl =
         `https://login.microsoftonline.com/common/oauth2/v2.0/authorize` +
         `?client_id=${MS_CLIENT_ID}` +
@@ -35,7 +29,6 @@ router.get("/start", (req, res) => {
 
     res.redirect(authUrl);
 });
-
 
 router.get("/callback", async (req, res) => {
     const { code, state } = req.query;
@@ -56,11 +49,10 @@ router.get("/callback", async (req, res) => {
                 client_secret: MS_CLIENT_SECRET,
                 code,
                 redirect_uri: MS_REDIRECT_URI,
-                grant_type: "authorization_code"
+                grant_type: "authorization_code",
             }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-
 
         const accessToken = tokenRes.data.access_token;
 
@@ -69,19 +61,11 @@ router.get("/callback", async (req, res) => {
         }
 
         // Fetch profile
-        const profileRes = await axios.get(
-            "https://graph.microsoft.com/v1.0/me",
-            {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            }
-        );
+        const profileRes = await axios.get("https://graph.microsoft.com/v1.0/me", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
 
-        const {
-            mail,
-            userPrincipalName,
-            displayName,
-            id
-        } = profileRes.data;
+        const { mail, userPrincipalName, displayName, id } = profileRes.data;
 
         const email = mail || userPrincipalName;
         const microsoftId = id;
@@ -104,9 +88,9 @@ router.get("/callback", async (req, res) => {
                 providers: {
                     microsoft: {
                         id: microsoftId,
-                        linked: true
-                    }
-                }
+                        linked: true,
+                    },
+                },
             });
 
             const admin = await Admin.create({
@@ -121,7 +105,7 @@ router.get("/callback", async (req, res) => {
             if (!account.providers?.microsoft?.linked) {
                 account.providers.microsoft = {
                     id: microsoftId,
-                    linked: true
+                    linked: true,
                 };
                 await account.save();
             }
@@ -141,11 +125,9 @@ router.get("/callback", async (req, res) => {
         }
 
         // Issue JWT with same payload structure as normal auth
-        const appToken = jwt.sign(
-            { userId: profileId, role: account.role },
-            process.env.SECRET_KEY,
-            { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-        );
+        const appToken = jwt.sign({ userId: profileId, role: account.role }, process.env.SECRET_KEY, {
+            expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+        });
 
         // Set httpOnly cookie (same as normal login)
         // const isLive = process.env.MODE === "production";
@@ -176,12 +158,8 @@ router.get("/callback", async (req, res) => {
             window.close();
           </script>
         `);
-
     } catch (err) {
-        console.error(
-            "Microsoft OAuth Error:",
-            err.response?.data || err.message
-        );
+        console.error("Microsoft OAuth Error:", err.response?.data || err.message);
         if (isMobile) {
             return res.redirect(`reback://auth?error=${encodeURIComponent("Microsoft OAuth failed")}`);
         }

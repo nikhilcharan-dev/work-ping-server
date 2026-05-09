@@ -9,49 +9,45 @@ const getOrganizationInfo = asyncHandler(async (req, res) => {
     const adminOrgs = await AdminOrg.aggregate([
         {
             $match: {
-                $or: [
-                    { primaryAdmin: adminId },
-                    { secondaryAdmin: adminId }
-                ]
-            }
+                $or: [{ primaryAdmin: adminId }, { secondaryAdmin: adminId }],
+            },
         },
         {
             $lookup: {
                 from: "organizations",
                 localField: "organizationId",
                 foreignField: "_id",
-                as: "organization"
-            }
+                as: "organization",
+            },
         },
         {
-            $unwind: "$organization"
+            $unwind: "$organization",
         },
         {
             $project: {
                 organizationId: "$organization._id",
-                organizationName: "$organization.name"
-            }
-        }
+                organizationName: "$organization.name",
+            },
+        },
     ]);
 
     const organizationInfo = {};
 
     for (const org of adminOrgs) {
-
         const teams = await Team.find({
-            organizationId: org.organizationId
-        }).select("_id teamName")
+            organizationId: org.organizationId,
+        })
+            .select("_id teamName")
             .sort({ teamName: 1 })
             .lean();
 
-        organizationInfo[org.organizationName]={
+        organizationInfo[org.organizationName] = {
             organizationId: org.organizationId,
-            teams
-        }
+            teams,
+        };
     }
 
     return successResponse(res, "Organization info fetched", organizationInfo);
-
 }, "ADMIN_GET_ORG_INFO_ERROR");
 
 export default getOrganizationInfo;

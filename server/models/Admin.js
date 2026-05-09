@@ -17,15 +17,15 @@ const adminSchema = new mongoose.Schema(
 
         planId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Plan"
+            ref: "Plan",
         },
 
         paymentId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Payment"
+            ref: "Payment",
         },
 
-        profileImage: { type: String }
+        profileImage: { type: String },
     },
     { timestamps: true }
 );

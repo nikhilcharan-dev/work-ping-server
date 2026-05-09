@@ -26,7 +26,7 @@ export const send_phone_otp = asyncHandler(async (req, res) => {
 export const verify_email_otp = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
 
-    const requiredCheck = validateRequiredFields({ email, otp }, ['email', 'otp']);
+    const requiredCheck = validateRequiredFields({ email, otp }, ["email", "otp"]);
     if (!requiredCheck.valid) return errorResponse(res, requiredCheck.error);
 
     const emailValidation = validateEmail(email);

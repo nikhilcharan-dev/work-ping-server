@@ -25,11 +25,9 @@ export async function generateTokenPair(payload, req) {
     const mobile = isMobileRequest(req);
     const accessExpiry = mobile ? ACCESS_TOKEN_EXPIRY_MOBILE : ACCESS_TOKEN_EXPIRY_WEB;
 
-    const accessToken = jwt.sign(
-        { userId: payload.userId, role: payload.role },
-        process.env.SECRET_KEY,
-        { expiresIn: accessExpiry }
-    );
+    const accessToken = jwt.sign({ userId: payload.userId, role: payload.role }, process.env.SECRET_KEY, {
+        expiresIn: accessExpiry,
+    });
 
     // Create refresh token
     const refreshTokenStr = RefreshToken.generateToken();
@@ -65,11 +63,9 @@ export async function rotateRefreshToken(token) {
     const mobile = existing.platform === "mobile";
     const accessExpiry = mobile ? ACCESS_TOKEN_EXPIRY_MOBILE : ACCESS_TOKEN_EXPIRY_WEB;
 
-    const accessToken = jwt.sign(
-        { userId: existing.userId.toString(), role: existing.role },
-        process.env.SECRET_KEY,
-        { expiresIn: accessExpiry }
-    );
+    const accessToken = jwt.sign({ userId: existing.userId.toString(), role: existing.role }, process.env.SECRET_KEY, {
+        expiresIn: accessExpiry,
+    });
 
     const newRefreshTokenStr = RefreshToken.generateToken();
     const refreshExpiry = mobile ? REFRESH_TOKEN_EXPIRY_MOBILE : REFRESH_TOKEN_EXPIRY_WEB;

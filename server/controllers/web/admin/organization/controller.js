@@ -1,7 +1,7 @@
-import mongoose from 'mongoose';
-import Organization from '#models/Organization.js';
-import OrgAdmin from '#models/Admin.Org.js';
-import Admin from '#models/Admin.js';
+import mongoose from "mongoose";
+import Organization from "#models/Organization.js";
+import OrgAdmin from "#models/Admin.Org.js";
+import Admin from "#models/Admin.js";
 import { uploadFile, deleteObject } from "#services/storage/oracle.service.js";
 import Pagination from "#helpers/pagination.js";
 import AdminOrg from "#models/Admin.Org.js";
@@ -21,7 +21,7 @@ const formatOrg = (org) => {
     if (org.foundedAt) {
         const date = new Date(org.foundedAt);
         if (!isNaN(date.getTime())) {
-            org.foundedAt = date.toISOString().split('T')[0];
+            org.foundedAt = date.toISOString().split("T")[0];
         }
     }
     return org;
@@ -68,7 +68,7 @@ const addOrganization = asyncHandler(async (req, res) => {
     const nameValidation = validateString(name, "Organization name", {
         required: true,
         minLength: 2,
-        maxLength: 100
+        maxLength: 100,
     });
     if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
 
@@ -99,7 +99,15 @@ const addOrganization = asyncHandler(async (req, res) => {
     if (IPWhitelist !== undefined) orgData.IPWhitelist = Array.isArray(IPWhitelist) ? IPWhitelist : [IPWhitelist];
     if (req.body.coordinates !== undefined) {
         const coords = req.body.coordinates;
-        if (!Array.isArray(coords) || coords.length !== 2 || coords.some(v => typeof v !== "number" || isNaN(v)) || coords[0] < -90 || coords[0] > 90 || coords[1] < -180 || coords[1] > 180) {
+        if (
+            !Array.isArray(coords) ||
+            coords.length !== 2 ||
+            coords.some((v) => typeof v !== "number" || isNaN(v)) ||
+            coords[0] < -90 ||
+            coords[0] > 90 ||
+            coords[1] < -180 ||
+            coords[1] > 180
+        ) {
             return errorResponse(res, "coordinates must be [lat, lng] with lat -90..90 and lng -180..180");
         }
         orgData.coordinates = coords;
@@ -110,10 +118,7 @@ const addOrganization = asyncHandler(async (req, res) => {
 
         orgData.areaPins = areaPinsValidation.normalized;
         if (orgData.coordinates === undefined && areaPinsValidation.normalized.length > 0) {
-            orgData.coordinates = [
-                areaPinsValidation.normalized[0].lat,
-                areaPinsValidation.normalized[0].lng,
-            ];
+            orgData.coordinates = [areaPinsValidation.normalized[0].lat, areaPinsValidation.normalized[0].lng];
         }
     }
     if (req.body.msl !== undefined) {
@@ -126,11 +131,16 @@ const addOrganization = asyncHandler(async (req, res) => {
     session.startTransaction();
     let newOrganization;
     try {
-        ([newOrganization] = await Organization.create([orgData], { session }));
-        await OrgAdmin.create([{
-            organizationId: newOrganization._id,
-            primaryAdmin: userId,
-        }], { session });
+        [newOrganization] = await Organization.create([orgData], { session });
+        await OrgAdmin.create(
+            [
+                {
+                    organizationId: newOrganization._id,
+                    primaryAdmin: userId,
+                },
+            ],
+            { session }
+        );
         await session.commitTransaction();
     } catch (err) {
         await session.abortTransaction();
@@ -150,7 +160,7 @@ const getOrganizationsOfAdmin = asyncHandler(async (req, res) => {
     if (!existingAdmin) return errorResponse(res, "Admin doesn't exist", 404);
 
     let { search = "", page = 1, limit = 10 } = req.query;
-    search = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    search = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     page = Number(page);
 
     const filter = [
@@ -160,47 +170,47 @@ const getOrganizationsOfAdmin = asyncHandler(async (req, res) => {
                 from: "organizations",
                 localField: "organizationId",
                 foreignField: "_id",
-                as: "organization"
-            }
+                as: "organization",
+            },
         },
         { $unwind: "$organization" },
         {
             $match: {
-                "organization.name": { $regex: search, $options: "i" }
-            }
+                "organization.name": { $regex: search, $options: "i" },
+            },
         },
         {
             $lookup: {
                 from: "users",
                 localField: "organizationId",
                 foreignField: "organizationId",
-                as: "employees"
-            }
+                as: "employees",
+            },
         },
         {
             $lookup: {
                 from: "teams",
                 localField: "organizationId",
                 foreignField: "organizationId",
-                as: "teams"
-            }
+                as: "teams",
+            },
         },
         {
             $addFields: {
                 "organization.employeeCount": { $size: "$employees" },
-                "organization.teamCount": { $size: "$teams" }
-            }
+                "organization.teamCount": { $size: "$teams" },
+            },
         },
         { $sort: { "organization.name": 1 } },
     ];
 
     const pagination = await Pagination(AdminOrg, page, limit, filter);
-    const organizations = pagination.documents.map(item => formatOrg(item.organization));
+    const organizations = pagination.documents.map((item) => formatOrg(item.organization));
 
     return successResponse(res, "Organizations fetched", {
         totalRecords: pagination.totalRecords,
         totalPages: pagination.totalPages,
-        organizations
+        organizations,
     });
 }, "ADMIN_GET_ORG_ERROR");
 
@@ -215,12 +225,12 @@ const updateOrganization = asyncHandler(async (req, res) => {
     if (req.body.name !== undefined) {
         const nameValidation = validateString(req.body.name, "Organization name", { minLength: 2, maxLength: 100 });
         if (!nameValidation.valid) return errorResponse(res, nameValidation.error);
-        
+
         const duplicate = await existingOrganizationWithSameName(nameValidation.normalized);
         if (duplicate && duplicate._id.toString() !== _id.toString()) {
             return errorResponse(res, "Organization Name is already taken", 409);
         }
-        
+
         updates.name = nameValidation.normalized;
     }
 
@@ -237,10 +247,19 @@ const updateOrganization = asyncHandler(async (req, res) => {
         if (!foundedAtValidation.valid) return errorResponse(res, foundedAtValidation.error);
         updates.foundedAt = foundedAtValidation.normalized;
     }
-    if (req.body.IPWhitelist !== undefined) updates.IPWhitelist = Array.isArray(req.body.IPWhitelist) ? req.body.IPWhitelist : [req.body.IPWhitelist];
+    if (req.body.IPWhitelist !== undefined)
+        updates.IPWhitelist = Array.isArray(req.body.IPWhitelist) ? req.body.IPWhitelist : [req.body.IPWhitelist];
     if (req.body.coordinates !== undefined) {
         const coords = req.body.coordinates;
-        if (!Array.isArray(coords) || coords.length !== 2 || coords.some(v => typeof v !== "number" || isNaN(v)) || coords[0] < -90 || coords[0] > 90 || coords[1] < -180 || coords[1] > 180) {
+        if (
+            !Array.isArray(coords) ||
+            coords.length !== 2 ||
+            coords.some((v) => typeof v !== "number" || isNaN(v)) ||
+            coords[0] < -90 ||
+            coords[0] > 90 ||
+            coords[1] < -180 ||
+            coords[1] > 180
+        ) {
             return errorResponse(res, "coordinates must be [lat, lng] with lat -90..90 and lng -180..180");
         }
         updates.coordinates = coords;
@@ -251,10 +270,7 @@ const updateOrganization = asyncHandler(async (req, res) => {
 
         updates.areaPins = areaPinsValidation.normalized;
         if (updates.coordinates === undefined && areaPinsValidation.normalized.length > 0) {
-            updates.coordinates = [
-                areaPinsValidation.normalized[0].lat,
-                areaPinsValidation.normalized[0].lng,
-            ];
+            updates.coordinates = [areaPinsValidation.normalized[0].lat, areaPinsValidation.normalized[0].lng];
         }
     }
     if (req.body.msl !== undefined) {
@@ -294,7 +310,7 @@ const deleteOrganization = asyncHandler(async (req, res) => {
         if (!idValidation.valid) return errorResponse(res, idValidation.error);
     }
 
-    const objectIds = organizationIds.map(id => new mongoose.Types.ObjectId(id));
+    const objectIds = organizationIds.map((id) => new mongoose.Types.ObjectId(id));
 
     const existingOrganizations = await Organization.find({ _id: { $in: objectIds } }).lean();
     if (existingOrganizations.length === 0) return errorResponse(res, "Organizations don't exist", 404);
@@ -330,22 +346,21 @@ const getOrganizationIDsOfAdmin = asyncHandler(async (req, res) => {
                 localField: "organizationId",
                 foreignField: "_id",
                 pipeline: [{ $project: { _id: 1, name: 1 } }],
-                as: "org"
-            }
+                as: "org",
+            },
         },
         { $unwind: "$org" },
         {
             $project: {
                 _id: 0,
                 organizationId: "$org._id",
-                name: "$org.name"
-            }
-        }
+                name: "$org.name",
+            },
+        },
     ]);
 
     return successResponse(res, "Organization IDs fetched", organizationIds);
 }, "ADMIN_GET_ORG_IDS_ERROR");
-
 
 const getOrgAdmins = asyncHandler(async (req, res) => {
     const { organizationId } = req.query;
@@ -495,4 +510,4 @@ export {
     inviteAdmin,
     removeAdmin,
     uploadOrgLogo,
-}
+};

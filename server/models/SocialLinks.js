@@ -5,7 +5,7 @@ const socialLinksSchema = new mongoose.Schema(
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
         },
 
         linkedin: String,
@@ -18,7 +18,7 @@ const socialLinksSchema = new mongoose.Schema(
 
         twitter: String,
 
-        instagram: String
+        instagram: String,
     },
     { timestamps: true }
 );

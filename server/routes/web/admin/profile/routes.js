@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { getProfile, updateProfile, changePassword, getProfileByEmail } from "#webController/admin/profile/controller.js";
+import {
+    getProfile,
+    updateProfile,
+    changePassword,
+    getProfileByEmail,
+} from "#webController/admin/profile/controller.js";
 
 const router = Router();
 

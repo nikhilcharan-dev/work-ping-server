@@ -10,17 +10,17 @@ const router = Router();
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI =  process.env.GOOGLE_REDIRECT_URI;
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 const SCOPE = [
     "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/userinfo.email"
+    "https://www.googleapis.com/auth/userinfo.email",
 ].join(" ");
 
-router.get('/start', (req, res) => {
+router.get("/start", (req, res) => {
     const { platform } = req.query;
-    const state = platform === 'mobile' ? 'mobile' : 'web';
+    const state = platform === "mobile" ? "mobile" : "web";
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent&state=${state}`;
     res.redirect(url);
 });
@@ -37,39 +37,26 @@ router.get("/callback", async (req, res) => {
 
     try {
         // Exchange code for tokens
-        const tokenRes = await axios.post(
-            "https://oauth2.googleapis.com/token",
-            null,
-            {
-                params: {
-                    code,
-                    client_id: CLIENT_ID,
-                    client_secret: CLIENT_SECRET,
-                    redirect_uri: REDIRECT_URI,
-                    grant_type: "authorization_code"
-                }
-            }
-        );
+        const tokenRes = await axios.post("https://oauth2.googleapis.com/token", null, {
+            params: {
+                code,
+                client_id: CLIENT_ID,
+                client_secret: CLIENT_SECRET,
+                redirect_uri: REDIRECT_URI,
+                grant_type: "authorization_code",
+            },
+        });
 
         const accessToken = tokenRes.data.access_token;
 
         // Get user profile
-        const userInfoRes = await axios.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            }
-        );
+        const userInfoRes = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
 
-        const {
-            id: googleId,
-            email,
-            verified_email,
-            name,
-            picture
-        } = userInfoRes.data;
+        const { id: googleId, email, verified_email, name, picture } = userInfoRes.data;
 
         if (!verified_email) {
             return res.status(400).send("Email not verified by Google");
@@ -89,16 +76,16 @@ router.get("/callback", async (req, res) => {
                 providers: {
                     google: {
                         id: googleId,
-                        linked: true
-                    }
-                }
+                        linked: true,
+                    },
+                },
             });
 
             const admin = await Admin.create({
                 name,
                 email,
                 emailVerified: true,
-                profileImageUrl: picture
+                profileImageUrl: picture,
             });
 
             profileId = admin._id;
@@ -107,7 +94,7 @@ router.get("/callback", async (req, res) => {
             if (!account.providers.google?.linked) {
                 account.providers.google = {
                     id: googleId,
-                    linked: true
+                    linked: true,
                 };
                 await account.save();
             }
@@ -127,11 +114,9 @@ router.get("/callback", async (req, res) => {
         }
 
         // Issue JWT with same payload structure as normal auth
-        const token = jwt.sign(
-            { userId: profileId, role: account.role },
-            process.env.SECRET_KEY,
-            { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-        );
+        const token = jwt.sign({ userId: profileId, role: account.role }, process.env.SECRET_KEY, {
+            expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+        });
 
         // Set httpOnly cookie (same as normal login)
         // const isLive = process.env.MODE === "production";
@@ -163,10 +148,7 @@ router.get("/callback", async (req, res) => {
             </script>
         `);
     } catch (error) {
-        console.error(
-            "Google OAuth error:",
-            error.response?.data || error.message
-        );
+        console.error("Google OAuth error:", error.response?.data || error.message);
         if (isMobile) {
             return res.redirect(`reback://auth?error=${encodeURIComponent("Google OAuth failed")}`);
         }

@@ -6,14 +6,14 @@ const orderSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Admin",
             required: true,
-            index: true
+            index: true,
         },
 
         planId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Plan",
             required: true,
-            index: true
+            index: true,
         },
 
         amount: { type: Number, required: true },
@@ -23,40 +23,40 @@ const orderSchema = new mongoose.Schema(
         paymentMethod: {
             type: String,
             enum: ["Credit Card", "Debit Card", "UPI", "Net Banking", "Wallet", "Cash"],
-            default: "UPI"
+            default: "UPI",
         },
 
         orderStatus: {
             type: String,
             enum: ["Success", "Failed", "Pending"],
             default: "Pending",
-            index: true
+            index: true,
         },
 
         // PhonePe order ID returned on payment initiation
         phonepeOrderId: {
             type: String,
-            default: ""
+            default: "",
         },
 
         // PhonePe transaction ID set by webhook on completion
         transactionId: {
             type: String,
             unique: true,
-            sparse: true
+            sparse: true,
         },
 
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
-            index: true
+            index: true,
         },
 
         paymentId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Payment",
-            sparse: true
-        }
+            sparse: true,
+        },
     },
     { timestamps: true }
 );

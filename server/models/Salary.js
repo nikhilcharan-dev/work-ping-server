@@ -6,14 +6,14 @@ const salarySchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true
+            index: true,
         },
 
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         role: { type: String, required: true },
@@ -23,7 +23,7 @@ const salarySchema = new mongoose.Schema(
             type: String,
             required: true,
             index: true,
-            match: [/^\d{4}-(0[1-9]|1[0-2])$/, "month must be in YYYY-MM format"]
+            match: [/^\d{4}-(0[1-9]|1[0-2])$/, "month must be in YYYY-MM format"],
         },
 
         daysPresent: { type: Number, required: true },
@@ -40,10 +40,10 @@ const salarySchema = new mongoose.Schema(
         status: {
             type: String,
             enum: ["pending", "paid"],
-            default: "pending"
+            default: "pending",
         },
 
-        generatedDate: { type: Date, default: Date.now }
+        generatedDate: { type: Date, default: Date.now },
     },
     { timestamps: true }
 );

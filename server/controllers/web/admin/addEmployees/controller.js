@@ -3,7 +3,16 @@ import GovtProof from "#models/GovtProof.js";
 import Organization from "#models/Organization.js";
 import mongoose from "mongoose";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
-import {validateObjectId, validateEmail, validatePhone, validateName, validateEnum, validateDate, validateNumber, validateEmployeeId} from "#utils/validators.js";
+import {
+    validateObjectId,
+    validateEmail,
+    validatePhone,
+    validateName,
+    validateEnum,
+    validateDate,
+    validateNumber,
+    validateEmployeeId,
+} from "#utils/validators.js";
 
 const employeeLookupPipeline = [
     {
@@ -11,8 +20,8 @@ const employeeLookupPipeline = [
             from: "organizations",
             localField: "organizationId",
             foreignField: "_id",
-            as: "organization"
-        }
+            as: "organization",
+        },
     },
     { $unwind: { path: "$organization", preserveNullAndEmptyArrays: true } },
     {
@@ -20,8 +29,8 @@ const employeeLookupPipeline = [
             from: "teams",
             localField: "teamId",
             foreignField: "_id",
-            as: "team"
-        }
+            as: "team",
+        },
     },
     { $unwind: { path: "$team", preserveNullAndEmptyArrays: true } },
     {
@@ -29,8 +38,8 @@ const employeeLookupPipeline = [
             from: "govtproofs",
             localField: "_id",
             foreignField: "userId",
-            as: "govtProof"
-        }
+            as: "govtProof",
+        },
     },
     { $unwind: { path: "$govtProof", preserveNullAndEmptyArrays: true } },
     {
@@ -38,16 +47,16 @@ const employeeLookupPipeline = [
             from: "projectmembers",
             localField: "_id",
             foreignField: "userId",
-            as: "projectMemberships"
-        }
+            as: "projectMemberships",
+        },
     },
     {
         $lookup: {
             from: "projects",
             localField: "projectMemberships.projectId",
             foreignField: "_id",
-            as: "assignedProjects"
-        }
+            as: "assignedProjects",
+        },
     },
     {
         $addFields: {
@@ -70,15 +79,15 @@ const employeeLookupPipeline = [
             pan: { $ifNull: ["$govtProof.panNumber", null] },
             passport: { $ifNull: ["$govtProof.passportNumber", null] },
             bankId: { $ifNull: ["$govtProof.bankAccount", null] },
-        }
+        },
     },
     {
         $project: {
             organization: 0,
             team: 0,
-            govtProof: 0
-        }
-    }
+            govtProof: 0,
+        },
+    },
 ];
 
 const getEmployee = asyncHandler(async (req, res) => {
@@ -89,7 +98,7 @@ const getEmployee = asyncHandler(async (req, res) => {
 
     const [employee] = await User.aggregate([
         { $match: { _id: new mongoose.Types.ObjectId(employeeId) } },
-        ...employeeLookupPipeline
+        ...employeeLookupPipeline,
     ]);
 
     if (!employee) return errorResponse(res, "Employee doesn't exist", 404);
@@ -106,27 +115,27 @@ const updateEmployee = asyncHandler(async (req, res) => {
     const employee = await User.findById(employeeId);
     if (!employee) return errorResponse(res, "Employee doesn't exist", 404);
 
-    const { 
-        userName, 
-        name: bodyName, 
-        email, 
-        phone, 
-        gender, 
-        salary, 
-        dob, 
-        address, 
-        dateOfJoining, 
-        role, 
-        isActive, 
-        teamId, 
-        userId, 
-        employeeId: bodyEmployeeId, 
-        organizationId, 
-        aadhaar, 
-        pan, 
-        passport, 
-        bankId, 
-        workType 
+    const {
+        userName,
+        name: bodyName,
+        email,
+        phone,
+        gender,
+        salary,
+        dob,
+        address,
+        dateOfJoining,
+        role,
+        isActive,
+        teamId,
+        userId,
+        employeeId: bodyEmployeeId,
+        organizationId,
+        aadhaar,
+        pan,
+        passport,
+        bankId,
+        workType,
     } = req.body;
 
     const name = userName || bodyName;
@@ -173,7 +182,11 @@ const updateEmployee = asyncHandler(async (req, res) => {
         const userIdValidation = validateEmployeeId(userIdToUse);
         if (!userIdValidation.valid) return errorResponse(res, userIdValidation.error);
 
-        const existingEmpId = await User.findOne({ employeeId: userIdValidation.normalized, organizationId: employee.organizationId, _id: { $ne: employeeId } });
+        const existingEmpId = await User.findOne({
+            employeeId: userIdValidation.normalized,
+            organizationId: employee.organizationId,
+            _id: { $ne: employeeId },
+        });
         if (existingEmpId) return errorResponse(res, "Employee ID already in use by another employee", 409);
 
         updates.employeeId = userIdValidation.normalized;
@@ -276,10 +289,7 @@ const updateEmployee = asyncHandler(async (req, res) => {
         );
     }
 
-    const [enrichedEmployee] = await User.aggregate([
-        { $match: { _id: employeeId } },
-        ...employeeLookupPipeline
-    ]);
+    const [enrichedEmployee] = await User.aggregate([{ $match: { _id: employeeId } }, ...employeeLookupPipeline]);
 
     return successResponse(res, "Employee updated successfully", enrichedEmployee);
 }, "ADMIN_UPDATE_EMPLOYEE_ERROR");

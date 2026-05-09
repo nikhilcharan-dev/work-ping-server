@@ -12,9 +12,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
     const Δφ = ((lat2 - lat1) * Math.PI) / 180;
     const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
@@ -27,13 +25,16 @@ function getDistance(lat1, lon1, lat2, lon2) {
  * @returns {boolean}
  */
 function isPointInPolygon(point, polygon) {
-    let x = point.lat, y = point.lng;
+    let x = point.lat,
+        y = point.lng;
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        let xi = polygon[i].lat, yi = polygon[i].lng;
-        let xj = polygon[j].lat, yj = polygon[j].lng;
-        
-        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        let xi = polygon[i].lat,
+            yi = polygon[i].lng;
+        let xj = polygon[j].lat,
+            yj = polygon[j].lng;
+
+        let intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
         if (intersect) inside = !inside;
     }
     return inside;
@@ -53,9 +54,10 @@ function isPointInPolygon(point, polygon) {
  */
 export function validate3DLocation(provided, allowed, serverIp = null) {
     // If no validation data is set in the organization, allow by default (as per requirement)
-    const hasOrgConfig = (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) ||
-                         (allowed.coordinates && allowed.coordinates.length >= 2) ||
-                         allowed.msl;
+    const hasOrgConfig =
+        (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) ||
+        (allowed.coordinates && allowed.coordinates.length >= 2) ||
+        allowed.msl;
 
     if (!hasOrgConfig) {
         return { allowed: true, message: "No location restrictions set" };
@@ -64,9 +66,7 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
     // 1. IP Whitelist Check
     if (allowed.IPWhitelist && allowed.IPWhitelist.length > 0) {
         // Accept both "0.0.0.0" and "0.0.0.0/0" as universal-access sentinels
-        const isUniversalAccess = allowed.IPWhitelist.some(
-            ip => ip === "0.0.0.0" || ip === "0.0.0.0/0"
-        );
+        const isUniversalAccess = allowed.IPWhitelist.some((ip) => ip === "0.0.0.0" || ip === "0.0.0.0/0");
 
         if (!isUniversalAccess) {
             // Client-provided IP is preferred; fall back to server-extracted IP
@@ -74,7 +74,7 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
             if (!effectiveIp || !allowed.IPWhitelist.includes(effectiveIp)) {
                 return {
                     allowed: false,
-                    message: `Unauthorized network (IP: ${effectiveIp || 'Unknown'}). Please use company WiFi.`
+                    message: `Unauthorized network (IP: ${effectiveIp || "Unknown"}). Please use company WiFi.`,
                 };
             }
         }
@@ -93,10 +93,10 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
         // A. Check Polygon (if 3+ pins exist)
         if (allowed.areaPins && allowed.areaPins.length >= 3) {
             const isInside = isPointInPolygon(
-                { lat: provided.gps.latitude, lng: provided.gps.longitude }, 
+                { lat: provided.gps.latitude, lng: provided.gps.longitude },
                 allowed.areaPins
             );
-            
+
             if (isInside) {
                 isWithinAnyRange = true;
                 closestPin = "Geofencing Polygon (Inside)";
@@ -106,8 +106,8 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
         // B. Individual Radius Checks (Backup/Single Pin mode)
         if (!isWithinAnyRange) {
             const distance = getDistance(
-                provided.gps.latitude, 
-                provided.gps.longitude, 
+                provided.gps.latitude,
+                provided.gps.longitude,
                 allowed.coordinates[1],
                 allowed.coordinates[0]
             );
@@ -122,14 +122,9 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
         if (!isWithinAnyRange && allowed.areaPins && allowed.areaPins.length > 0) {
             for (const [index, pin] of allowed.areaPins.entries()) {
                 if (pin.lat == null || pin.lng == null) continue;
-                
-                const distance = getDistance(
-                    provided.gps.latitude, 
-                    provided.gps.longitude, 
-                    pin.lat, 
-                    pin.lng
-                );
-                
+
+                const distance = getDistance(provided.gps.latitude, provided.gps.longitude, pin.lat, pin.lng);
+
                 if (distance < minDistance) {
                     minDistance = distance;
                 }
@@ -143,9 +138,9 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
         }
 
         if (!isWithinAnyRange) {
-            return { 
-                allowed: false, 
-                message: `Outside allowed region (Closest pin: ${Math.round(minDistance)}m away).` 
+            return {
+                allowed: false,
+                message: `Outside allowed region (Closest pin: ${Math.round(minDistance)}m away).`,
             };
         }
     }
@@ -161,9 +156,9 @@ export function validate3DLocation(provided, allowed, serverIp = null) {
 
         // Allow within 50m tolerance
         if (Math.abs(providedMsl - targetMsl) > 50) {
-            return { 
-                allowed: false, 
-                message: "Security altitude mismatch. Possible spoofing detected." 
+            return {
+                allowed: false,
+                message: "Security altitude mismatch. Possible spoofing detected.",
             };
         }
     }

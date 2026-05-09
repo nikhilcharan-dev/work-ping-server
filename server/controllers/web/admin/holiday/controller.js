@@ -1,11 +1,6 @@
 import Holiday from "#models/Holiday.js";
 import { successResponse, errorResponse } from "#utils/response.helper.js";
-import {
-    validateObjectId,
-    validateString,
-    validateDate,
-    validateEnum,
-} from "#utils/validators.js";
+import { validateObjectId, validateString, validateDate, validateEnum } from "#utils/validators.js";
 
 const addHoliday = asyncHandler(async (req, res) => {
     let { name, type, date, description, organizationId } = req.body;
@@ -27,7 +22,7 @@ const addHoliday = asyncHandler(async (req, res) => {
         name: nameValidation.normalized,
         type: typeValidation.normalized,
         date: dateValidation.normalized,
-        description: description ? String(description).trim() : ""
+        description: description ? String(description).trim() : "",
     };
 
     const holiday = await Holiday.create(holidayData);
@@ -52,7 +47,7 @@ const getHolidays = asyncHandler(async (req, res) => {
         if (!isNaN(y)) {
             query.date = {
                 $gte: new Date(`${y}-01-01`),
-                $lte: new Date(`${y}-12-31`)
+                $lte: new Date(`${y}-12-31`),
             };
         }
     }
@@ -122,10 +117,4 @@ const deleteHolidays = asyncHandler(async (req, res) => {
     return successResponse(res, "Holidays deleted successfully", { deletedCount: result.deletedCount });
 }, "ADMIN_DELETE_HOLIDAY_ERROR");
 
-export {
-    addHoliday,
-    getHolidays,
-    getHolidayById,
-    updateHoliday,
-    deleteHolidays
-};
+export { addHoliday, getHolidays, getHolidayById, updateHoliday, deleteHolidays };

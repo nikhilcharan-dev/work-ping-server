@@ -19,4 +19,3 @@ export const insertEmployees = async (data) => {
         }
     }
 };
-

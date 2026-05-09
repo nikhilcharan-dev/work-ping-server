@@ -6,13 +6,13 @@ const holidayInfoSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Organization",
             required: true,
-            index: true
+            index: true,
         },
 
         name: {
             type: String,
             required: true,
-            trim: true
+            trim: true,
         },
 
         type: { type: String, enum: ["public", "organization"], required: true },
@@ -21,7 +21,7 @@ const holidayInfoSchema = new mongoose.Schema(
 
         isWorkingDay: { type: Boolean, default: false },
 
-        description: String
+        description: String,
     },
     { timestamps: true }
 );

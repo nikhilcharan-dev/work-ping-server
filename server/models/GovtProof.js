@@ -5,7 +5,7 @@ const govtProofSchema = new mongoose.Schema(
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
         },
 
         aadhaarNumber: { type: String, required: true },
@@ -20,8 +20,8 @@ const govtProofSchema = new mongoose.Schema(
 
         ifscCode: {
             type: String,
-            match: [/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format"]
-        }
+            match: [/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format"],
+        },
     },
     { timestamps: true }
 );

@@ -11,7 +11,7 @@ import {
     getUpcomingHolidays,
     getSalarySlip,
     fileComplaint,
-    raiseFrsTicket
+    raiseFrsTicket,
 } from "../../controllers/internal/controller.js";
 
 const router = Router();
@@ -25,17 +25,17 @@ router.use((req, res, next) => {
     next();
 });
 
-router.get("/employee/by-phone/:phone",       getEmployeeByPhone);
-router.get("/attendance/today/:userId",        getAttendanceToday);
-router.get("/attendance/week/:userId",         getAttendanceWeek);
-router.get("/leave/balance/:userId",           getLeaveBalance);
-router.get("/leave/recent/:userId",            getRecentLeaves);
-router.post("/leave/apply",                    applyLeave);
-router.post("/leave/decide",                   decideLeave);
-router.get("/shift/:userId",                   getUserShift);
-router.get("/holidays/:organizationId",        getUpcomingHolidays);
-router.get("/salary/:userId",                  getSalarySlip);
-router.post("/complaint",                      fileComplaint);
-router.post("/frs-ticket",                     raiseFrsTicket);
+router.get("/employee/by-phone/:phone", getEmployeeByPhone);
+router.get("/attendance/today/:userId", getAttendanceToday);
+router.get("/attendance/week/:userId", getAttendanceWeek);
+router.get("/leave/balance/:userId", getLeaveBalance);
+router.get("/leave/recent/:userId", getRecentLeaves);
+router.post("/leave/apply", applyLeave);
+router.post("/leave/decide", decideLeave);
+router.get("/shift/:userId", getUserShift);
+router.get("/holidays/:organizationId", getUpcomingHolidays);
+router.get("/salary/:userId", getSalarySlip);
+router.post("/complaint", fileComplaint);
+router.post("/frs-ticket", raiseFrsTicket);
 
 export default router;

@@ -23,15 +23,17 @@ export const getAttendanceSummary = asyncHandler(async (req, res) => {
     if (!users.length) {
         return successResponse(res, "No employees in this organization", {
             today: { present: 0, absent: 0, late: 0, halfDay: 0, total: 0 },
-            trend: {}
+            trend: {},
         });
     }
 
     const userIds = users.map((u) => u._id);
 
     const queryDate = date ? new Date(date) : new Date();
-    const dayStart = new Date(queryDate); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(queryDate); dayEnd.setHours(23, 59, 59, 999);
+    const dayStart = new Date(queryDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(queryDate);
+    dayEnd.setHours(23, 59, 59, 999);
 
     // Today's counts
     const todayRecords = await Attendance.find({
@@ -40,13 +42,22 @@ export const getAttendanceSummary = asyncHandler(async (req, res) => {
     }).lean();
 
     const today = { present: 0, absent: 0, late: 0, halfDay: 0, total: users.length };
-    todayRecords.forEach((r) => { if (today[r.status] !== undefined) today[r.status]++; });
+    todayRecords.forEach((r) => {
+        if (today[r.status] !== undefined) today[r.status]++;
+    });
 
     // 30-day trend (grouped by date + status)
-    const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); thirtyDaysAgo.setHours(0, 0, 0, 0);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
 
     const trendAgg = await Attendance.aggregate([
-        { $match: { userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) }, date: { $gte: thirtyDaysAgo } } },
+        {
+            $match: {
+                userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) },
+                date: { $gte: thirtyDaysAgo },
+            },
+        },
         {
             $group: {
                 _id: {
@@ -81,7 +92,9 @@ export const getAttendanceSummary = asyncHandler(async (req, res) => {
         const tid = t._id.toString();
         const tUsers = teamUserMap[tid] || [];
         if (!tUsers.length) return { teamId: tid, teamName: t.teamName, rate: 0, present: 0, total: 0 };
-        const presentInTeam = todayRecords.filter((r) => tUsers.some((id) => id.toString() === r.userId.toString()) && r.status === "present").length;
+        const presentInTeam = todayRecords.filter(
+            (r) => tUsers.some((id) => id.toString() === r.userId.toString()) && r.status === "present"
+        ).length;
         return {
             teamId: tid,
             teamName: t.teamName,
@@ -101,13 +114,13 @@ export const getManagerAttendanceSummary = asyncHandler(async (req, res) => {
 
     // 1. Find all teams managed by this user
     const managedTeams = await Team.find({ managerId, organizationId }).select("_id teamName").lean();
-    const teamIds = managedTeams.map(t => t._id);
+    const teamIds = managedTeams.map((t) => t._id);
 
     if (!teamIds.length) {
         return successResponse(res, "No teams managed", {
             today: { present: 0, absent: 0, late: 0, halfDay: 0, total: 0 },
             trend: {},
-            teamRates: []
+            teamRates: [],
         });
     }
 
@@ -117,15 +130,23 @@ export const getManagerAttendanceSummary = asyncHandler(async (req, res) => {
         return successResponse(res, "No employees in managed teams", {
             today: { present: 0, absent: 0, late: 0, halfDay: 0, total: 0 },
             trend: {},
-            teamRates: managedTeams.map(t => ({ teamId: t._id, teamName: t.teamName, rate: 0, present: 0, total: 0 }))
+            teamRates: managedTeams.map((t) => ({
+                teamId: t._id,
+                teamName: t.teamName,
+                rate: 0,
+                present: 0,
+                total: 0,
+            })),
         });
     }
 
     const userIds = users.map((u) => u._id);
 
     const queryDate = date ? new Date(date) : new Date();
-    const dayStart = new Date(queryDate); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(queryDate); dayEnd.setHours(23, 59, 59, 999);
+    const dayStart = new Date(queryDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(queryDate);
+    dayEnd.setHours(23, 59, 59, 999);
 
     // Today's counts
     const todayRecords = await Attendance.find({
@@ -134,13 +155,22 @@ export const getManagerAttendanceSummary = asyncHandler(async (req, res) => {
     }).lean();
 
     const today = { present: 0, absent: 0, late: 0, halfDay: 0, total: users.length };
-    todayRecords.forEach((r) => { if (today[r.status] !== undefined) today[r.status]++; });
+    todayRecords.forEach((r) => {
+        if (today[r.status] !== undefined) today[r.status]++;
+    });
 
     // 30-day trend
-    const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); thirtyDaysAgo.setHours(0, 0, 0, 0);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
 
     const trendAgg = await Attendance.aggregate([
-        { $match: { userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) }, date: { $gte: thirtyDaysAgo } } },
+        {
+            $match: {
+                userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) },
+                date: { $gte: thirtyDaysAgo },
+            },
+        },
         {
             $group: {
                 _id: {
@@ -171,7 +201,9 @@ export const getManagerAttendanceSummary = asyncHandler(async (req, res) => {
         const tid = t._id.toString();
         const tUsers = teamUserMap[tid] || [];
         if (!tUsers.length) return { teamId: tid, teamName: t.teamName, rate: 0, present: 0, total: 0 };
-        const presentInTeam = todayRecords.filter((r) => tUsers.some((id) => id.toString() === r.userId.toString()) && r.status === "present").length;
+        const presentInTeam = todayRecords.filter(
+            (r) => tUsers.some((id) => id.toString() === r.userId.toString()) && r.status === "present"
+        ).length;
         return {
             teamId: tid,
             teamName: t.teamName,
@@ -217,11 +249,18 @@ export const getAttendanceByOrganizationId = asyncHandler(async (req, res) => {
         userIds = userIds.filter((id) => memberSet.has(id.toString()));
     }
     const queryDate = dateValidation.normalized;
-    const dayStart = new Date(queryDate); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(queryDate); dayEnd.setHours(23, 59, 59, 999);
+    const dayStart = new Date(queryDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(queryDate);
+    dayEnd.setHours(23, 59, 59, 999);
 
     const records = await Attendance.aggregate([
-        { $match: { userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) }, date: { $gte: dayStart, $lte: dayEnd } } },
+        {
+            $match: {
+                userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) },
+                date: { $gte: dayStart, $lte: dayEnd },
+            },
+        },
         {
             $lookup: {
                 from: "users",
@@ -268,7 +307,8 @@ export const getAttendanceByTeamId = asyncHandler(async (req, res) => {
     // Security: Check if manager has authority over this team
     if (req.user.role === "manager") {
         const isManagedTeam = await Team.exists({ _id: teamId, managerId: req.user.userId });
-        if (!isManagedTeam) return errorResponse(res, "Forbidden: You cannot view attendance for a team you don't manage", 403);
+        if (!isManagedTeam)
+            return errorResponse(res, "Forbidden: You cannot view attendance for a team you don't manage", 403);
     }
 
     const dateValidation = validateDate(date, "Date");
@@ -282,11 +322,18 @@ export const getAttendanceByTeamId = asyncHandler(async (req, res) => {
 
     const userIds = teamMembers.map((u) => u._id);
     const queryDate = dateValidation.normalized;
-    const dayStart = new Date(queryDate); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(queryDate); dayEnd.setHours(23, 59, 59, 999);
+    const dayStart = new Date(queryDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(queryDate);
+    dayEnd.setHours(23, 59, 59, 999);
 
     const records = await Attendance.aggregate([
-        { $match: { userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) }, date: { $gte: dayStart, $lte: dayEnd } } },
+        {
+            $match: {
+                userId: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) },
+                date: { $gte: dayStart, $lte: dayEnd },
+            },
+        },
         {
             $lookup: {
                 from: "users",

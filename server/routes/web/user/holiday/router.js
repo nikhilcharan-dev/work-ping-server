@@ -1,7 +1,4 @@
-import {
-    getHolidays,
-    getHolidayById
-} from "#webController/user/holiday/controller.js";
+import { getHolidays, getHolidayById } from "#webController/user/holiday/controller.js";
 import express from "express";
 
 const Router = express.Router();

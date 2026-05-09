@@ -1,4 +1,4 @@
-import { getEmployee, updateEmployee} from "#webController/admin/addEmployees/controller.js";
+import { getEmployee, updateEmployee } from "#webController/admin/addEmployees/controller.js";
 import { Router } from "express";
 
 const router = Router();

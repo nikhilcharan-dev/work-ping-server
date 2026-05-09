@@ -1,4 +1,6 @@
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 
 const allowedOrigins = [
     "http://10.144.15.154:5173",
@@ -12,17 +14,39 @@ const allowedOrigins = [
     process.env.CLIENT_URL,
 ];
 
-export default function socket(server) {
+function makeRedisClient() {
+    return createClient({
+        socket: {
+            host: process.env.REDIS_HOST,
+            port: process.env.REDIS_PORT,
+            keepAlive: 10_000,
+            reconnectStrategy: (retries) => Math.min(30_000, 1000 * Math.pow(2, retries)),
+        },
+        password: process.env.REDIS_PASSWORD || undefined,
+    });
+}
+
+export default async function socket(server) {
+    // Two separate clients are required — Redis pub and sub cannot share a connection
+    const pubClient = makeRedisClient();
+    const subClient = pubClient.duplicate();
+
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+
+    pubClient.on("error", (err) => console.error("[Socket.io pubClient]", err.message));
+    subClient.on("error", (err) => console.error("[Socket.io subClient]", err.message));
+
     globalThis.io = new Server(server, {
         cors: {
             origin: allowedOrigins,
-            methods: ["GET", "POST"]
-        }
+            methods: ["GET", "POST"],
+        },
+        adapter: createAdapter(pubClient, subClient),
     });
 
-    console.log("Gateway Socket listening");
+    console.log("[Socket.io] Redis adapter attached — cluster-safe");
 
-    io.on("connection", socket => {
+    io.on("connection", (socket) => {
         /**
          * Client emits "payment:join" with { userId } immediately after
          * being redirected to the PhonePe payment page.
@@ -37,15 +61,12 @@ export default function socket(server) {
             socket.join(`payment:${userId}`);
 
             try {
-                const raw  = await redis.get(`payment:${userId}`);
+                const raw = await redis.get(`payment:${userId}`);
                 const data = raw ? JSON.parse(raw) : null;
 
                 if (data) {
-                    // Replay current state (Pending, Success, etc.)
                     socket.emit("payment:status", data);
                 } else {
-                    // No active payment in Redis — could be completed or expired
-                    // We check if it's "Completed" by emitting a generic status
                     socket.emit("payment:status", { status: "None" });
                 }
             } catch (err) {

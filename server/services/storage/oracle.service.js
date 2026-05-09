@@ -20,7 +20,10 @@ export const deleteObject = async (bucketName, objectName) => {
     try {
         await ociClient.delete(`/api/object/${bucketName}/${encodeURIComponent(objectName)}`);
     } catch (err) {
-        console.error(`[OracleCloud] Failed to delete ${bucketName}/${objectName}:`, err?.response?.data ?? err.message);
+        console.error(
+            `[OracleCloud] Failed to delete ${bucketName}/${objectName}:`,
+            err?.response?.data ?? err.message
+        );
     }
 };
 

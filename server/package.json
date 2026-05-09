@@ -6,13 +6,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "npx nodemon",
     "seed:demo": "node seedAdminUser.js",
     "seed:live": "node seedData.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
@@ -22,6 +22,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.1.0",
     "form-data": "^4.0.5",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.23",
     "module-alias": "^2.2.3",

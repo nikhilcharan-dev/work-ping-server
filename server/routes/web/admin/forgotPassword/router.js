@@ -1,5 +1,9 @@
-import {Router} from "express";
-import { send_otp, verify_otp_and_change_password, verify_otp } from "#webController/admin/forgotPassword/controller.js";
+import { Router } from "express";
+import {
+    send_otp,
+    verify_otp_and_change_password,
+    verify_otp,
+} from "#webController/admin/forgotPassword/controller.js";
 
 const router = Router();
 

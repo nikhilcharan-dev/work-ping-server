@@ -1,5 +1,11 @@
 import express from "express";
-import { getAllLeaves, approveLeave, rejectLeave, getPendingCount, getManagerTeamLeaves } from "#webController/admin/leaves/controller.js";
+import {
+    getAllLeaves,
+    approveLeave,
+    rejectLeave,
+    getPendingCount,
+    getManagerTeamLeaves,
+} from "#webController/admin/leaves/controller.js";
 import authorizeManager from "#middleware/authorizeManager.js";
 
 const Router = express.Router();

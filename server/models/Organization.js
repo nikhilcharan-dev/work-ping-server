@@ -16,14 +16,16 @@ const organizationSchema = new mongoose.Schema(
 
         coordinates: [{ type: Number }],
 
-        areaPins: [{
-            lat: { type: Number, required: true },
-            lng: { type: Number, required: true },
-        }],
+        areaPins: [
+            {
+                lat: { type: Number, required: true },
+                lng: { type: Number, required: true },
+            },
+        ],
 
         msl: { type: String },
 
-        logo: { type: String }
+        logo: { type: String },
     },
     { timestamps: true }
 );

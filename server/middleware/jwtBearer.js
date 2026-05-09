@@ -4,8 +4,8 @@ const validateCookie = (req, res, next) => {
     try {
         let token = null;
 
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-            token = req.headers.authorization.split(' ')[1];
+        if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+            token = req.headers.authorization.split(" ")[1];
         } else if (req.cookies?.accessToken) {
             token = req.cookies.accessToken;
         }
@@ -28,6 +28,6 @@ const validateCookie = (req, res, next) => {
     } catch (err) {
         res.status(500).json({ type: "error", message: "Internal Server Error" });
     }
-}
+};
 
 export default validateCookie;

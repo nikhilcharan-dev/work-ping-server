@@ -77,7 +77,7 @@ export const getManagerTeamLeaves = asyncHandler(async (req, res) => {
 
     // 1. Find all teams managed by this user
     const managedTeams = await Team.find({ managerId }).select("_id");
-    const teamIds = managedTeams.map(t => t._id);
+    const teamIds = managedTeams.map((t) => t._id);
 
     if (!teamIds.length) {
         return successResponse(res, "No teams managed", { totalRecords: 0, totalPages: 0, leaves: [] });
@@ -99,7 +99,7 @@ export const getManagerTeamLeaves = asyncHandler(async (req, res) => {
     }
 
     const pipeline = [
-        { $match: { userId: { $in: managedUserIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+        { $match: { userId: { $in: managedUserIds.map((id) => new mongoose.Types.ObjectId(id)) } } },
         ...(status ? [{ $match: { status } }] : []),
         {
             $lookup: {
@@ -161,7 +161,8 @@ export const approveLeave = asyncHandler(async (req, res) => {
         const leaveEmployee = await User.findById(leave.userId).select("teamId");
         if (!leaveEmployee) return errorResponse(res, "Leave employee not found", 404);
         const isManagedTeam = await Team.exists({ _id: leaveEmployee.teamId, managerId: adminId });
-        if (!isManagedTeam) return errorResponse(res, "Forbidden: You cannot action leaves outside your managed teams", 403);
+        if (!isManagedTeam)
+            return errorResponse(res, "Forbidden: You cannot action leaves outside your managed teams", 403);
     }
 
     if (leave.status !== "pending") return errorResponse(res, `Leave is already ${leave.status}`);
@@ -171,14 +172,22 @@ export const approveLeave = asyncHandler(async (req, res) => {
     await leave.save();
 
     // Notify employee — fire-and-forget
-    User.findById(leave.userId).select("name phone").lean().then(emp => {
-        if (!emp?.phone) return;
-        const dateList = leave.dates.slice(0, 3).map(d => new Date(d).toLocaleDateString("en-IN")).join(", ")
-            + (leave.dates.length > 3 ? ` +${leave.dates.length - 3} more` : "");
-        sendWhatsApp(emp.phone,
-            `*Leave Approved* ✅\nHi ${emp.name}, your leave request for *${leave.dates.length} day(s)* (${dateList}) has been *approved*.`
-        ).catch(() => {});
-    }).catch(() => {});
+    User.findById(leave.userId)
+        .select("name phone")
+        .lean()
+        .then((emp) => {
+            if (!emp?.phone) return;
+            const dateList =
+                leave.dates
+                    .slice(0, 3)
+                    .map((d) => new Date(d).toLocaleDateString("en-IN"))
+                    .join(", ") + (leave.dates.length > 3 ? ` +${leave.dates.length - 3} more` : "");
+            sendWhatsApp(
+                emp.phone,
+                `*Leave Approved* ✅\nHi ${emp.name}, your leave request for *${leave.dates.length} day(s)* (${dateList}) has been *approved*.`
+            ).catch(() => {});
+        })
+        .catch(() => {});
 
     return successResponse(res, "Leave approved successfully", leave);
 }, "ADMIN_APPROVE_LEAVE");
@@ -205,7 +214,8 @@ export const rejectLeave = asyncHandler(async (req, res) => {
         const leaveEmployee = await User.findById(leave.userId).select("teamId");
         if (!leaveEmployee) return errorResponse(res, "Leave employee not found", 404);
         const isManagedTeam = await Team.exists({ _id: leaveEmployee.teamId, managerId: adminId });
-        if (!isManagedTeam) return errorResponse(res, "Forbidden: You cannot action leaves outside your managed teams", 403);
+        if (!isManagedTeam)
+            return errorResponse(res, "Forbidden: You cannot action leaves outside your managed teams", 403);
     }
 
     if (leave.status !== "pending") return errorResponse(res, `Leave is already ${leave.status}`);
@@ -216,14 +226,22 @@ export const rejectLeave = asyncHandler(async (req, res) => {
     await leave.save();
 
     // Notify employee — fire-and-forget
-    User.findById(leave.userId).select("name phone").lean().then(emp => {
-        if (!emp?.phone) return;
-        const dateList = leave.dates.slice(0, 3).map(d => new Date(d).toLocaleDateString("en-IN")).join(", ")
-            + (leave.dates.length > 3 ? ` +${leave.dates.length - 3} more` : "");
-        sendWhatsApp(emp.phone,
-            `*Leave Rejected* ❌\nHi ${emp.name}, your leave request for *${leave.dates.length} day(s)* (${dateList}) has been *rejected*.${reason ? `\nReason: ${reason}` : ""}`
-        ).catch(() => {});
-    }).catch(() => {});
+    User.findById(leave.userId)
+        .select("name phone")
+        .lean()
+        .then((emp) => {
+            if (!emp?.phone) return;
+            const dateList =
+                leave.dates
+                    .slice(0, 3)
+                    .map((d) => new Date(d).toLocaleDateString("en-IN"))
+                    .join(", ") + (leave.dates.length > 3 ? ` +${leave.dates.length - 3} more` : "");
+            sendWhatsApp(
+                emp.phone,
+                `*Leave Rejected* ❌\nHi ${emp.name}, your leave request for *${leave.dates.length} day(s)* (${dateList}) has been *rejected*.${reason ? `\nReason: ${reason}` : ""}`
+            ).catch(() => {});
+        })
+        .catch(() => {});
 
     return successResponse(res, "Leave rejected", leave);
 }, "ADMIN_REJECT_LEAVE");

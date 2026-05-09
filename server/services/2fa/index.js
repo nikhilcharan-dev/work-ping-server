@@ -1,5 +1,5 @@
-import { createController } from './controller.js';
-import { createRoutes } from './routes.js';
+import { createController } from "./controller.js";
+import { createRoutes } from "./routes.js";
 import validateCookie from "#middleware/jwtBearer.js";
 
 /**
@@ -11,7 +11,7 @@ import validateCookie from "#middleware/jwtBearer.js";
  * @param {string} [config.appName] - Name of the application (for Authenticator app).
  */
 export function setup2FA(app, config) {
-    if (!config || typeof config.saveSecret !== 'function' || typeof config.getSecret !== 'function') {
+    if (!config || typeof config.saveSecret !== "function" || typeof config.getSecret !== "function") {
         throw new Error('2FA Service requires "saveSecret" and "getSecret" async functions in config.');
     }
 
@@ -19,6 +19,6 @@ export function setup2FA(app, config) {
     const router = createRoutes(controller);
 
     // app.use('/2fa', validateCookie,  router);
-    app.use('/api/auth/2fa', validateCookie,  router);
+    app.use("/api/auth/2fa", validateCookie, router);
     return { controller, router };
 }
